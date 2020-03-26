@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from termcolor import colored
-from pp_dev import GenericPreprocessor, TimeseriesPreprocessor
+from .pp_dev import GenericPreprocessor, TimeseriesPreprocessor
 
 
 WARN = colored('WARNING:', 'red')

@@ -1,10 +1,5 @@
-import os
-from pathlib import Path
 from termcolor import colored
-from bg_dev import BatchGenerator
-import numpy as np
-import lz4framed as lz4f
-import h5py
+from .bg_dev import BatchGenerator
 
 WARN = colored('WARNING: ', 'red')
 NOTE = colored('NOTE: ',    'blue')
@@ -43,6 +38,6 @@ class SimpleBatchgen(BatchGenerator):
 
 
 
-class GroupBatchgen(BatchGenerator):
+class GroupBatchgen(BatchGenerator):  # TODO
     def __init__(self):
         pass
