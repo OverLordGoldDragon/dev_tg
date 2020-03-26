@@ -3,6 +3,7 @@
     - replace metrics= w/ history=?
     - visualizations
     - metric aliases
+    - make report_generator optional per requiring PIL
     - unit tests: 
         - images
         - timeseries
