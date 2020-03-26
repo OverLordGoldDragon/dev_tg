@@ -31,8 +31,3 @@ def tempdir(prefix=None):
         yield dirpath
     finally:
         shutil.rmtree(dirpath)
-
-
-# with tempdir("logs_") as logs_dir, tempdir("models_") as models_dir:
-#     TRAINGEN_CFG['logs_dir'] = logs_dir
-#     TRAINGEN_CFG['best_models_dir'] = models_dir
