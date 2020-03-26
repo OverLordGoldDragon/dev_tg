@@ -28,7 +28,7 @@ before_install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
   - export LD_LIBRARY_PATH=$HOME/miniconda/envs/test-environment/lib/:$LD_LIBRARY_PATH
-  - pip install -r requirements-test.txt
+  - pip install -r requirements-dev.txt
   - conda install matplotlib
   - conda install coveralls
   
