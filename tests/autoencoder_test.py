@@ -60,7 +60,7 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
 
 def test_main():
     t0 = time()
-    with tempdir(CONFIGS['traignen']['logs_dir']), tempdir(
+    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
         _test_main()
     

@@ -22,7 +22,7 @@ MODEL_CFG = dict(
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
-    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
+    labels_path=os.path.join(datadir, 'train', 'labels.csv'),
     batch_size=32,
     data_category='timeseries',
     shuffle=True,
@@ -31,7 +31,7 @@ DATAGEN_CFG = dict(
 VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
     superbatch_dir=os.path.join(datadir, 'val'),
-    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
+    labels_path=os.path.join(datadir, 'val', 'labels.csv'),
     batch_size=32,
     data_category='timeseries',
     shuffle=False,
@@ -52,7 +52,7 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
 
 def test_main():
     t0 = time()
-    with tempdir(CONFIGS['traignen']['logs_dir']), tempdir(
+    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
         _test_main()
     
