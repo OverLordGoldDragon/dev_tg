@@ -63,7 +63,8 @@ def test_main():
         _test_main()
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< TIMESERIES TEST PASSED >>\n", 'green')
+    cprint("<< IMAGE TEST PASSED >>\n", 'green')
+
 
 def _test_main():
     tg = _init_session(CONFIGS)
