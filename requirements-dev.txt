@@ -5,4 +5,4 @@ pytest
 pytest-cov
 pycode
 pandas
-PIL
+pillow
