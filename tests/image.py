@@ -9,14 +9,16 @@ from time import time
 from keras.layers import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from keras.models import Model
 
+from .backend import BASEDIR
 from train_generatorr import TrainGenerator
 from bg_dev2 import SimpleBatchgen
 
 
-_dir = r"C:\Desktop\School\Deep Learning\DL_code\dev_tg\train_generatorr\\"
 batch_size = 128
 width, height = 28, 28
 channels = 1
+
+_dir = BASEDIR
 
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
@@ -30,17 +32,17 @@ MODEL_CFG = dict(
     dense_units=128,
 )
 DATAGEN_CFG = dict(
-    data_dir=_dir + r'data\image\train\\',
-    superbatch_dir=_dir + r'data\image\train\\',
-    labels_path=_dir + r'data\image\train\labels.h5',
+    data_dir=os.path.join(_dir, 'data', 'image', 'train'),
+    superbatch_dir=os.path.join(_dir, 'data', 'image', 'train'),
+    labels_path=os.path.join(_dir, 'data', 'image', 'train', 'labels.h5'),
     batch_size=batch_size,
     data_category='image',
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=_dir + r'data\image\val\\',
-    superbatch_dir=_dir + r'data\image\val\\',
-    labels_path=_dir + r'data\image\val\labels.h5',
+    data_dir=os.path.join(_dir, 'data', 'image', 'val'),
+    superbatch_dir=os.path.join(_dir, 'data', 'image', 'val'),
+    labels_path=os.path.join(_dir, 'data', 'image', 'val', 'labels.h5'),
     batch_size=batch_size,
     data_category='image',
     shuffle=False,
@@ -48,8 +50,8 @@ VAL_DATAGEN_CFG = dict(
 TRAINGEN_CFG = dict(
     epochs=1,
     val_freq={'epoch': 1},
-    logs_dir=_dir + 'logs\\',
-    best_models_dir=_dir + 'models\\',
+    logs_dir=os.path.join(_dir, 'logs'),
+    best_models_dir=os.path.join(_dir, 'models'),
     model_configs=MODEL_CFG,
 )
 

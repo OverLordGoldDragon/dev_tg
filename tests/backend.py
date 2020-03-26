@@ -3,6 +3,8 @@ import tempfile
 import shutil
 
 
+BASEDIR = ''
+
 @contextlib.contextmanager
 def tempdir(prefix=None):
     dirpath = tempfile.mkdtemp(prefix=prefix)

@@ -9,11 +9,11 @@ from time import time
 from keras.layers import Input, Conv2D, UpSampling2D
 from keras.models import Model
 
+from .backend import BASEDIR
 from train_generatorr import TrainGenerator
 from bg_dev2 import SimpleBatchgen
 
 
-_dir = r"C:\Desktop\School\Deep Learning\DL_code\dev_tg\train_generatorr\\"
 batch_size = 128
 width, height = 28, 28
 channels = 1
@@ -31,17 +31,17 @@ MODEL_CFG = dict(
     up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
 )
 DATAGEN_CFG = dict(
-    data_dir=_dir + r'data\image\train\\',
-    superbatch_dir=_dir + r'data\image\train\\',
-    labels_path=_dir + r'data\image\train\labels.h5',
+    data_dir=BASEDIR + r'data\image\train\\',
+    superbatch_dir=BASEDIR + r'data\image\train\\',
+    labels_path=BASEDIR + r'data\image\train\labels.h5',
     batch_size=batch_size,
     data_category='image',
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=_dir + r'data\image\val\\',
-    superbatch_dir=_dir + r'data\image\val\\',
-    labels_path=_dir + r'data\image\val\labels.h5',
+    data_dir=BASEDIR + r'data\image\val\\',
+    superbatch_dir=BASEDIR + r'data\image\val\\',
+    labels_path=BASEDIR + r'data\image\val\labels.h5',
     batch_size=batch_size,
     data_category='image',
     shuffle=False,
@@ -49,8 +49,8 @@ VAL_DATAGEN_CFG = dict(
 TRAINGEN_CFG = dict(
     epochs=2,
     val_freq={'epoch': 1},
-    logs_dir=_dir + 'logs\\',
-    best_models_dir=_dir + 'models\\',
+    logs_dir=BASEDIR + 'logs\\',
+    best_models_dir=BASEDIR + 'models\\',
     model_configs=MODEL_CFG,
     input_as_labels=True,
 )

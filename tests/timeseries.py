@@ -9,11 +9,11 @@ from pathlib import Path
 from keras.layers import Input, Dense, LSTM
 from keras.models import Model
 
+from .backend import BASEDIR
 from train_generatorr import TrainGenerator
 from bg_dev2 import SimpleBatchgen
 
 
-_dir = r"C:\Desktop\School\Deep Learning\DL_code\dev_tg\train_generatorr\\"
 MODEL_CFG = dict(
     batch_shape=(32, 25, 16),
     units=16,
@@ -21,16 +21,16 @@ MODEL_CFG = dict(
     loss='binary_crossentropy'
 )
 DATAGEN_CFG = dict(
-    data_dir=_dir + r'data\timeseries\train\\',
-    labels_path=_dir + r'data\timeseries\train\labels.csv',
+    data_dir=BASEDIR + r'data\timeseries\train\\',
+    labels_path=BASEDIR + r'data\timeseries\train\labels.csv',
     batch_size=32,
     data_category='timeseries',
     shuffle=True,
     preprocessor_configs=dict(batch_timesteps=100, window_size=25),
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=_dir + r'data\timeseries\val\\',
-    labels_path=_dir + r'data\timeseries\val\labels.csv',
+    data_dir=BASEDIR + r'data\timeseries\val\\',
+    labels_path=BASEDIR + r'data\timeseries\val\labels.csv',
     batch_size=32,
     data_category='timeseries',
     shuffle=False,
@@ -40,7 +40,7 @@ TRAINGEN_CFG = dict(
     epochs=2,
     reset_statefuls=True,
     max_is_best=False,
-    logs_dir=_dir + 'logs\\',
+    logs_dir=BASEDIR + 'logs\\',
     model_configs=MODEL_CFG,
 )
 
