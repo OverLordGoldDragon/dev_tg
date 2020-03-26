@@ -2,17 +2,17 @@
 import os
 import pytest
 
+from pathlib import Path
 from termcolor import cprint
 from time import time
-from pathlib import Path
 
-from keras.layers import Input, Dense, LSTM
-from keras.models import Model
+from .backend import Input, Dense, LSTM
+from .backend import Model
+from .backend import BASEDIR, tempdir
+from deeptrain import TrainGenerator, SimpleBatchgen
 
-from .backend import BASEDIR
-from train_generatorr import TrainGenerator
-from bg_dev2 import SimpleBatchgen
 
+datadir = os.path.join(BASEDIR, 'examples', 'data', 'timeseries')
 
 MODEL_CFG = dict(
     batch_shape=(32, 25, 16),
@@ -21,16 +21,17 @@ MODEL_CFG = dict(
     loss='binary_crossentropy'
 )
 DATAGEN_CFG = dict(
-    data_dir=BASEDIR + r'data\timeseries\train\\',
-    labels_path=BASEDIR + r'data\timeseries\train\labels.csv',
+    data_dir=os.path.join(datadir, 'train'),
+    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=32,
     data_category='timeseries',
     shuffle=True,
     preprocessor_configs=dict(batch_timesteps=100, window_size=25),
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=BASEDIR + r'data\timeseries\val\\',
-    labels_path=BASEDIR + r'data\timeseries\val\labels.csv',
+    data_dir=os.path.join(datadir, 'val'),
+    superbatch_dir=os.path.join(datadir, 'val'),
+    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=32,
     data_category='timeseries',
     shuffle=False,
@@ -40,7 +41,8 @@ TRAINGEN_CFG = dict(
     epochs=2,
     reset_statefuls=True,
     max_is_best=False,
-    logs_dir=BASEDIR + 'logs\\',
+    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
+    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     model_configs=MODEL_CFG,
 )
 
@@ -50,17 +52,21 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
 
 def test_main():
     t0 = time()
-    print("Timing test...")
+    with tempdir(CONFIGS['traignen']['logs_dir']), tempdir(
+            CONFIGS['traingen']['best_models_dir']):
+        _test_main()
+    
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    cprint("<< TIMESERIES TEST PASSED >>\n", 'green')
 
+
+def _test_main():
     tg = _init_session(CONFIGS)
     tg.train()
 
     _test_weighted_slices(tg)
     _test_load(tg, CONFIGS)
 
-    print("Time elapsed: {:.3f}".format(time() - t0))
-    cprint("\n<< TIMESERIES TEST PASSED >>\n", 'green')
-    
 
 def _test_weighted_slices(tg):
     tg.epochs += 1

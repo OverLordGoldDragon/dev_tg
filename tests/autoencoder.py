@@ -6,17 +6,16 @@ from pathlib import Path
 from termcolor import cprint
 from time import time
 
-from keras.layers import Input, Conv2D, UpSampling2D
-from keras.models import Model
-
-from .backend import BASEDIR
-from train_generatorr import TrainGenerator
-from bg_dev2 import SimpleBatchgen
+from .backend import Input, Conv2D, UpSampling2D
+from .backend import Model
+from .backend import BASEDIR, tempdir
+from deeptrain import TrainGenerator, SimpleBatchgen
 
 
 batch_size = 128
 width, height = 28, 28
 channels = 1
+datadir = os.path.join(BASEDIR, 'examples', 'data', 'image')
 
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
@@ -31,17 +30,17 @@ MODEL_CFG = dict(
     up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
 )
 DATAGEN_CFG = dict(
-    data_dir=BASEDIR + r'data\image\train\\',
-    superbatch_dir=BASEDIR + r'data\image\train\\',
-    labels_path=BASEDIR + r'data\image\train\labels.h5',
+    data_dir=os.path.join(datadir, 'train'),
+    superbatch_dir=os.path.join(datadir, 'train'),
+    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
     data_category='image',
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=BASEDIR + r'data\image\val\\',
-    superbatch_dir=BASEDIR + r'data\image\val\\',
-    labels_path=BASEDIR + r'data\image\val\labels.h5',
+    data_dir=os.path.join(datadir, 'val'),
+    superbatch_dir=os.path.join(datadir, 'val'),
+    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
     data_category='image',
     shuffle=False,
@@ -49,8 +48,8 @@ VAL_DATAGEN_CFG = dict(
 TRAINGEN_CFG = dict(
     epochs=2,
     val_freq={'epoch': 1},
-    logs_dir=BASEDIR + 'logs\\',
-    best_models_dir=BASEDIR + 'models\\',
+    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
+    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     model_configs=MODEL_CFG,
     input_as_labels=True,
 )
@@ -61,13 +60,19 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
 
 def test_main():
     t0 = time()
+    with tempdir(CONFIGS['traignen']['logs_dir']), tempdir(
+            CONFIGS['traingen']['best_models_dir']):
+        _test_main()
+    
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    cprint("<< AUTOENCODER TEST PASSED >>\n", 'green')
+
+
+def _test_main():
     tg = _init_session(CONFIGS)
     tg.train()
     
     _test_load(tg, CONFIGS)
-    
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< AUTOENCODER TEST PASSED >>\n", 'green')
 
 
 def _test_load(tg, CONFIGS):
