@@ -15,7 +15,7 @@ from deeptrain import TrainGenerator, SimpleBatchgen
 batch_size = 128
 width, height = 28, 28
 channels = 1
-datadir = os.path.join(BASEDIR, 'examples', 'data', 'image')
+datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
 
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),

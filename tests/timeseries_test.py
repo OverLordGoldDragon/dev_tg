@@ -12,7 +12,7 @@ from .backend import BASEDIR, tempdir
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
-datadir = os.path.join(BASEDIR, 'examples', 'data', 'timeseries')
+datadir = os.path.join(BASEDIR, 'tests', 'data', 'timeseries')
 
 MODEL_CFG = dict(
     batch_shape=(32, 25, 16),
