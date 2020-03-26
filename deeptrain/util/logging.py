@@ -16,7 +16,7 @@ from .misc import _dict_filter_keys
 
 def generate_report(cls, savepath):
     def _write_text_image(text, savepath, fontpath, fontsize=15,
-                         width=1, height=1):
+                          width=1, height=1):
         img = Image.new('RGB', color='white',
                         size=(int(700 * width), int(300 * height)))
         fnt = ImageFont.truetype(fontpath, fontsize)
@@ -53,7 +53,7 @@ def get_report_text(cls):
         list1, list2, list3 = _split_in_three(_list)
         longest_str1 = max(map(len, map(str, list1)))
         longest_str2 = max(map(len, map(str, list2)))
-    
+
         _str = ''
         for entries in zip(list1, list2, list3):
             left, mid, right = [_exclude_chars(str(x), '[]') for x in entries]
@@ -62,7 +62,7 @@ def get_report_text(cls):
 
             _str += left + mid + right + '\n'            
         return _str
-    
+
     def _list_dict_newline_values_of_keys(_list, keys):
             for idx, entry in enumerate(_list):
                 if len(entry) == 2:
