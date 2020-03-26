@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import pytest
 import numpy as np
-import keras.backend as K
-import keras.losses
 
-from train_generatorr.util import metrics
+from .backend import K
+from .backend import keras_losses, keras_metrics
+from deeptrain.util import metrics
 
 
 to_test = ['binary_crossentropy',
@@ -35,7 +35,7 @@ def _make_test_fn(name):
     def _keras_metric(name):
         if name not in KERAS_METRICS:
             def _weighted_loss(y_true, y_pred, sample_weight):
-                losses = K.get_value(getattr(keras.losses, name)(
+                losses = K.get_value(getattr(keras_losses, name)(
                     K.variable(y_true), K.variable(y_pred)))
                 if isinstance(sample_weight, np.ndarray) and losses.ndim > 1:
                     sample_weight = sample_weight.reshape(
@@ -45,7 +45,7 @@ def _make_test_fn(name):
         else:
             # sample_weight makes no sense for keras `metrics`
             return lambda y_true, y_pred: (
-                K.get_value(getattr(keras.metrics, name)(K.variable(y_true), 
+                K.get_value(getattr(keras_metrics, name)(K.variable(y_true), 
                                                          K.variable(y_pred))))
 
     def _test_metric(name):
