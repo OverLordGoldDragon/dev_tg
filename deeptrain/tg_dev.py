@@ -45,7 +45,16 @@ sys.stdout = Unbuffered(sys.stdout)
 class TrainGenerator():
     ## TODO move elsewhere?
     BUILTIN_METRICS = ('binary_crossentropy', 'categorical_crossentropy',
-                       'sparse_categorical_crossentropy', 'f1', 'tnr', 'tpr')
+                       'sparse_categorical_crossentropy',
+                       'mean_squared_error', 'mean_absolute_error',
+                       'mean_absolute_percentage_error',
+                       'mean_squared_logarithmic_error', 'squared_hinge',
+                       'hinge', 'categorical_hinge', 'logcosh',
+                       'kullback_leibler_divergence', 'poisson',
+                       'cosine_proximity', 'binary_accuracy',
+                       'categorical_accuracy', 'sparse_categorical_accuracy',
+                       'f1', 'tnr', 'tpr', 'binary_accuracies',
+                       'binary_informedness')
 
     def __init__(self, model, datagen, val_datagen,
                  epochs=1,
@@ -626,20 +635,20 @@ class TrainGenerator():
             
             if self.eval_fn_name == 'predict':
                 for metric in metrics:
-                    if not _from_model(metric) and metric not in (
-                            *supported, *customs):
+                    metric = metric if metric != 'loss' else self.model.loss
+                    if metric not in (*supported, *customs):
                         raise ValueError((
                             "'{0}' metric is not supported; add a function to "
                             "`custom_metrics` as '{0}': func. Supported "
                             "are: {1}").format(metric, ', '.join(supported)))
     
                 if self.model.loss not in (*supported, *customs):
-                        raise ValueError((
-                            "'{0}' loss is not supported w/ `eval_fn_name = "
-                            "'predict'`; add a function to `custom_metrics` "
-                            "as '{0}': func, or set `eval_fn_name = 'evaluate'`."
-                            " Supported are: {1}").format(
-                                self.model.loss, ', '.join(supported)))
+                    raise ValueError((
+                        "'{0}' loss is not supported w/ `eval_fn_name = "
+                        "'predict'`; add a function to `custom_metrics` "
+                        "as '{0}': func, or set `eval_fn_name = 'evaluate'`."
+                        " Supported are: {1}").format(
+                            self.model.loss, ', '.join(supported)))
 
                 km = (self.key_metric if self.key_metric != 'loss' 
                       else self.model.loss)
