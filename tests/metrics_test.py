@@ -5,30 +5,32 @@ import numpy as np
 from .backend import K
 from .backend import keras_losses, keras_metrics
 from deeptrain.util import metrics
+from deeptrain.util.metrics import f1_score, f1_score_multi_th
 
 
 to_test = ['binary_crossentropy',
-            'categorical_crossentropy',
-            'sparse_categorical_crossentropy',
-            'mean_squared_error',
-            'mean_absolute_error',
-            'mean_squared_logarithmic_error',
-            'mean_absolute_percentage_error',
-            'squared_hinge',
-            'hinge',
-            'categorical_hinge',
-            'logcosh',
-            'kullback_leibler_divergence',
-            'poisson',
-            'cosine_proximity',
-            'binary_accuracy',
-            'categorical_accuracy',
-            'sparse_categorical_accuracy',
-            ]
-
+           'categorical_crossentropy',
+           'sparse_categorical_crossentropy',
+           'mean_squared_error',
+           'mean_absolute_error',
+           'mean_squared_logarithmic_error',
+           'mean_absolute_percentage_error',
+           'squared_hinge',
+           'hinge',
+           'categorical_hinge',
+           'logcosh',
+           'kullback_leibler_divergence',
+           'poisson',
+           'cosine_proximity',
+           'binary_accuracy',
+           'categorical_accuracy',
+           'sparse_categorical_accuracy',
+           ]
 
 KERAS_METRICS = ['binary_accuracy', 'categorical_accuracy',
                  'sparse_categorical_accuracy']
+
+np.random.seed(0)
 
 
 def _make_test_fn(name):
@@ -167,6 +169,52 @@ def _to_test_name(txt):  # snake_case -> CamelCase, prepend "Test"
            {'test_unweighted': _assert(_test_unweighted, name),
             'test_sample_weighted': _assert(_test_sample_weighted, name)}
           ) for name in to_test]
+
+
+custom_to_test = ['f1_score',
+                  'f1_score_multi_th'
+                  ]
+
+
+def test_f1_score():
+    def _test_basic():
+        y_true = [0,     0,   1,   0,   0, 0, 1, 1]
+        y_pred = [.01, .93, .42, .61, .15, 0, 1, .5]    
+        assert abs(f1_score(y_true, y_pred) - 1 / 3) < 1e-15
+    
+    def _test_no_positive_labels():
+        y_true = [0] * 6
+        y_pred = [.1, .2, .3, .6, .7, .8]
+        assert f1_score(y_true, y_pred) == 0.5
+        
+    def _test_no_positive_predictions():
+        y_true = [0, 0, 1]
+        y_pred = [0, 0, 0]
+        assert f1_score(y_true, y_pred) == 0
+    
+    _test_basic()
+    _test_no_positive_labels()
+    _test_no_positive_predictions()
+
+
+def test_f1_score_multi_th():
+    def _test_nan_handling():
+        y_true = [0, 0, 0, 1, 1]
+        y_pred = [0, 0, 0, 0, 0]
+        pred_thresholds = [.4, .6]
+        assert np.all(f1_score_multi_th(y_true, y_pred, pred_thresholds) == 0)
+
+    def _compare_against_f1_score():
+        y_true = np.random.randint(0, 1, (64,))
+        y_pred = np.random.uniform(0, 1, (64,))
+        pred_thresholds = [.01, .05, .1, .2, .4, .5, .6, .8, .95, .99]    
+        
+        single_scores = [f1_score(y_true, y_pred, th) for th in pred_thresholds]
+        parallel_scores = f1_score_multi_th(y_true, y_pred, pred_thresholds)
+        assert np.allclose(single_scores, parallel_scores, atol=1e-15)
+    
+    _test_nan_handling()
+    _compare_against_f1_score()
 
 
 if __name__ == '__main__':

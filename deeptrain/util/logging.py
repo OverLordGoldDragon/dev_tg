@@ -62,14 +62,6 @@ def get_report_text(cls):
 
             _str += left + mid + right + '\n'            
         return _str
-
-    def _list_dict_newline_values_of_keys(_list, keys):
-            for idx, entry in enumerate(_list):
-                if len(entry) == 2:
-                    if entry[0] in keys:
-                        _list[idx] = [entry[0], []]
-                        _list.insert(idx + 1, [entry[1]])
-            return _list
     
     def _dict_lists_to_tuples(_dict):
         return {key:tuple(val) for key,val in _dict.items()

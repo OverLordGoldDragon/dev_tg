@@ -1,69 +1,66 @@
 # -*- coding: utf-8 -*-
-# from sklearn.preprocessing import OneHotEncoder
-from keras.utils import to_categorical
 import numpy as np
 
 
 EPS = 1e-7  # epsilon (keras default, K.epsilon())
 
 
-def f1_score(y_true, y_preds, pred_threshold=0.5, beta=1):
-    y_preds = np.array([(y_pred > pred_threshold) for y_pred in y_preds])
-    TP = np.sum((y_true == 1) * (y_preds == 1))
-    TN = np.sum((y_true == 0) * (y_preds == 0))
-    FP = np.sum((y_true == 0) * (y_preds == 1))
-    FN = np.sum((y_true == 1) * (y_preds == 0))
+def _standardize(y_true, y_pred, sample_weight=None):
+    y_true = np.asarray(y_true).astype('float32')
+    y_pred = np.clip(np.asarray(y_pred), EPS, 1 - EPS).astype('float32')
+
+    if sample_weight and isinstance(sample_weight, (list, np.ndarray)):
+        sample_weight = np.asarray(sample_weight).squeeze().astype('float32')
+        return y_true, y_pred, sample_weight
+    return y_true, y_pred
+
+
+def f1_score(y_true, y_pred, pred_threshold=0.5, beta=1):
+    y_true, y_pred = map(np.squeeze, _standardize(y_true, y_pred))
+    y_pred = y_pred > pred_threshold
+
+    TP = np.sum((y_true == 1) * (y_pred == 1))
+    TN = np.sum((y_true == 0) * (y_pred == 0))
+    FP = np.sum((y_true == 0) * (y_pred == 1))
+    FN = np.sum((y_true == 1) * (y_pred == 0))
 
     precision   = TP / (TP + FP) if not (TP == 0 and FP == 0) else 0
     recall      = TP / (TP + FN) if not (TP == 0 and FN == 0) else 0
-    specificity = TN / (TN + FN) if not (TN == 0 and FN == 0) else 0
+    specificity = TN / (TN + FP) if not (TN == 0 and FP == 0) else 0
 
     if not (precision == 0 and recall == 0):
         return (1 + beta) * precision * recall / (beta * precision + recall)
-    if np.sum(y_true) != 0:
-        return 0        # '1' labels present, none guessed
-    return specificity  # '1' labels absent,  return '0' class accuracy
+    if y_true.sum() == 0:
+        return specificity  # '1' labels absent,  return '0' class accuracy
+    return 0               # '1' labels present, none guessed
 
 
-def f1_score_multi_th(y_true, y_preds, pred_thresholds=[.4, .6], beta=1):
+def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
     def _div_then_zero_nans(A, B):
         res = A / (A + B)
-        for nan in (np.inf, -np.inf, np.nan):
-            res[res == nan] = 0
+        res[np.where(np.isnan(res) + np.isinf(res))] = 0
         return res
 
-    y_true  = np.array(y_true)
-    y_preds = np.array([(y_pred > pred_thresholds) for y_pred in y_preds])
-    if y_preds.ndim > 1 and y_true.ndim == 1:
-        y_true = np.expand_dims(y_true, -1).repeat(y_preds.shape[-1], -1)
+    y_true, y_pred = _standardize(y_true, y_pred)
+    y_pred = y_pred.reshape(-1, 1) > np.asarray(pred_thresholds).reshape(1, -1)
+    y_true = y_true.reshape(-1, 1).repeat(y_pred.shape[-1], -1)
 
-    TP = np.sum((y_true == 1) * (y_preds == 1), axis=0)
-    TN = np.sum((y_true == 0) * (y_preds == 0), axis=0)
-    FP = np.sum((y_true == 0) * (y_preds == 1), axis=0)
-    FN = np.sum((y_true == 1) * (y_preds == 0), axis=0)
+    TP = np.sum((y_true == 1) * (y_pred == 1), axis=0)
+    TN = np.sum((y_true == 0) * (y_pred == 0), axis=0)
+    FP = np.sum((y_true == 0) * (y_pred == 1), axis=0)
+    FN = np.sum((y_true == 1) * (y_pred == 0), axis=0)
 
     precision   = _div_then_zero_nans(TP, FP)
     recall      = _div_then_zero_nans(TP, FN)
-    specificity = _div_then_zero_nans(TN, FN)
+    specificity = _div_then_zero_nans(TN, FP)
 
-    F1_score = np.zeros(len(precision))
-    for idx, p, r in zip(range(len(precision)), precision, recall):
-        if (p == 0) and (r == 0):
-            if np.sum(y_true) == 0:
-                F1_score[idx] = specificity
-        else:
-            F1_score[idx] = (1 + beta) * p * r / (beta * p + r)
-    return F1_score
-
-
-def _standardize(y_true, y_pred, sample_weight):
-    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
-    y_pred = np.clip(y_pred, EPS, 1 - EPS)
-    if isinstance(sample_weight, (list, np.ndarray)):
-        sample_weight = np.asarray(sample_weight).squeeze().astype('float32')
-    return (y_true.astype('float32'),
-            y_pred.astype('float32'), sample_weight)
-
+    f1score = np.zeros(len(precision))
+    for idx, (p, r) in enumerate(zip(precision, recall)):
+        if not (p == 0) and (r == 0) and y_true.sum() == 0:
+            f1score[idx] = (1 + beta) * p * r / (beta * p + r)
+        elif y_true.sum() == 0:
+            f1score[idx] = specificity[idx]
+    return f1score
 
 
 def _weighted_loss(losses, sample_weight):
@@ -100,7 +97,7 @@ def categorical_crossentropy(y_true, y_pred, sample_weight=1):
 
 def sparse_categorical_crossentropy(y_true, y_pred, sample_weight=1):
     num_classes = np.asarray(y_pred).shape[-1]
-    y_true = to_categorical(np.asarray(y_true).squeeze(), num_classes)
+    y_true = np.eye(num_classes)[np.asarray(y_true).squeeze()]  # to categorical
 
     return categorical_crossentropy(y_true, y_pred, sample_weight)
 
