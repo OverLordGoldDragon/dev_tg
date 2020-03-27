@@ -9,9 +9,10 @@ def _standardize(y_true, y_pred, sample_weight=None):
     y_true = np.asarray(y_true).astype('float32')
     y_pred = np.clip(np.asarray(y_pred), EPS, 1 - EPS).astype('float32')
 
-    if sample_weight and isinstance(sample_weight, (list, np.ndarray)):
-        sample_weight = np.asarray(sample_weight).squeeze().astype('float32')
-        return y_true, y_pred, sample_weight
+    if sample_weight:
+        if isinstance(sample_weight, (list, np.ndarray)):
+            sample_weight = np.asarray(sample_weight).squeeze()
+        return y_true, y_pred, sample_weight.astype('float32')
     return y_true, y_pred
 
 
