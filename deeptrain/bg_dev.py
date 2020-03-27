@@ -147,16 +147,6 @@ class BatchGenerator():
             print(WARN, "batch exhausted; automatically advancing batch")
             self.advance_batch()
 
-    def verify_state_and_notify(self, forced):
-        if self.batch_loaded and not forced:
-            print(WARN + "'batch_loaded'==True; advance_batch() does nothing")
-            print("(to force next batch, set 'forced'=True')")
-            return False, False
-
-        if not hasattr(self, '_verify_state_and_notify'):
-            return True, None
-        return self._verify_state_and_notify(forced)
-
     ######### Init methods #########
     def _set_class_params(self, set_nums, superbatch_set_nums):
         def _set_nums_from_dir(_dir):

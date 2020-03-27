@@ -45,7 +45,7 @@ VAL_DATAGEN_CFG = dict(
     shuffle=False,
 )
 TRAINGEN_CFG = dict(
-    epochs=2,
+    epochs=1,
     val_freq={'epoch': 1},
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
@@ -56,21 +56,44 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 
 
-def test_main():
+def test_datagen_exceptions():
     t0 = time()
     with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
-        _test_main()
+        tg = _init_session(CONFIGS)
+        tg.train()
+        
+        dg = tg.datagen
+        dg.advance_batch()
+        dg.batch = dg.batch[:1]
+        _pass_on_fail(dg.advance_batch)
+        dg.batch_loaded = True
+        dg.advance_batch(forced=False)
+        
+        dg.shuffle = True        
+        dg.all_data_exhausted = True
+        dg._validate_batch()
+
+        dg.batch = []
+        dg.batch_exhausted = True        
+        dg._validate_batch()
+        
+        dg.set_nums_to_process = dg.set_nums_original.copy()
+        _pass_on_fail(dg._set_class_params, ['99', '100'], ['100', '101'])
+        _pass_on_fail(dg._set_class_params, ['1', '2'], ['100', '101'])
+        dg.superbatch_dir = None
+        _pass_on_fail(dg._set_class_params, ['1', '2'], ['1', '2'])
+
+        dg._set_preprocessor(None, {})
+        dg._set_preprocessor("x", {})
+        
+        _pass_on_fail(dg._infer_and_get_data_info, dg.data_dir,
+                      data_format="x")
+        dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
+        
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     cprint("<< IMAGE TEST PASSED >>\n", 'green')
-
-
-def _test_main():
-    tg = _init_session(CONFIGS)
-    tg.train()
-    
-    _test_load(tg, CONFIGS)
 
 
 def _test_load(tg, CONFIGS):
@@ -88,17 +111,6 @@ def _test_load(tg, CONFIGS):
     print("\n>LOAD TEST PASSED")
 
 
-def test_predict():
-    t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        CONFIGS['traingen']['eval_fn_name'] = 'predict'
-        _test_main()
-
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< IMAGE TEST PASSED >>\n", 'green')
-
-    
 def _make_model(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
@@ -152,6 +164,14 @@ def _destroy_session(tg):
     _clear_data(tg)
     [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
     del tg
+
+
+def _pass_on_fail(fn, *args, **kwargs):
+    try:
+        fn(*args, **kwargs)
+    except Exception as e:
+        print("Errmsg", e)
+
 
 if __name__ == '__main__':
     pytest.main([__file__, "--capture=sys"])
