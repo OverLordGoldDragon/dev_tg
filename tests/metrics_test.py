@@ -203,6 +203,11 @@ def test_f1_score():
 
 
 def test_f1_score_multi_th():
+    def _test_no_positive_labels():
+        y_true = [0] * 6
+        y_pred = [.1, .2, .3, .6, .7, .8]
+        assert f1_score_multi_th(y_true, y_pred) == [0, 0]
+
     def _test_nan_handling():
         y_true = [0, 0, 0, 1, 1]
         y_pred = [0, 0, 0, 0, 0]
