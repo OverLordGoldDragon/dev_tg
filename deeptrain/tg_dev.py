@@ -632,7 +632,7 @@ class TrainGenerator():
             metrics = (*self.train_metrics, *self.val_metrics, self.key_metric)
             supported = TrainGenerator.BUILTIN_METRICS
             customs = self.custom_metrics or [None]
-            
+
             if self.eval_fn_name == 'predict':
                 for metric in metrics:
                     metric = metric if metric != 'loss' else self.model.loss
