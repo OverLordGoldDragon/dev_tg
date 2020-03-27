@@ -5,7 +5,6 @@ import numpy as np
 from .backend import K
 from .backend import keras_losses, keras_metrics
 from deeptrain.util import metrics
-from deeptrain.util.metrics import f1_score, f1_score_multi_th
 
 
 to_test = ['binary_crossentropy',
@@ -171,9 +170,15 @@ def _to_test_name(txt):  # snake_case -> CamelCase, prepend "Test"
           ) for name in to_test]
 
 
-custom_to_test = ['f1_score',
-                  'f1_score_multi_th'
+custom_to_test = ['f1_score', 'f1_score_multi_th',
+                  'tnr',
+                  'tpr',
+                  'binary_accuracies',
+                  'binary_informedness',
                   ]
+
+[f1_score, f1_score_multi_th, tnr, tpr, binary_accuracies, binary_informedness
+ ] = [getattr(metrics, name) for name in custom_to_test]
 
 
 def test_f1_score():
@@ -206,7 +211,7 @@ def test_f1_score_multi_th():
 
     def _compare_against_f1_score():
         y_true = np.random.randint(0, 2, (64,))
-        y_pred = np.random.uniform(0, 2, (64,))
+        y_pred = np.random.uniform(0, 1, (64,))
         pred_thresholds = [.01, .05, .1, .2, .4, .5, .6, .8, .95, .99]    
         
         single_scores = [f1_score(y_true, y_pred, th) for th in pred_thresholds]
@@ -217,5 +222,15 @@ def test_f1_score_multi_th():
     _compare_against_f1_score()
 
 
+def test_binaries():
+    y_true = [0, 0,  0,  0, 1, 1,  1 , 1]
+    y_pred = [0, 1, .1, .9, 1, 0, .8, .2]
+    
+    assert tnr(y_true, y_pred) == .5
+    assert tpr(y_true, y_pred) == .5
+    assert binary_accuracies(y_true, y_pred) == [.5, .5]
+    assert binary_informedness(y_true, y_pred) == 0.
+    
+    
 if __name__ == '__main__':
     pytest.main([__file__, "--capture=sys"])

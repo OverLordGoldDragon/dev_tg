@@ -187,11 +187,13 @@ def sparse_categorical_accuracy(y_true, y_pred):
 
 
 def tpr(y_true, y_pred, pred_threshold=0.5):
+    y_true, y_pred = _standardize(y_true, y_pred)
     ones_preds = y_pred[np.where(y_true == 1)]
     return np.mean(np.ceil(ones_preds - pred_threshold) == 1)
 
 
 def tnr(y_true, y_pred, pred_threshold=0.5):
+    y_true, y_pred = _standardize(y_true, y_pred)
     zeros_preds = y_pred[np.where(y_true == 0)]
     return np.mean(np.ceil(zeros_preds - pred_threshold) == 1)
 
