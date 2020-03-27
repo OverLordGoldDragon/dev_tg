@@ -205,8 +205,8 @@ def test_f1_score_multi_th():
         assert np.all(f1_score_multi_th(y_true, y_pred, pred_thresholds) == 0)
 
     def _compare_against_f1_score():
-        y_true = np.random.randint(0, 1, (64,))
-        y_pred = np.random.uniform(0, 1, (64,))
+        y_true = np.random.randint(0, 2, (64,))
+        y_pred = np.random.uniform(0, 2, (64,))
         pred_thresholds = [.01, .05, .1, .2, .4, .5, .6, .8, .95, .99]    
         
         single_scores = [f1_score(y_true, y_pred, th) for th in pred_thresholds]

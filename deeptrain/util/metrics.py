@@ -57,7 +57,7 @@ def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
 
     f1score = np.zeros(len(precision))
     for idx, (p, r) in enumerate(zip(precision, recall)):
-        if not (p == 0) and (r == 0) and y_true.sum() == 0:
+        if not (p == 0 and r == 0):
             f1score[idx] = (1 + beta) * p * r / (beta * p + r)
         elif y_true.sum() == 0:
             f1score[idx] = specificity[idx]
@@ -76,9 +76,7 @@ def binary_crossentropy(y_true, y_pred, sample_weight=1):
     y_true, y_pred = y_true.squeeze(), y_pred.squeeze()
 
     logits = np.log(y_pred) - np.log(1 - y_pred)  # sigmoid inverse
-    # neg_abs_logits = -np.abs(logits)
     neg_abs_logits = np.where(logits >= 0, -logits, logits)
-    # relu_logits    = (logits >= 0) * logits
     relu_logits    = np.where(logits >= 0, logits, 0)
     
     loss_vec = relu_logits - logits * y_true + np.log(1 + np.exp(neg_abs_logits))
@@ -182,8 +180,7 @@ def categorical_accuracy(y_true, y_pred):
 
 
 def sparse_categorical_accuracy(y_true, y_pred):
-    # flatten y_true in case it's in shape (num_samples, 1)
-    # instead of (num_samples,)
+    # flatten y_true in case it's shaped (num_samples, 1)
     return np.equal(y_true.flatten(),
                     np.argmax(y_pred, axis=-1).astype('float32')
                     ).astype('float32')
