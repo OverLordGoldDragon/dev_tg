@@ -11,8 +11,8 @@ def _standardize(y_true, y_pred, sample_weight=None):
 
     if sample_weight:
         if isinstance(sample_weight, (list, np.ndarray)):
-            sample_weight = np.asarray(sample_weight).squeeze()
-        return y_true, y_pred, sample_weight.astype('float32')
+            sample_weight = np.asarray(sample_weight).squeeze().astype('float32')
+        return y_true, y_pred, sample_weight
     return y_true, y_pred
 
 
@@ -33,7 +33,7 @@ def f1_score(y_true, y_pred, pred_threshold=0.5, beta=1):
         return (1 + beta) * precision * recall / (beta * precision + recall)
     if y_true.sum() == 0:
         return specificity  # '1' labels absent,  return '0' class accuracy
-    return 0               # '1' labels present, none guessed
+    return 0                # '1' labels present, none guessed
 
 
 def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
