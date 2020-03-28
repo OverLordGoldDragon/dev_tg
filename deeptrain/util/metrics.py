@@ -1,18 +1,22 @@
 # -*- coding: utf-8 -*-
+import os
 import numpy as np
 
-
+PREC = os.environ.get('PRECISION', 'float32')
 EPS = 1e-7  # epsilon (keras default, K.epsilon())
 
 
-def _standardize(y_true, y_pred, sample_weight=None):
-    y_true = np.asarray(y_true).astype('float32')
-    y_pred = np.clip(np.asarray(y_pred), EPS, 1 - EPS).astype('float32')
+def _standardize(y_true, y_pred, sample_weight=None, pred_thresholds=None):
+    y_true = np.asarray(y_true).astype(PREC)
+    y_pred = np.clip(np.asarray(y_pred), EPS, 1 - EPS).astype(PREC)
 
     if sample_weight is not None:
         if isinstance(sample_weight, (list, np.ndarray)):
-            sample_weight = np.asarray(sample_weight).squeeze().astype('float32')
+            sample_weight = np.asarray(sample_weight).squeeze().astype(PREC)
         return y_true, y_pred, sample_weight
+    if pred_thresholds is not None:
+        pred_thresholds = np.asarray(pred_thresholds).reshape(1, -1).astype(PREC)
+        return y_true, y_pred, pred_thresholds
     return y_true, y_pred
 
 
@@ -42,8 +46,9 @@ def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
         res[np.where(np.isnan(res) + np.isinf(res))] = 0
         return res
 
-    y_true, y_pred = _standardize(y_true, y_pred)
-    y_pred = y_pred.reshape(-1, 1) > np.asarray(pred_thresholds).reshape(1, -1)
+    y_true, y_pred, pred_thresholds = _standardize(
+        y_true, y_pred, pred_thresholds=pred_thresholds)
+    y_pred = y_pred.reshape(-1, 1) > pred_thresholds
     y_true = y_true.reshape(-1, 1).repeat(y_pred.shape[-1], -1)
 
     TP = np.sum((y_true == 1) * (y_pred == 1), axis=0)
@@ -95,6 +100,7 @@ def categorical_crossentropy(y_true, y_pred, sample_weight=1):
 
 
 def sparse_categorical_crossentropy(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     num_classes = np.asarray(y_pred).shape[-1]
     y_true = np.eye(num_classes)[np.asarray(y_true).squeeze()]  # to categorical
 
@@ -102,21 +108,26 @@ def sparse_categorical_crossentropy(y_true, y_pred, sample_weight=1):
 
 
 def mean_squared_error(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     return _weighted_loss(np.mean((y_true - y_pred)**2, axis=-1), 
                           sample_weight)
 
 
 def mean_absolute_error(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     return _weighted_loss(np.mean(np.abs(y_true - y_pred), axis=-1),
                           sample_weight)
 
 
 def mean_absolute_percentage_error(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     diff = np.abs((y_true - y_pred) / np.clip(np.abs(y_true), EPS, None))
     return _weighted_loss(100. * np.mean(diff, axis=-1), sample_weight)
 
 
 def mean_squared_logarithmic_error(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
+
     first_log = np.log(np.clip(y_pred, EPS, None) + 1.)
     second_log = np.log(np.clip(y_true, EPS, None) + 1.)
     return _weighted_loss(np.mean((first_log - second_log)**2, axis=-1),
@@ -124,16 +135,20 @@ def mean_squared_logarithmic_error(y_true, y_pred, sample_weight=1):
 
 
 def squared_hinge(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     return _weighted_loss(np.mean(np.maximum(1. - y_true * y_pred, 0.)**2, 
                                   axis=-1), sample_weight)
 
 
 def hinge(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     return _weighted_loss(np.mean(np.maximum(1. - y_true * y_pred, 0.), 
                                   axis=-1), sample_weight)
 
 
 def categorical_hinge(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
+
     pos = np.sum(y_true * y_pred, axis=-1)
     neg = np.max((1. - y_true) * y_pred, axis=-1)
     return _weighted_loss(np.maximum(0., neg - pos + 1.), sample_weight)
@@ -145,11 +160,14 @@ def logcosh(y_true, y_pred, sample_weight=1):
 
     def _logcosh(x):
         return x + _softplus(-2. * x) - np.log(2.)
+
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     return _weighted_loss(np.mean(_logcosh(y_pred - y_true), axis=-1),
                           sample_weight)
 
 
 def kullback_leibler_divergence(y_true, y_pred, sample_weight=1):
+    _, _, sample_weight = _standardize(y_true, y_pred, sample_weight)
     y_true = np.clip(y_true, EPS, 1)
     y_pred = np.clip(y_pred, EPS, 1)
     return _weighted_loss(np.sum(y_true * np.log(y_true / y_pred), axis=-1
@@ -157,6 +175,7 @@ def kullback_leibler_divergence(y_true, y_pred, sample_weight=1):
 
 
 def poisson(y_true, y_pred, sample_weight=1):
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     return _weighted_loss(np.mean(y_pred - y_true * np.log(y_pred + EPS),
                                   axis=-1), sample_weight)
 
@@ -165,25 +184,29 @@ def cosine_proximity(y_true, y_pred, sample_weight=1):
     def _l2_normalize(x, axis=-1, eps=1e-7):
         return x / np.sqrt(np.maximum(np.sum(x**2), eps))
     
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     y_true = _l2_normalize(y_true, axis=-1)
     y_pred = _l2_normalize(y_pred, axis=-1)
     return _weighted_loss(-np.sum(y_true * y_pred, axis=-1), sample_weight)
 
 
-def binary_accuracy(y_true, y_pred):
-    return np.mean(np.equal(y_true, np.round(y_pred)), axis=-1)
+def binary_accuracy(y_true, y_pred, pred_threshold=.5):
+    y_true, y_pred = _standardize(y_true, y_pred)
+    return np.equal(y_true, y_pred > pred_threshold).mean(axis=-1)
 
 
 def categorical_accuracy(y_true, y_pred):
+    y_true, y_pred = _standardize(y_true, y_pred)
     return np.equal(np.argmax(y_true, axis=-1),
-                    np.argmax(y_pred, axis=-1)).astype('float32')
+                    np.argmax(y_pred, axis=-1)).astype(PREC)
 
 
 def sparse_categorical_accuracy(y_true, y_pred):
+    y_true, y_pred = _standardize(y_true, y_pred)
     # flatten y_true in case it's shaped (num_samples, 1)
     return np.equal(y_true.flatten(),
-                    np.argmax(y_pred, axis=-1).astype('float32')
-                    ).astype('float32')
+                    np.argmax(y_pred, axis=-1).astype(PREC)
+                    ).astype(PREC)
 
 
 def tpr(y_true, y_pred, pred_threshold=0.5):
@@ -198,10 +221,43 @@ def tnr(y_true, y_pred, pred_threshold=0.5):
     return np.mean(np.ceil(zeros_preds - pred_threshold) == 1)
 
 
-def binary_accuracies(y_true, y_pred, pred_threshold=0.5):
+def tnr_tpr(y_true, y_pred, pred_threshold=0.5):
     return [tnr(y_true, y_pred, pred_threshold),
             tpr(y_true, y_pred, pred_threshold)]
 
 
 def binary_informedness(y_true, y_pred, pred_threshold=0.5):
-    return sum(binary_accuracies(y_true, y_pred, pred_threshold)) - 1
+    return sum(tnr_tpr(y_true, y_pred, pred_threshold)) - 1
+
+
+def binary_accuracy_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
+    y_true, y_pred, pred_thresholds = _standardize(
+        y_true, y_pred, pred_thresholds=pred_thresholds)
+    y_true, y_pred = y_true.reshape(-1, 1), y_pred.reshape(-1, 1)
+
+    return np.equal(y_true, y_pred > pred_thresholds).mean(axis=-1)
+    
+def tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
+    y_true, y_pred, pred_thresholds = _standardize(
+        y_true, y_pred, pred_thresholds=pred_thresholds)
+
+    ones_preds = y_pred[np.where(y_true == 1)].reshape(-1, 1)
+    return np.mean(np.ceil(ones_preds - pred_thresholds)  == 1, axis=-1)
+
+
+def tnr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
+    y_true, y_pred, pred_thresholds = _standardize(
+        y_true, y_pred, pred_thresholds=pred_thresholds)
+
+    zeros_preds = y_pred[np.where(y_true == 0)].reshape(-1, 1)
+    return np.mean(np.ceil(zeros_preds - pred_thresholds)  == 1, axis=-1)
+
+
+def tnr_tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
+    return [tnr_multi_th(y_true, y_pred, pred_thresholds),
+            tpr_multi_th(y_true, y_pred, pred_thresholds)]
+
+
+def binary_informedness_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
+    return np.sum(tnr_tpr_multi_th(y_true, y_pred, pred_thresholds),
+                  axis=-1) - 1

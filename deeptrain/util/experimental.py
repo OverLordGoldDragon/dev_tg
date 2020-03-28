@@ -23,10 +23,10 @@ def _compute_gradient_l2norm(self, val=True, learning_phase=0, w=1, h=1):
     grad_l2norm = []
     batches_processed = 0
     while not datagen.all_data_exhausted:
-        data, labels, sample_weights = self.get_data(val=val)
+        data, labels, sample_weight = self.get_data(val=val)
         
         grad_l2norm += [compute_gradient_l2norm(
-            data, labels, sample_weights, learning_phase, grads_fn)]
+            data, labels, sample_weight, learning_phase, grads_fn)]
         datagen.update_datagen_states()
         
         # PROGBAR
@@ -57,7 +57,7 @@ def _compute_gradient_l2norm(self, val=True, learning_phase=0, w=1, h=1):
 
 #TODO: revamp
 def visualize_gradients(cls, on_current_train_batch=True, batch=None,
-            labels=None, sample_weights=None, learning_phase=0, 
+            labels=None, sample_weight=None, learning_phase=0, 
             slide_size=None, **kwargs):
     raise NotImplementedError()  ## TODO
     
@@ -72,17 +72,17 @@ def visualize_gradients(cls, on_current_train_batch=True, batch=None,
     
     slide_size = slide_size or cls.timesteps      
     if on_current_train_batch:
-        if batch or labels or sample_weights:
-            print(WARN, "batch', 'labels', and 'sample_weights' args"
+        if batch or labels or sample_weight:
+            print(WARN, "batch', 'labels', and 'sample_weight' args"
                  + " will be overridden, since 'on_current_train_batch'=True;"
                  + " 'set_num' will also be advanced")
         cls.datagen.advance_batch()
         batch  = cls.datagen.batch
         labels = cls._labels
-        sample_weights = cls.get_sample_weights(labels)
+        sample_weight = cls.get_sample_weight(labels)
     else:
-        if (not batch) or (not labels) or (not sample_weights):
-            raise ("Please supply 'batch','labels','sample_weights', "
+        if (not batch) or (not labels) or (not sample_weight):
+            raise ("Please supply 'batch','labels','sample_weight', "
                    + "or set 'on_current_train_batch'=True")
 
     mode = "train" if learning_phase==1 else "inference"
@@ -95,7 +95,7 @@ def visualize_gradients(cls, on_current_train_batch=True, batch=None,
         start = cls.timesteps * window
         end   = start + slide_size
         data  = batch[:, start:end, :]
-        grad  = np.asarray(grads_fn([data, sample_weights,
+        grad  = np.asarray(grads_fn([data, sample_weight,
                                      labels, learning_phase]))
         
         total_grad = (total_grad + grad) if len(total_grad) else grad

@@ -202,6 +202,7 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
     ax.set_ylim(*ylims)
 
 
+# TODO: multiclass
 def comparative_histogram(model, layer_name, data, keep_borders=True,
                           bins=100, xlims=(0, 1), fontsize=14, vline=None,
                           w=1, h=1):
@@ -212,17 +213,17 @@ def comparative_histogram(model, layer_name, data, keep_borders=True,
             return K.function([model.input, K.learning_phase()], outs_tensors)
         
         outs_fn = _make_outs_fn(model, layer_name)
-        return outs_fn(data, 1), outs_fn(data, 0)
+        return outs_fn([data, 1]), outs_fn([data, 0])
     
-    outs_train, outs_inference = _get_layer_outs(model, layer_name, data)
+    outs = _get_layer_outs(model, layer_name, data)
     
     _, axes = plt.subplots(2, 1, sharex=True, sharey=True, 
                            figsize=(13 * w, 6 * h))
-    for i, ax in enumerate(axes.flat):
-        ax.hist(outs_inference[i].flatten(), bins=bins)
-        
+    for i, (ax, out) in enumerate(zip(axes.flat, outs)):
+        ax.hist(np.asarray(out).flatten(), bins=bins)
+
         mode = "ON" if i == 0 else "OFF"
-        ax.title("Train mode " + mode, weight='bold')
+        ax.set_title("Train mode " + mode, weight='bold')
         if not keep_borders:
             ax.box(on=None)
         if vline:

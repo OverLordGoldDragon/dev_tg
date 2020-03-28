@@ -173,11 +173,11 @@ def _to_test_name(txt):  # snake_case -> CamelCase, prepend "Test"
 custom_to_test = ['f1_score', 'f1_score_multi_th',
                   'tnr',
                   'tpr',
-                  'binary_accuracies',
+                  'tnr_tpr',
                   'binary_informedness',
                   ]
 
-[f1_score, f1_score_multi_th, tnr, tpr, binary_accuracies, binary_informedness
+[f1_score, f1_score_multi_th, tnr, tpr, tnr_tpr, binary_informedness
  ] = [getattr(metrics, name) for name in custom_to_test]
 
 
@@ -230,10 +230,10 @@ def test_f1_score_multi_th():
 def test_binaries():
     y_true = [0, 0,  0,  0, 1, 1,  1 , 1]
     y_pred = [0, 1, .1, .9, 1, 0, .8, .2]
-    
+
     assert tnr(y_true, y_pred) == .5
     assert tpr(y_true, y_pred) == .5
-    assert binary_accuracies(y_true, y_pred) == [.5, .5]
+    assert tnr_tpr(y_true, y_pred) == [.5, .5]
     assert binary_informedness(y_true, y_pred) == 0.
     
     

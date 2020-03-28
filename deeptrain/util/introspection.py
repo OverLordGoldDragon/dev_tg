@@ -7,18 +7,18 @@ from . import K
 def get_grads_fn(model):
     grad_tensors = model.optimizer.get_gradients(model.total_loss,
                                                  model.trainable_weights)
-    return K.function(inputs=[model.inputs[0],  model.sample_weights[0],
+    return K.function(inputs=[model.inputs[0],  model.sample_weight[0],
                               model.targets[0], K.learning_phase()],
                       outputs=grad_tensors)
 
-def compute_gradient_l2norm(input_data, labels, sample_weights, learning_phase=0,
+def compute_gradient_l2norm(input_data, labels, sample_weight, learning_phase=0,
                             grads_fn=None, model=None):
     if grads_fn is None:
         if model is None:
             raise Exception("Supply at least one of 'get_gradients_function' "
                             "or 'model'")
         grads_fn = get_grads_fn(model)
-    gradients = grads_fn([input_data, sample_weights, labels, learning_phase])
+    gradients = grads_fn([input_data, sample_weight, labels, learning_phase])
     return np.sqrt(np.sum([np.sum(np.square(g)) for g in gradients]))
 
 # TODO: revamp

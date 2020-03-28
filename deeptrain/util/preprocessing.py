@@ -3,6 +3,8 @@ import os
 import h5py
 import numpy as np
 
+from pathlib import Path
+
 
 def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32, 
                              shuffle=True, data_basename='batch',
@@ -54,26 +56,48 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
         print("{} label sets saved to {}".format(len(data), labels_path))
 
 
-def numpy_to_hdf5(savepath, loadpath=None, data=None, batch_size=None,
+def numpy_to_hdf5(savepath, loaddir=None, data=None, batch_size=None,
                   shuffle=False, compression='lzo', verbose=1):
-    def _validate_args(loadpath, data):
-        if loadpath is None and data is None:
-            raise ValueError("one of `loadpath` or `data` must be not None")
-        if loadpath is not None and data is not None:
-            raise ValueError("can't use both `loadpath` and `data`")
+    def _validate_args(loaddir, data):
+        if loaddir is None and data is None:
+            raise ValueError("one of `loaddir` or `data` must be not None")
+        if loaddir is not None and data is not None:
+            raise ValueError("can't use both `loaddir` and `data`")
 
-    def _make_set_nums(loadpath, data):
+    def _make_set_nums(loaddir=None, data=None, shuffle=False):
+        if loaddir:
+            names = [x.stem for x in Path(loaddir).iterdir()
+                     if x.suffix == '.npy']
+            set_nums = list(map(str, range(len(names))))
+        else:
+            set_nums = list(map(str, range(len(data))))
+
+        if shuffle:
+            np.random.shuffle(set_nums)
+        return set_nums
+            
+    
+    def _to_hdf5_from_loaddir():
         pass
     
-    _validate_args(loadpath, data)
-    set_nums = _make_set_nums(loadpath, data)
+    def _to_hdf5_from_data(data, hdf5_file, shuffle):
+        set_nums = _make_set_nums(data, shuffle)
 
+        for set_num, sample in zip(set_nums, data):
+            set_num = set_num if set_num[0]!='0' else set_num[1:]
+            set_num = set_num if set_num[0]!='0' else set_num[1:]
+            hdf5_file.create_dataset(set_num, data=sample, dtype=np.float32,
+                                     chunks=True, compression=compression)
+            if verbose:
+                print(set_num, 'done', flush=True)
+
+    _validate_args(loaddir, data)
     hdf5_file = h5py.File(savepath, mode='w', libver='latest')
+
+    if loaddir:
+        _to_hdf5_from_loaddir(hdf5_file)
+    else:
+        _to_hdf5_from_data(data, hdf5_file, shuffle)
+
     
-    for set_num, sample in zip(set_nums, data):
-        set_num = set_num if set_num[0]!='0' else set_num[1:]
-        set_num = set_num if set_num[0]!='0' else set_num[1:]
-        hdf5_file.create_dataset(set_num, data=sample, dtype=np.float32,
-                                 chunks=True, compression=compression)
-        if verbose:
-            print(set_num, 'done', flush=True)
+

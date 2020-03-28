@@ -25,7 +25,7 @@ from .util import metrics as metrics_fns
 from .util.configs  import _PLOT_CFG, _TRAINGEN_CFG
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
-from .util.training import _get_weighted_sample_weights
+from .util.training import _get_weighted_sample_weight
 from .util.logging import _get_unique_model_name
 from .util.logging import generate_report
 from .util.visuals import get_history_fig, show_predictions_per_iteration
@@ -53,7 +53,7 @@ class TrainGenerator():
                        'kullback_leibler_divergence', 'poisson',
                        'cosine_proximity', 'accuracy', 'binary_accuracy',
                        'categorical_accuracy', 'sparse_categorical_accuracy',
-                       'f1', 'tnr', 'tpr', 'binary_accuracies',
+                       'f1', 'tnr', 'tpr', 'tnr_tpr',
                        'binary_informedness')
 
     def __init__(self, model, datagen, val_datagen,
@@ -149,10 +149,10 @@ class TrainGenerator():
         if not self._has_trained:
             while self.epoch < self.epochs:
                 if self._has_postiter_processed:
-                    x, y, sample_weights = self.get_data(val=False)
+                    x, y, sample_weight = self.get_data(val=False)
                     if self.iter_verbosity:
                         self._print_iter_progress()
-                    metrics = self.fit_fn(x, y, sample_weights)
+                    metrics = self.fit_fn(x, y, sample_weight)
                     self._update_temp_history(metrics)
 
                 self._has_postiter_processed = False
@@ -330,7 +330,7 @@ class TrainGenerator():
             # self.show_layer_weights()
             if self.eval_fn_name == 'predict':
                 self.show_model_outputs()
-            
+
             can_viz = self.visualizers is not None and (
                 self.eval_fn_name == 'predict' or 
                 any([isinstance(x, LambdaType) for x in self.visualizers]))
@@ -375,13 +375,13 @@ class TrainGenerator():
 
         class_labels = datagen.labels
         slice_idx = getattr(datagen, 'slice_idx', None)
-        sample_weights = self.get_sample_weights(class_labels, val, slice_idx)
+        sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
 
-        return x, y, sample_weights
+        return x, y, sample_weight
 
-    def get_sample_weights(self, labels, val=False, slice_idx=None):
+    def get_sample_weight(self, labels, val=False, slice_idx=None):
         if self.weighted_slices_range is not None:
-            return _get_weighted_sample_weights(
+            return _get_weighted_sample_weight(
                 self, labels, val, self.weighted_slices_range, slice_idx)
 
         cw = self.val_class_weights if val else self.class_weights
@@ -529,10 +529,10 @@ class TrainGenerator():
         if self.outputs_visualizer == 'comparative_histogram':
             comparative_histogram(
                 self.model,
-                layer_name='output',
+                layer_name=self.model.layers[-1].name,
                 data=self.val_datagen.get(),
                 vline=self.predict_threshold, 
-                xlims=(0,1))
+                xlims=(0, 1))
         elif isinstance(self.outputs_visualizer, LambdaType):
             self.outputs_visualizer(self)
 
@@ -548,7 +548,7 @@ class TrainGenerator():
         return compute_gradient_l2norm(self, val, learning_phase, w, h)
         
     def visualize_gradients(self, on_current_train_batch=True, batch=None,
-                labels=None, sample_weights=None, learning_phase=0,
+                labels=None, sample_weight=None, learning_phase=0,
                 slide_size=None, **kwargs):
         raise NotImplementedError()  #TODO
 

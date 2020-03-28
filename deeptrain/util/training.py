@@ -55,22 +55,7 @@ def _update_temp_history(cls, metrics, val=False):
             temp_history[name][-1] = np.mean(temp_history[name][-1])
 
 
-def _set_predict_threshold(cls, labels_all, preds_all, key_metric_fn, 
-                           for_current_iter):
-    if cls.use_dynamic_predict_threshold:
-        pred_threshold, key_metric = get_best_predict_threshold(
-                   labels_all, preds_all, key_metric_fn,
-                   search_interval=0.01,
-                   search_min_max=cls.dynamic_predict_threshold_min_max,
-                   return_best_metric=True)
-        if not for_current_iter:
-            cls.dynamic_predict_threshold = pred_threshold
-        cls.predict_threshold = cls.dynamic_predict_threshold
-    else:
-        cls.predict_threshold = cls.static_predict_threshold
-
-
-def _get_sample_weights(cls, labels, val=False):
+def _get_sample_weight(cls, labels, val=False):
     cw = cls.val_class_weights if val else cls.class_weights
     labels = np.asarray(labels).squeeze()
     if cw is None:
@@ -81,7 +66,7 @@ def _get_sample_weights(cls, labels, val=False):
     return np.array([cw[int(y)] for y in labels])
 
 
-def _get_weighted_sample_weights(cls, labels_all, val=False,
+def _get_weighted_sample_weight(cls, labels_all, val=False,
                                  weight_range=(0.5, 1.5), slice_idx=None):        
     def _standardize_labels(cls, labels_all, val, slice_idx):
         # CASES:
@@ -124,12 +109,12 @@ def _get_weighted_sample_weights(cls, labels_all, val=False,
                 "num slices in `labels_all` doesn't match num slices in datagen")
         return labels_all
 
-    def _sliced_sample_weights(cls, labels_all, val):
+    def _sliced_sample_weight(cls, labels_all, val):
         sw_all = []
         for batch_labels in labels_all:
             sw_all.append([])
             for slice_labels in batch_labels:
-                sw = _get_sample_weights(cls, slice_labels, val)
+                sw = _get_sample_weight(cls, slice_labels, val)
                 sw_all[-1].append(sw)
         sw_all = np.asarray(sw_all)
         if sw_all.ndim == 3:
@@ -144,18 +129,18 @@ def _get_weighted_sample_weights(cls, labels_all, val=False,
     sw_weights = np.zeros((n_slices, 1, 1))
     sw_weights[:, 0, 0] = np.linspace(*weight_range, n_slices)
 
-    sw = _sliced_sample_weights(cls, labels_all, val) * sw_weights
+    sw = _sliced_sample_weight(cls, labels_all, val) * sw_weights
     sw = sw if slice_idx is None else sw[slice_idx]
     return sw.squeeze()
 
 
-def _compute_metric(metric_name, labels, preds, sample_weights=None,
-                    predict_threshold=None):
-    kw1 = dict(y_true=labels, y_pred=preds, predict_threshold=predict_threshold)
-    kw2 = dict(y_true=labels, y_pred=preds, sample_weight=sample_weights)
+def _compute_metric(metric_name, y_true, y_pred, sample_weight=None,
+                    pred_threshold=None):
+    kw1 = dict(y_true=y_true, y_pred=y_pred, pred_threshold=pred_threshold)
+    kw2 = dict(y_true=y_true, y_pred=y_pred, sample_weight=sample_weight)
     non_loss = ('tpr', 'tnr', 'f1-score', 'categorical_accuracy',
                 'sparse_categorical_accuracy', 'binary_accuracy', 
-                'binary_accuracies', 'binary_informedness')
+                'tnr_tpr', 'binary_informedness')
     
     if metric_name in non_loss:
         return getattr(metric_fns, metric_name)(**kw1)
@@ -163,6 +148,15 @@ def _compute_metric(metric_name, labels, preds, sample_weights=None,
         return getattr(metric_fns, metric_name)(**kw2)
 
 
+def _set_predict_threshold(cls, predict_threshold, for_current_iter=False):
+    if cls.use_dynamic_predict_threshold:
+        if not for_current_iter:
+            cls.dynamic_predict_threshold = predict_threshold
+        cls.predict_threshold = predict_threshold
+    else:
+        cls.predict_threshold = cls.static_predict_threshold 
+            
+    
 def _get_val_history_from_cache(cls):
     return {metric: np.mean(values) for metric, values
             in cls.val_temp_history.items()}
@@ -179,49 +173,50 @@ def _get_val_history(cls, for_current_iter=False):
         if for_current_iter:
             labels_all = cls._labels_cache[-1].copy()
             preds_all  = cls._preds_cache[-1].copy()
-            sample_weights_all = cls._sw_cache[-1].copy()
+            sample_weight_all = cls._sw_cache[-1].copy()
         else:
             labels_all = cls._labels_cache.copy()
             preds_all  = cls._preds_cache.copy()
-            sample_weights_all = cls._sw_cache.copy()
+            sample_weight_all = cls._sw_cache.copy()
         return {'labels_all': labels_all, 'preds_all': preds_all,
-                'sample_weights_all': sample_weights_all}
+                'sample_weight_all': sample_weight_all}
     
     def _get_api_metric_name(name, model):
         if name == 'loss':
             api_name = model.loss
         elif name in ('accuracy', 'acc'):
-            if (kw['y_true'].shape[-1] == 1 or 
-                model.loss[0] == 'binary_crossentropy'):
-                api_name = 'binary_accuracy'
-            elif model.loss[0] == 'categorical_crossentropy':
+            if model.loss[0] == 'categorical_crossentropy':
                 api_name = 'categorical_accuracy'
             elif model.loss[0] == 'sparse_categorical_crossentropy':
                 api_name = 'sparse_categorical_accuracy'
+            else:
+                api_name = 'binary_accuracy'
         else:
             api_name = name
         return api_name
-        
-    d = _unpack_data(cls)
-    (labels_all, preds_all, sample_weights_all, 
-     preds_all_norm, labels_all_norm) = cls._transform_eval_data(
-         d['labels_all'], d['preds_all'], d['sample_weights_all'],
-         return_as_dict=False)
 
-    cls._set_predict_threshold(labels_all_norm, preds_all_norm,
-                               cls.key_metric_fn, for_current_iter)
-    key_metric = cls.key_metric_fn(labels_all_norm, preds_all_norm, 
-                                   cls.predict_threshold)  
+    d = _unpack_data(cls)
+    (labels_all, preds_all, sample_weight_all, 
+     preds_all_norm, labels_all_norm) = _transform_eval_data(
+         cls, d['labels_all'], d['preds_all'], d['sample_weight_all'],
+         return_as_dict=False)
+    
+    pred_threshold, key_metric = get_best_predict_threshold(
+        labels_all_norm, preds_all_norm, cls.key_metric_fn,
+        search_interval=.01,
+        search_min_max=cls.dynamic_predict_threshold_min_max,
+        return_best_metric=True)
+    _set_predict_threshold(cls, pred_threshold, for_current_iter)
 
     metric_names = cls.val_metrics.copy()
-    metric_names.remove(cls.key_metric)
+    metric_names.remove(cls.key_metric)  # already computed
     metrics = {}
     for name in metric_names:
         api_name = _get_api_metric_name(name, cls.model)
         kw = dict(metric_name=api_name, y_true=labels_all_norm, 
                   y_pred=preds_all_norm,
-                  sample_weight=sample_weights_all, 
-                  predict_threshold=cls.predict_threshold)
+                  sample_weight=sample_weight_all, 
+                  pred_threshold=cls.predict_threshold)
 
         if name == 'loss':
             kw['_y_true'], kw['_y_pred'] = labels_all, preds_all
@@ -250,13 +245,15 @@ def _get_best_subset_val_history(cls):
     
         labels_all = cls._labels_cache.copy()
         preds_all  = cls._preds_cache.copy()
-        sample_weights_all = cls._sw_cache.copy()
+        sample_weight_all = cls._sw_cache.copy()
         return _restore_flattened(
-            *cls._transform_eval_data(labels_all, preds_all, sample_weights_all))
+            *cls._transform_eval_data(labels_all, preds_all, sample_weight_all))
 
     def _find_best_subset_from_preds(cls, d):
         best_subset_idxs, predict_threshold, _ = find_best_subset(
-            d['labels_all_norm'], d['preds_all_norm'], search_interval=.01,
+            d['labels_all_norm'], d['preds_all_norm'], 
+            search_interval=.01,
+            search_min_max=cls.dynamic_predict_threshold_min_max,
             metric_fn=getattr(metric_fns, cls.key_metric),
             subset_size=cls.best_subset_size)
         return best_subset_idxs, predict_threshold
@@ -273,11 +270,11 @@ def _get_best_subset_val_history(cls):
     
         def _flat(*arrs):
             return [np.asarray(x).flatten() for x in arrs]
-    
+
         ALL = _filter_by_indices(best_subset_idxs, d['labels_all'], 
-                                 d['preds_all'], d['sample_weights_all'], 
+                                 d['preds_all'], d['sample_weight_all'], 
                                  d['preds_all_norm'], d['labels_all_norm'])
-        (labels_all, preds_all, sample_weights_all, preds_all_norm,
+        (labels_all, preds_all, sample_weight_all, preds_all_norm,
          labels_all_norm) = _flat(*ALL)
     
         metric_names = cls.val_metrics.copy()
@@ -285,8 +282,8 @@ def _get_best_subset_val_history(cls):
         for name in metric_names:
             kw = dict(metric_name=name, y_true=labels_all_norm, 
                       y_pred=preds_all_norm,
-                      sample_weight=sample_weights_all, 
-                      predict_threshold=cls.predict_threshold)
+                      sample_weight=sample_weight_all, 
+                      pred_threshold=cls.predict_threshold)
             if name == 'loss':
                 kw['_y_true'], kw['_y_pred'] = labels_all, preds_all
                 kw['metric_name'] = cls.model.loss  # TODO multiple losses
@@ -295,13 +292,6 @@ def _get_best_subset_val_history(cls):
             else:
                 metrics[name] = _compute_metric(**kw)
         return metrics
-        
-    def _set_predict_threshold(cls, predict_threshold):
-        if cls.use_dynamic_predict_threshold:
-            cls.dynamic_predict_threshold = predict_threshold
-            cls.predict_threshold         = predict_threshold
-        else:
-            cls.predict_threshold = cls.static_predict_threshold 
     
     d = _unpack_data(cls)
 
@@ -317,7 +307,7 @@ def _get_best_subset_val_history(cls):
     return _compute_best_subset_metrics(cls, d)
 
 
-def _transform_eval_data(cls, labels_all, preds_all, sample_weights_all,
+def _transform_eval_data(cls, labels_all, preds_all, sample_weight_all,
                          return_as_dict=True):
     if cls.weighted_slices_range is not None:
         def _check_and_fix_dims(labels_all, preds_all):
@@ -338,22 +328,22 @@ def _transform_eval_data(cls, labels_all, preds_all, sample_weights_all,
             preds_all_norm = cls._normalize_preds(preds_all)
         else:
             preds_all_norm = preds_all
-        sample_weights_all = cls.get_sample_weights(labels_all, val=True)
+        sample_weight_all = cls.get_sample_weight(labels_all, val=True)
         labels_all_norm = np.array([labels[0] for labels in labels_all])
     else:
         preds_all  = np.vstack(preds_all).flatten()
         labels_all = np.vstack(labels_all).flatten()
-        sample_weights_all = np.asarray(sample_weights_all).flatten()
+        sample_weight_all = np.asarray(sample_weight_all).flatten()
         preds_all_norm = preds_all
         labels_all_norm = labels_all
     
     if cls.eval_fn_name == 'predict':
         assert (preds_all_norm.max() <= 1) and (preds_all_norm.min() >= 0)
     
-    data = (labels_all, preds_all, sample_weights_all, 
+    data = (labels_all, preds_all, sample_weight_all, 
             preds_all_norm, labels_all_norm)
     if return_as_dict:
-        names = ('labels_all', 'preds_all', 'sample_weights_all',
+        names = ('labels_all', 'preds_all', 'sample_weight_all',
                  'preds_all_norm', 'labels_all_norm')
         return {name: x.flatten() for name, x in zip(names, data)}
     else:

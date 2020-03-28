@@ -48,7 +48,7 @@ def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
         else:
             raise ValueError("unsupported loss: '{}'".format(loss))
     
-    def _make_sample_weights(toy_labels, class_weights):
+    def _make_sample_weight(toy_labels, class_weights):
         if class_weights is not None:
             return np.array([class_weights[str(l)] for l in toy_labels])
         else:
@@ -56,9 +56,9 @@ def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
 
     toy_inputs = _make_toy_inputs(model)
     toy_labels = _make_toy_labels(model)
-    toy_sample_weights = _make_sample_weights(toy_labels, class_weights)
+    toy_sample_weight = _make_sample_weight(toy_labels, class_weights)
     if input_as_labels:
         toy_labels = toy_inputs
 
-    model._standardize_user_data(toy_inputs, toy_labels, toy_sample_weights)
+    model._standardize_user_data(toy_inputs, toy_labels, toy_sample_weight)
     model._make_train_function()

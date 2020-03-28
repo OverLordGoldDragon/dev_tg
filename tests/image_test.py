@@ -54,6 +54,7 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
+tests_done = {name: None for name in ('main', 'load', 'predict')}
 
 
 def test_main():
@@ -63,7 +64,8 @@ def test_main():
         _test_main()
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< IMAGE TEST PASSED >>\n", 'green')
+    print("\n>MAIN TEST PASSED")
+    _notify('main', tests_done)
 
 
 def _test_main():
@@ -85,7 +87,7 @@ def _test_load(tg, CONFIGS):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(CONFIGS, weights_path, loadpath)
-    print("\n>LOAD TEST PASSED")
+    _notify('load', tests_done)
 
 
 def test_predict():
@@ -95,8 +97,8 @@ def test_predict():
         CONFIGS['traingen']['eval_fn_name'] = 'predict'
         _test_main()
 
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< IMAGE TEST PASSED >>\n", 'green')
+    print("\nTime elapsed: {:.3f}".format(time() - t0))    
+    _notify('predict', tests_done)
 
     
 def _make_model(weights_path=None, **kw):
@@ -150,6 +152,15 @@ def _destroy_session(tg):
     _clear_data(tg)
     [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
     del tg
+
+
+def _notify(name, tests_done):
+    tests_done[name] = True
+    print("\n%s TEST PASSED" % name.upper())
+
+    if all(tests_done.values()):
+        cprint("<< IMAGE TEST PASSED >>\n", 'green')
+
 
 if __name__ == '__main__':
     pytest.main([__file__, "--capture=sys"])
