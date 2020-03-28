@@ -51,7 +51,7 @@ class TrainGenerator():
                        'mean_squared_logarithmic_error', 'squared_hinge',
                        'hinge', 'categorical_hinge', 'logcosh',
                        'kullback_leibler_divergence', 'poisson',
-                       'cosine_proximity', 'binary_accuracy',
+                       'cosine_proximity', 'accuracy', 'binary_accuracy',
                        'categorical_accuracy', 'sparse_categorical_accuracy',
                        'f1', 'tnr', 'tpr', 'binary_accuracies',
                        'binary_informedness')

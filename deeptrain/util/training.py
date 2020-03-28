@@ -167,6 +167,7 @@ def _get_val_history_from_cache(cls):
     return {metric: np.mean(values) for metric, values
             in cls.val_temp_history.items()}
 
+
 def _get_val_history(cls, for_current_iter=False):    
     if (cls.best_subset_size != 0) and not for_current_iter:
         return cls._get_best_subset_val_history()
@@ -186,6 +187,21 @@ def _get_val_history(cls, for_current_iter=False):
         return {'labels_all': labels_all, 'preds_all': preds_all,
                 'sample_weights_all': sample_weights_all}
     
+    def _get_api_metric_name(name, model):
+        if name == 'loss':
+            api_name = model.loss
+        elif name in ('accuracy', 'acc'):
+            if (kw['y_true'].shape[-1] == 1 or 
+                model.loss[0] == 'binary_crossentropy'):
+                api_name = 'binary_accuracy'
+            elif model.loss[0] == 'categorical_crossentropy':
+                api_name = 'categorical_accuracy'
+            elif model.loss[0] == 'sparse_categorical_crossentropy':
+                api_name = 'sparse_categorical_accuracy'
+        else:
+            api_name = name
+        return api_name
+        
     d = _unpack_data(cls)
     (labels_all, preds_all, sample_weights_all, 
      preds_all_norm, labels_all_norm) = cls._transform_eval_data(
@@ -201,13 +217,14 @@ def _get_val_history(cls, for_current_iter=False):
     metric_names.remove(cls.key_metric)
     metrics = {}
     for name in metric_names:
-        kw = dict(metric_name=name, y_true=labels_all_norm, 
+        api_name = _get_api_metric_name(name, cls.model)
+        kw = dict(metric_name=api_name, y_true=labels_all_norm, 
                   y_pred=preds_all_norm,
                   sample_weight=sample_weights_all, 
                   predict_threshold=cls.predict_threshold)
+
         if name == 'loss':
             kw['_y_true'], kw['_y_pred'] = labels_all, preds_all
-            kw['metric_name'] = cls.model.loss
             metrics[name] = _compute_metric(**kw)
             metrics[name] += l1l2_weight_loss(cls.model)
         else:
