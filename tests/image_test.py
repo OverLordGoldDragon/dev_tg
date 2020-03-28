@@ -83,8 +83,8 @@ def _test_load(tg, CONFIGS):
     logdir = tg.logdir
     _destroy_session(tg)
 
-    weights_path, state_path = _get_latest_paths(logdir)
-    tg = _init_session(CONFIGS, weights_path, state_path)
+    weights_path, loadpath = _get_latest_paths(logdir)
+    tg = _init_session(CONFIGS, weights_path, loadpath)
     print("\n>LOAD TEST PASSED")
 
 
@@ -131,14 +131,12 @@ def _make_model(weights_path=None, **kw):
     return model
 
 
-def _init_session(CONFIGS, weights_path=None, state_path=None):
-    if state_path is not None:
-        CONFIGS['traingen']['loadpath'] = state_path
-
+def _init_session(CONFIGS, weights_path=None, loadpath=None):
     model = _make_model(weights_path, **CONFIGS['model'])
     dg  = SimpleBatchgen(**CONFIGS['datagen'])
     vdg = SimpleBatchgen(**CONFIGS['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, **CONFIGS['traingen'])
+    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, 
+                         **CONFIGS['traingen'])
     return tg
 
 

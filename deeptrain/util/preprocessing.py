@@ -48,5 +48,32 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
         if verbose:
             print("[{}/{}] {}-sample batch {} processed & saved".format(
                 set_num, len(data), batch_size, name))
+
     labels_hdf5.close()
-    print("{} label sets saved to {}".format(len(data), labels_path))
+    if verbose:
+        print("{} label sets saved to {}".format(len(data), labels_path))
+
+
+def numpy_to_hdf5(savepath, loadpath=None, data=None, batch_size=None,
+                  shuffle=False, compression='lzo', verbose=1):
+    def _validate_args(loadpath, data):
+        if loadpath is None and data is None:
+            raise ValueError("one of `loadpath` or `data` must be not None")
+        if loadpath is not None and data is not None:
+            raise ValueError("can't use both `loadpath` and `data`")
+
+    def _make_set_nums(loadpath, data):
+        pass
+    
+    _validate_args(loadpath, data)
+    set_nums = _make_set_nums(loadpath, data)
+
+    hdf5_file = h5py.File(savepath, mode='w', libver='latest')
+    
+    for set_num, sample in zip(set_nums, data):
+        set_num = set_num if set_num[0]!='0' else set_num[1:]
+        set_num = set_num if set_num[0]!='0' else set_num[1:]
+        hdf5_file.create_dataset(set_num, data=sample, dtype=np.float32,
+                                 chunks=True, compression=compression)
+        if verbose:
+            print(set_num, 'done', flush=True)
