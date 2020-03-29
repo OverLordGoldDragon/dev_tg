@@ -116,7 +116,7 @@ def _test_unweighted(name):
     y_true, y_pred, _ = _make_data_fn(name)()
     results = _make_test_fn(name)(y_true, y_pred)
     fail_msg = (name, "unweighted", 
-                "diff: {}tested: {}, keras: {}".format(
+                "diff: {} tested: {}, keras: {}".format(
                     np.abs(results[1] - results[0]), results[0], results[1]))
     return np.allclose(*results, atol=1e-3, rtol=1e-5), fail_msg
 
@@ -146,6 +146,8 @@ def _assert(fn, *args, **kwargs):
 def _to_test_name(txt):  # snake_case -> CamelCase, prepend "Test"
     return "Test" + ''.join(x.capitalize() or '_' for x in txt.split('_'))
 
+def _notify(name):
+    return lambda x: print(_to_test_name(name), "passed")
 
 (TestBinaryCrossentropy,
  TestCategoricalCrossentropy,
@@ -166,7 +168,8 @@ def _to_test_name(txt):  # snake_case -> CamelCase, prepend "Test"
  TestSparseCategoricalAccuracy,
  ) = [type(_to_test_name(name), (), 
            {'test_unweighted': _assert(_test_unweighted, name),
-            'test_sample_weighted': _assert(_test_sample_weighted, name)}
+            'test_sample_weighted': _assert(_test_sample_weighted, name),
+            'test_notify': _notify(name)}
           ) for name in to_test]
 
 
@@ -189,7 +192,7 @@ def test_f1_score():
     
     def _test_no_positive_labels():
         y_true = [0] * 6
-        y_pred = [.1, .2, .3, .6, .7, .8]
+        y_pred = [.1, .2, .3, .65, .7, .8]
         assert f1_score(y_true, y_pred) == 0.5
         
     def _test_no_positive_predictions():
@@ -205,8 +208,10 @@ def test_f1_score():
 def test_f1_score_multi_th():
     def _test_no_positive_labels():
         y_true = [0] * 6
-        y_pred = [.1, .2, .3, .6, .7, .8]
-        assert f1_score_multi_th(y_true, y_pred) == [0, 0]
+        y_pred = [.1, .2, .3, .65, .7, .8]
+        pred_thresholds = [.4, .6]
+        assert np.all(f1_score_multi_th(y_true, y_pred, pred_thresholds)
+                      == [.5, .5])
 
     def _test_nan_handling():
         y_true = [0, 0, 0, 1, 1]
@@ -223,6 +228,7 @@ def test_f1_score_multi_th():
         parallel_scores = f1_score_multi_th(y_true, y_pred, pred_thresholds)
         assert np.allclose(single_scores, parallel_scores, atol=1e-15)
     
+    _test_no_positive_labels()
     _test_nan_handling()
     _compare_against_f1_score()
 

@@ -6,9 +6,12 @@ PREC = os.environ.get('PRECISION', 'float32')
 EPS = 1e-7  # epsilon (keras default, K.epsilon())
 
 
-def _standardize(y_true, y_pred, sample_weight=None, pred_thresholds=None):
+def _standardize(y_true, y_pred, sample_weight=None, clip_pred=False,
+                 pred_thresholds=None):
     y_true = np.asarray(y_true).astype(PREC)
-    y_pred = np.clip(np.asarray(y_pred), EPS, 1 - EPS).astype(PREC)
+    y_pred = np.asarray(y_pred).astype(PREC)
+    if clip_pred:
+        y_pred = np.clip(y_pred, EPS, 1 - EPS)
 
     if sample_weight is not None:
         if isinstance(sample_weight, (list, np.ndarray)):
@@ -21,7 +24,8 @@ def _standardize(y_true, y_pred, sample_weight=None, pred_thresholds=None):
 
 
 def f1_score(y_true, y_pred, pred_threshold=0.5, beta=1):
-    y_true, y_pred = map(np.squeeze, _standardize(y_true, y_pred))
+    y_true, y_pred = map(np.squeeze, 
+                         _standardize(y_true, y_pred, clip_pred=True))
     y_pred = y_pred > pred_threshold
 
     TP = np.sum((y_true == 1) * (y_pred == 1))
@@ -47,7 +51,7 @@ def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
         return res
 
     y_true, y_pred, pred_thresholds = _standardize(
-        y_true, y_pred, pred_thresholds=pred_thresholds)
+        y_true, y_pred, pred_thresholds=pred_thresholds, clip_pred=True)
     y_pred = y_pred.reshape(-1, 1) > pred_thresholds
     y_true = y_true.reshape(-1, 1).repeat(y_pred.shape[-1], -1)
 
@@ -77,7 +81,8 @@ def _weighted_loss(losses, sample_weight):
 
 
 def binary_crossentropy(y_true, y_pred, sample_weight=1):
-    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight,
+                                                 clip_pred=True)
     y_true, y_pred = y_true.squeeze(), y_pred.squeeze()
 
     logits = np.log(y_pred) - np.log(1 - y_pred)  # sigmoid inverse
@@ -89,7 +94,8 @@ def binary_crossentropy(y_true, y_pred, sample_weight=1):
 
 
 def categorical_crossentropy(y_true, y_pred, sample_weight=1):
-    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight,
+                                                 clip_pred=True)
     y_pred = y_pred.reshape(1, -1) if y_pred.ndim == 1 else y_pred
     
     losses = []
@@ -100,9 +106,11 @@ def categorical_crossentropy(y_true, y_pred, sample_weight=1):
 
 
 def sparse_categorical_crossentropy(y_true, y_pred, sample_weight=1):
-    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
+    y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight,
+                                                 clip_pred=True)
     num_classes = np.asarray(y_pred).shape[-1]
-    y_true = np.eye(num_classes)[np.asarray(y_true).squeeze()]  # to categorical
+    y_true = np.eye(num_classes)[
+        np.asarray(y_true).squeeze().astype('int64')]  # to categorical
 
     return categorical_crossentropy(y_true, y_pred, sample_weight)
 
