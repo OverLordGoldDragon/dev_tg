@@ -43,6 +43,7 @@ TRAINGEN_CFG = dict(
     max_is_best=False,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
+    best_subset_size=5,
     model_configs=MODEL_CFG,
 )
 

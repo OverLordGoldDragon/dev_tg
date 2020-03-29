@@ -66,6 +66,7 @@ def test_datagen_exceptions():
         dg = tg.datagen
         dg.advance_batch()
         dg.batch = dg.batch[:1]
+        dg.batch_loaded = False
         _pass_on_fail(dg.advance_batch)
         dg.batch_loaded = True
         dg.advance_batch(forced=False)

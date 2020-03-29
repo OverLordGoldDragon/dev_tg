@@ -28,6 +28,8 @@ else:
 
 @contextlib.contextmanager
 def tempdir(dirpath):
+    if os.path.isdir(dirpath):
+        os.remove(dirpath)
     os.mkdir(dirpath)
     try:
         yield dirpath

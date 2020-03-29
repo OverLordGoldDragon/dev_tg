@@ -164,7 +164,7 @@ def _get_val_history_from_cache(cls):
 
 def _get_val_history(cls, for_current_iter=False):    
     if (cls.best_subset_size != 0) and not for_current_iter:
-        return cls._get_best_subset_val_history()
+        return _get_best_subset_val_history(cls)
 
     if cls.eval_fn_name == 'evaluate':
         return _get_val_history_from_cache(cls)
@@ -215,7 +215,7 @@ def _get_val_history(cls, for_current_iter=False):
         api_name = _get_api_metric_name(name, cls.model)
         kw = dict(metric_name=api_name, y_true=labels_all_norm, 
                   y_pred=preds_all_norm,
-                  sample_weight=sample_weight_all, 
+                  sample_weight=sample_weight_all,
                   pred_threshold=cls.predict_threshold)
 
         if name == 'loss':
@@ -247,7 +247,7 @@ def _get_best_subset_val_history(cls):
         preds_all  = cls._preds_cache.copy()
         sample_weight_all = cls._sw_cache.copy()
         return _restore_flattened(
-            *cls._transform_eval_data(labels_all, preds_all, sample_weight_all))
+            *_transform_eval_data(cls, labels_all, preds_all, sample_weight_all))
 
     def _find_best_subset_from_preds(cls, d):
         best_subset_idxs, predict_threshold, _ = find_best_subset(
