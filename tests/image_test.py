@@ -53,7 +53,7 @@ TRAINGEN_CFG = dict(
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
-          'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
+           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in ('main', 'load', 'predict')}
 
 

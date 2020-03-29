@@ -149,36 +149,41 @@ class BatchGenerator():
 
     ######### Init methods #########
     def _set_class_params(self, set_nums, superbatch_set_nums):
-        def _set_nums_from_dir(_dir):
-            def _sort_ascending(ls):
-                return list(map(str, sorted(map(int, ls))))
-
-            nums_from_dir = []
-            for filename in os.listdir(_dir):
-                if Path(filename).suffix == self.data_ext and (
-                        self.base_name in filename):
-                    num = ''.join(x for x in filename.replace(self.base_name, '')
-                                  if x.isdigit())
-                    nums_from_dir.append(num)
-            return _sort_ascending(nums_from_dir)
-
-        def _set_nums_from_hdf5_dataset(hdf5_dataset):
-            return [num for num in list(hdf5_dataset.keys()) if (
-                num.isdigit() or isinstance(num, (float, int)))]
+        def _get_set_nums_to_load():
+            def _set_nums_from_dir(_dir):
+                def _sort_ascending(ls):
+                    return list(map(str, sorted(map(int, ls))))
+    
+                nums_from_dir = []
+                for filename in os.listdir(_dir):
+                    if Path(filename).suffix == self.data_ext and (
+                            self.base_name in filename):
+                        num = ''.join(x for x in filename.replace(
+                            self.base_name, '') if x.isdigit())
+                        nums_from_dir.append(num)
+                return _sort_ascending(nums_from_dir)
+            
+            def _set_nums_from_hdf5_dataset(hdf5_dataset):
+                return [num for num in list(hdf5_dataset.keys()) if (
+                    num.isdigit() or isinstance(num, (float, int)))]
+            
+            if self.data_format == 'hdf5-dataset':
+                with h5py.File(self._hdf5_path, 'r') as hdf5_dataset:
+                    return _set_nums_from_hdf5_dataset(hdf5_dataset)
+            else:
+                return _set_nums_from_dir(self.data_dir)
+            
             
         def _set_or_validate_set_nums(set_nums):
-            if self.data_format == 'hdf5-dataset':
-                nums_from_dir = _set_nums_from_hdf5_dataset(self._hdf5_dataset)
-            else:
-                nums_from_dir = _set_nums_from_dir(self.data_dir)
-
+            nums_to_load = _get_set_nums_to_load()
+            
             if set_nums is None:
-                self.set_nums_original   = nums_from_dir.copy()
-                self.set_nums_to_process = nums_from_dir.copy()
-                print(len(nums_from_dir), "set nums inferred; if more are "
+                self.set_nums_original   = nums_to_load.copy()
+                self.set_nums_to_process = nums_to_load.copy()
+                print(len(nums_to_load), "set nums inferred; if more are "
                       "expected, ensure file names contain a common substring "
                       "w/ a number (e.g. 'train1.npy', 'train2.npy', etc)")
-            elif any([(num not in nums_from_dir) for num in set_nums]):
+            elif any([(num not in nums_to_load) for num in set_nums]):
                 raise Exception("a `set_num` in `set_nums_to_process` was not "
                                 "in set_nums found from `data_dir` filenames")
 
@@ -190,14 +195,11 @@ class BatchGenerator():
                 self.superbatch_set_nums = []
                 return
 
-            if self.data_format == 'hdf5-dataset':
-                nums_from_dir = _set_nums_from_hdf5_dataset(self._hdf5_dataset)
-            else:
-                nums_from_dir = _set_nums_from_dir(self.superbatch_dir)
+            nums_to_load = _get_set_nums_to_load()
  
             if superbatch_set_nums is None:
-                self.superbatch_set_nums = nums_from_dir.copy()
-            elif any([num not in nums_from_dir for num in superbatch_set_nums]):
+                self.superbatch_set_nums = nums_to_load.copy()
+            elif any([num not in nums_to_load for num in superbatch_set_nums]):
                 raise Exception("a `set_num` in `superbatch_set_nums` "
                                 "was not in set_nums found from "
                                 "`superbatch_folderpath` filename")
@@ -223,8 +225,10 @@ class BatchGenerator():
                 a_key = list(hdf5_file.keys())[0]  # only one should be present
                 return hdf5_file[a_key][:]
 
-        def hdf5_dataset_loader(self, set_num):
-            return self._hdf5_dataset[str(set_num)][:]
+        def hdf5_dataset_loader(set_num):
+            with h5py.File(self._hdf5_path, 'r') as hdf5_file:
+                return hdf5_file[set_num][:]
+            # return self._hdf5_dataset[str(set_num)][:]  TODO
 
         if data_format == 'numpy':
             load_data = numpy_loader
@@ -313,6 +317,10 @@ class BatchGenerator():
             return base_name
         
         def _get_filepaths(data_dir, filenames):
+            if Path(filenames[0]).suffix == '.h5' and len(filenames) == 1:
+                self._hdf5_path = os.path.join(data_dir, filenames[0])
+                return None
+    
             filepaths = [os.path.join(data_dir, x) for x in filenames]
             print("Discovered %s files with matching format" % len(filepaths))
             return filepaths

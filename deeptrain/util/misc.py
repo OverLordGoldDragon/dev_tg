@@ -24,6 +24,14 @@ def _dict_filter_keys(dc, keys, exclude=True, filter_substr=False):
             if condition(k, keys, exclude, filter_substr)}
 
 
+def ordered_shuffle(*args):
+    zipped_args = list(zip(*(a.items() if isinstance(a, dict) 
+                             else a for a in args)))
+    np.random.shuffle(zipped_args)
+    return [(_type(data) if _type != np.ndarray else np.asarray(data)) 
+            for _type, data in zip(map(type, args), zip(*zipped_args))]
+
+
 # TODO: improve case coverage
 def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
                           input_as_labels=False):

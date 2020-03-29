@@ -4,6 +4,7 @@ import h5py
 import numpy as np
 
 from pathlib import Path
+from . import WARN, NOTE
 
 
 def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32, 
@@ -56,48 +57,105 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
         print("{} label sets saved to {}".format(len(data), labels_path))
 
 
-def numpy_to_hdf5(savepath, loaddir=None, data=None, batch_size=None,
-                  shuffle=False, compression='lzo', verbose=1):
-    def _validate_args(loaddir, data):
+def data_to_hdf5(savepath, loaddir=None, data=None, batch_size=None,
+                 shuffle=False, compression='lzf', dtype='float32', 
+                 load_fn=None, overwrite=None, verbose=1):
+    def _validate_args(savepath, loaddir, data, load_fn):
         if loaddir is None and data is None:
             raise ValueError("one of `loaddir` or `data` must be not None")
         if loaddir is not None and data is not None:
             raise ValueError("can't use both `loaddir` and `data`")
+        if data is not None and load_fn is not None:
+            print(WARN, "`load_fn` ignored with `data_fn != None`")
+        if savepath.split('.')[-1] != '.h5':
+            print(WARN, "`savepath` extension must be '.h5'; will append")
+            savepath += '.h5'
+        if Path(savepath).is_file():
+            if overwrite is None:
+                response = input(("Found existing file in `savepath`; "
+                                  "overwrite?' [y/n]\n"))
+                if response == 'y':
+                    os.remove(savepath)
+                else:
+                    raise SystemExit("program terminated.")
+            elif overwrite is True:
+                os.remove(savepath)
+                print(NOTE, "removed existing file from `savepath`")
+            else:
+                raise SystemExit(("program terminated. (existing file in "
+                                  "`savepath` and `overwrite=False`)"))
 
-    def _make_set_nums(loaddir=None, data=None, shuffle=False):
-        if loaddir:
-            names = [x.stem for x in Path(loaddir).iterdir()
-                     if x.suffix == '.npy']
-            set_nums = list(map(str, range(len(names))))
-        else:
-            set_nums = list(map(str, range(len(data))))
+        supported = ('.npy',)
+        extensions = list(set(x.suffix for x in Path(loaddir).iterdir()))
+        if len(extensions) > 1:
+            raise ValueError("cannot have more than one file extensions "
+                             "in `loaddir`; found %s" % ', '.join(extensions))
+        elif load_fn is None and extensions[0] not in supported:
+            raise ValueError(("unsupported file extension {}; supported are: "
+                              "{}. Alternatively, pass in `load_fn` that takes "
+                              "paths & index as arguments").format(
+                                  extensions[0], ', '.join(supported)))
+        return savepath
 
+    def _get_data_source(loaddir, data, batch_size, compression, shuffle):
+        source = data if data is not None else [
+            str(x) for x in Path(loaddir).iterdir() if not x.is_dir()]
         if shuffle:
-            np.random.shuffle(set_nums)
-        return set_nums
-            
-    
-    def _to_hdf5_from_loaddir():
-        pass
-    
-    def _to_hdf5_from_data(data, hdf5_file, shuffle):
-        set_nums = _make_set_nums(data, shuffle)
+            np.random.shuffle(source)
 
-        for set_num, sample in zip(set_nums, data):
-            set_num = set_num if set_num[0]!='0' else set_num[1:]
-            set_num = set_num if set_num[0]!='0' else set_num[1:]
-            hdf5_file.create_dataset(set_num, data=sample, dtype=np.float32,
+        if verbose:
+            comp = compression if compression is not None else "no"
+            shuf = "with" if shuffle else "without"
+            print(("Making {}-size batches from {} extractables, using {} "
+                   "compression, {} shuffling").format(
+                       batch_size, len(source), comp, shuf))
+        return source
+
+    def _make_batch(source, j, batch_size, load_fn, verbose):
+        def _get_data(source, j, load_fn):
+            def _load_data(source, j, load_fn):
+                if load_fn is not None:
+                    return load_fn(source, j)
+                path = source[j]
+                if Path(path).suffix == '.npy':
+                    return np.load(path)
+            try:
+                return _load_data(source, j, load_fn)
+            except:
+                return source[j]
+        X = []
+        while sum(map(len, X)) < batch_size:
+            if j == len(source):
+                print(WARN, "insufficient samples in extractable to make "
+                      "batch; terminating")
+                return None, j
+            X.append(_get_data(source, j, load_fn))
+            j += 1
+            if sum(map(len, X)) > batch_size:
+                raise ValueError("`batch_size` exceeded; {} > {}".format(
+                    sum(map(len, X)), batch_size))
+            if verbose:
+                print(end='.')
+        return np.vstack(X), j
+
+    def _make_hdf5(hdf5_file, source, batch_size, dtype, load_fn, verbose):
+        j, set_num = 0, 0
+        while j < len(source):
+            batch, j = _make_batch(source, j, batch_size, load_fn, verbose)
+            if batch is None:
+                break
+            hdf5_file.create_dataset(str(set_num), data=batch, dtype=dtype, 
                                      chunks=True, compression=compression)
             if verbose:
-                print(set_num, 'done', flush=True)
+                print('', set_num, 'done', flush=True)
+            set_num += 1
+        return set_num - 1
 
-    _validate_args(loaddir, data)
-    hdf5_file = h5py.File(savepath, mode='w', libver='latest')
+    savepath = _validate_args(savepath, loaddir, data, load_fn)
+    source = _get_data_source(loaddir, data, batch_size, compression, shuffle)
 
-    if loaddir:
-        _to_hdf5_from_loaddir(hdf5_file)
-    else:
-        _to_hdf5_from_data(data, hdf5_file, shuffle)
-
-    
-
+    with h5py.File(savepath, mode='w', libver='latest') as hdf5_file:
+        last_set_num = _make_hdf5(hdf5_file, source, batch_size, dtype, 
+                                  load_fn, verbose)
+    if verbose:
+        print(last_set_num, "batches converted & saved as .hdf5 to", savepath)

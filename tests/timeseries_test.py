@@ -47,7 +47,7 @@ TRAINGEN_CFG = dict(
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
-          'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
+           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 
 
 def test_main():
