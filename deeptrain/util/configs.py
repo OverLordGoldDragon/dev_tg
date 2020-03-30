@@ -65,13 +65,13 @@ _MODEL_NAME_CFG = dict(
 _REPORT_CFG = {
     'model':
         {},
-    'traingen': 
+    'traingen':
         {
         'exclude':
             ['model', 'model_configs', 'model_name', 'logs_use_full_model_name',
              'history_fig', 'plot_configs', 'max_checkpoints_to_keep',
              'history', 'val_history', 'temp_history', 'val_temp_history',
-             'name_process_key_fn', 'report_fontpath', 'model_name_configs', 
+             'name_process_key_fn', 'report_fontpath', 'model_name_configs',
              'report_configs', 'datagen', 'val_datagen',
              'logdir', 'logs_dir', 'best_models_dir', 'fit_fn', 'eval_fn',
              '_history_fig', 'metric_printskip_configs',
@@ -84,10 +84,10 @@ _REPORT_CFG = {
         {
         'exclude':
             ['batch', 'group_batch', 'labels', 'all_labels',
-             'batch_loaded', 'batch_exhausted', 'set_num',
-             'set_nums_original', 'set_nums_to_process', 'superbatch_set_nums',
-             'load_data', 'data_dir', 'labels_path', 'loadskip_list',
-             '_path_attrs', 'preprocessor',
+             'batch_loaded', 'batch_exhausted', 'set_num', 'set_name',
+             '_set_names', 'set_nums_original', 'set_nums_to_process',
+             'superbatch_set_nums', 'load_data', 'data_dir', 'labels_path',
+             'loadskip_list', '_path_attrs', 'preprocessor',
              '*_ATTRS', '*superbatch', '*_filepaths', '*_filenames']
         },
 }
@@ -122,9 +122,11 @@ _TRAINGEN_SAVE_LIST = [
     'val_temp_history',
     'history_fig',
     'predict_threshold',
-    'set_num',
-    '_val_set_num',
-    
+    '_set_name',
+    '_val_set_name',
+    '_set_name_cache',
+    '_val_set_name_cache',
+
     '_batches_fit',
     '_batches_validated',
     '_has_trained',
@@ -174,11 +176,11 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
 
             val = ('%.3e' % val).replace('-0', '-')
             while '0e' in val:
-                val = val.replace('0e', 'e')   
+                val = val.replace('0e', 'e')
             if _decimal_len(val) == 0:
                 val = val.replace('.', '')
             return val
-    
+
         if abs(val) < small_th:
             return _format_small_float(val)
         elif small_th < abs(val) < 1:
@@ -194,7 +196,7 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
 
         def _format_if_small_decimal(val, th=1e-2):
             if isinstance(val, float) and abs(val) < th:
-                return ('%.e' % val).replace('-0', '-') 
+                return ('%.e' % val).replace('-0', '-')
             return val
 
         _str = ''
@@ -210,7 +212,7 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
                 _str += val + '_'
             ls = ls[reps:]
         return _str.rstrip('_')
-    
+
     def _process_special_keys(key, val):
         if key == 'timesteps':
             val = val // 1000 if (val / 1000).is_integer() else val / 1000
@@ -241,7 +243,7 @@ _TRAINGEN_CFG = dict(
     use_passed_dirs_over_loaded = False,
     static_predict_threshold    = 0.5,
     dynamic_predict_threshold   = 0.5,  # initial
-    visual_outputs_layer_names  = None, 
+    visual_outputs_layer_names  = None,
     visual_weights_layer_names  = None,
     logs_use_full_model_name    = True,
     model_num_continue_from_max = True,
@@ -263,4 +265,10 @@ _TRAINGEN_CFG = dict(
     model_name_configs  = _MODEL_NAME_CFG,
     name_process_key_fn = _NAME_PROCESS_KEY_FN,
     metric_printskip_configs = _METRIC_PRINTSKIP_CFG,
+)
+
+_DATAGEN_CFG = dict(
+    shuffle_group_batches=False,
+    shuffle_group_samples=False,
+    full_batch_shape=None,
 )

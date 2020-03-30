@@ -13,9 +13,10 @@ from deeptrain import TrainGenerator, SimpleBatchgen
 
 
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'timeseries')
+batch_size = 32
 
 MODEL_CFG = dict(
-    batch_shape=(32, 25, 16),
+    batch_shape=(batch_size, 25, 16),
     units=16,
     optimizer='adam',
     loss='binary_crossentropy'
@@ -23,7 +24,7 @@ MODEL_CFG = dict(
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
     labels_path=os.path.join(datadir, 'train', 'labels.csv'),
-    batch_size=32,
+    batch_size=batch_size,
     data_category='timeseries',
     shuffle=True,
     preprocessor_configs=dict(batch_timesteps=100, window_size=25),
@@ -32,7 +33,7 @@ VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
     superbatch_dir=os.path.join(datadir, 'val'),
     labels_path=os.path.join(datadir, 'val', 'labels.csv'),
-    batch_size=32,
+    batch_size=batch_size,
     data_category='timeseries',
     shuffle=False,
     preprocessor_configs=dict(batch_timesteps=100, window_size=25),
@@ -43,11 +44,11 @@ TRAINGEN_CFG = dict(
     max_is_best=False,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    best_subset_size=5,
+    best_subset_size=3,
     model_configs=MODEL_CFG,
 )
 
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
+CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 
 
@@ -56,7 +57,7 @@ def test_main():
     with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
         _test_main()
-    
+
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     cprint("<< TIMESERIES TEST PASSED >>\n", 'green')
 
@@ -70,8 +71,9 @@ def _test_main():
 
 
 def _test_weighted_slices(tg):
-    tg.epochs += 1
-    tg.weighted_slices_range = (.5, 1.5)
+    CONFIGS.update(dict(eval_fn_name='predict',
+                        weighted_slices_range=(.5, 1.5)))
+    tg = _init_session(CONFIGS)
     tg.train()
 
 
@@ -96,11 +98,11 @@ def _make_model(weights_path=None, **kw):
         return [kw[key] for key in expected_kw]
 
     batch_shape, loss, units, optimizer = _unpack_configs(kw)
-    
+
     ipt = Input(batch_shape=batch_shape)
     x   = LSTM(units, return_sequences=False, stateful=True)(ipt)
     out = Dense(1, activation='sigmoid')(x)
-    
+
     model = Model(ipt, out)
     model.compile(optimizer, loss)
 

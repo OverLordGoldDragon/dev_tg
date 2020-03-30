@@ -52,9 +52,10 @@ TRAINGEN_CFG = dict(
     model_configs=MODEL_CFG,
 )
 
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
+CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'predict')}
+tests_done = {name: None for name in ('main', 'load', 'predict',
+                                      'group_batch', 'recursive_batch')}
 
 
 def test_main():
@@ -71,7 +72,7 @@ def test_main():
 def _test_main():
     tg = _init_session(CONFIGS)
     tg.train()
-    
+
     _test_load(tg, CONFIGS)
 
 
@@ -97,20 +98,46 @@ def test_predict():
         CONFIGS['traingen']['eval_fn_name'] = 'predict'
         _test_main()
 
-    print("\nTime elapsed: {:.3f}".format(time() - t0))    
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('predict', tests_done)
 
-    
+
+def test_group_batch():
+    t0 = time()
+    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
+            CONFIGS['traingen']['best_models_dir']):
+        for name in ('traingen', 'datagen', 'val_datagen'):
+            CONFIGS[name]['batch_size'] = 64
+        CONFIGS['model']['batch_shape'] = (64, width, height, channels)
+        _test_main()
+
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('recursive_batch', tests_done)
+
+
+def test_recursive_batch():
+    t0 = time()
+    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
+            CONFIGS['traingen']['best_models_dir']):
+        for name in ('traingen', 'datagen', 'val_datagen'):
+            CONFIGS[name]['batch_size'] = 256
+        CONFIGS['model']['batch_shape'] = (256, width, height, channels)
+        _test_main()
+
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('recursive_batch', tests_done)
+
+
 def _make_model(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'num_classes', 'filters', 'kernel_size', 
+                       'num_classes', 'filters', 'kernel_size',
                        'dropout', 'dense_units')
         return [kw[key] for key in expected_kw]
 
     (batch_shape, loss, metrics, optimizer, num_classes, filters,
      kernel_size, dropout, dense_units) = _unpack_configs(kw)
-    
+
     ipt = Input(batch_shape=batch_shape)
     x   = ipt
 
@@ -124,10 +151,10 @@ def _make_model(weights_path=None, **kw):
 
     x   = Dropout(dropout[1])(x)
     out = Dense(num_classes, activation='softmax')(x)
-    
+
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)
-    
+
     if weights_path is not None:
         model.load_weights(weights_path)
     return model
@@ -137,7 +164,7 @@ def _init_session(CONFIGS, weights_path=None, loadpath=None):
     model = _make_model(weights_path, **CONFIGS['model'])
     dg  = SimpleBatchgen(**CONFIGS['datagen'])
     vdg = SimpleBatchgen(**CONFIGS['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, 
+    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
                          **CONFIGS['traingen'])
     return tg
 

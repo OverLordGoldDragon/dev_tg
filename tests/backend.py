@@ -29,7 +29,7 @@ else:
 @contextlib.contextmanager
 def tempdir(dirpath):
     if os.path.isdir(dirpath):
-        os.remove(dirpath)
+        shutil.rmtree(dirpath)
     os.mkdir(dirpath)
     try:
         yield dirpath

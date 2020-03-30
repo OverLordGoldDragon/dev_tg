@@ -156,18 +156,14 @@ def _set_predict_threshold(cls, predict_threshold, for_current_iter=False):
     else:
         cls.predict_threshold = cls.static_predict_threshold 
             
-    
-def _get_val_history_from_cache(cls):
-    return {metric: np.mean(values) for metric, values
-            in cls.val_temp_history.items()}
-
 
 def _get_val_history(cls, for_current_iter=False):    
     if (cls.best_subset_size != 0) and not for_current_iter:
         return _get_best_subset_val_history(cls)
 
     if cls.eval_fn_name == 'evaluate':
-        return _get_val_history_from_cache(cls)
+        return {metric: np.mean(values) for metric, values in
+                cls.val_temp_history.items()}
 
     def _unpack_data(cls):
         if for_current_iter:
@@ -250,21 +246,25 @@ def _get_best_subset_val_history(cls):
             *_transform_eval_data(cls, labels_all, preds_all, sample_weight_all))
 
     def _find_best_subset_from_preds(cls, d):
-        best_subset_idxs, predict_threshold, _ = find_best_subset(
+        best_subset_idxs, pred_threshold, _ = find_best_subset(
             d['labels_all_norm'], d['preds_all_norm'], 
             search_interval=.01,
             search_min_max=cls.dynamic_predict_threshold_min_max,
             metric_fn=getattr(metric_fns, cls.key_metric),
             subset_size=cls.best_subset_size)
-        return best_subset_idxs, predict_threshold
+        return best_subset_idxs, pred_threshold
 
     def _find_best_subset_from_history(cls):
-        metric = _get_val_history_from_cache(cls)[cls.key_metric]
+        metric = cls.val_temp_history[cls.key_metric]
         best_subset_idxs = find_best_subset_from_history(
             metric, cls.best_subset_size, cls.max_is_best)
         return best_subset_idxs
     
-    def _compute_best_subset_metrics(cls, d):
+    def _best_subset_metrics_from_history(cls, best_subset_idxs):
+        return {name: np.asarray(metric)[best_subset_idxs].mean()
+                for name, metric in cls.val_temp_history.items()}
+        
+    def _best_subset_metrics_from_preds(cls, d, best_subset_idxs):
         def _filter_by_indices(indices, *arrs):
             return [np.asarray([x[idx] for idx in indices]) for x in arrs]
     
@@ -293,18 +293,20 @@ def _get_best_subset_val_history(cls):
                 metrics[name] = _compute_metric(**kw)
         return metrics
     
-    d = _unpack_data(cls)
-
     if cls.eval_fn_name == 'evaluate':
         best_subset_idxs = _find_best_subset_from_history(cls)
     elif cls.eval_fn_name == 'predict':
+        d = _unpack_data(cls)
         best_subset_idxs, pred_threshold = _find_best_subset_from_preds(cls, d)
         _set_predict_threshold(cls, pred_threshold)
     else:
         raise ValueError("unknown `eval_fn_name`: %s" % cls.eval_fn_name)
 
-    cls.best_subset_nums = cls._val_set_nums_cache[best_subset_idxs]
-    return _compute_best_subset_metrics(cls, d)
+    cls.best_subset_nums = np.array(cls._val_set_name_cache)[best_subset_idxs]
+    if cls.eval_fn_name == 'evaluate':
+        return _best_subset_metrics_from_history(cls, best_subset_idxs)
+    else:
+        return _best_subset_metrics_from_preds(cls, d, best_subset_idxs)
 
 
 def _transform_eval_data(cls, labels_all, preds_all, sample_weight_all,

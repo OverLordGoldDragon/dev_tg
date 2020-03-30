@@ -5,10 +5,10 @@ from functools import reduce
 
 
 def get_best_predict_threshold(labels, preds, metric_fn, search_interval=0.05, 
-                               search_min_max=(0,1), return_best_metric=False,
+                               search_min_max=(0, 1), return_best_metric=False,
                                verbosity=0, threshold_preference=0.5):
-    _min    = search_min_max[0] if search_min_max[0]!=0 else search_interval
-    _max    = search_min_max[1] if search_min_max[1]!=1 else .9999
+    _min    = search_min_max[0] if search_min_max[0] != 0 else search_interval
+    _max    = search_min_max[1] if search_min_max[1] != 1 else .9999
     th_pref = threshold_preference
 
     th       = _min
@@ -99,7 +99,7 @@ def find_best_subset_from_history(metric, subset_size=5, max_is_best=False):
         indices = list(range(len(metric)))
         idx_metric_pairs = [[i, m] for i, m in zip(indices, metric)]
         idx_metric_pairs.sort(key=lambda x: x[1])
-        return idx_metric_pairs[0][:subset_size]
+        return [idx_metric_pairs[j][0] for j in range(subset_size)]
 
     metric = np.asarray(metric)
     if metric.ndim > 1:  # (batches, slices)
