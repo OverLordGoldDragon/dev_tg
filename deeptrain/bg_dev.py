@@ -86,7 +86,7 @@ class BatchGenerator():
             if len(self.batch) < self.batch_size:
                 self.set_name = self._set_names.pop(0)
                 self.advance_batch(forced, is_recursive=True)
-                return
+                return 'exit'
 
             n_batches = len(self.batch) / self.batch_size
             if n_batches.is_integer():
@@ -115,8 +115,9 @@ class BatchGenerator():
         self.batch.extend(self._get_next_batch())
 
         if len(self.batch) != self.batch_size:
-            _handle_batch_size_mismatch(forced)
-            return
+            flag = _handle_batch_size_mismatch(forced)
+            if flag == 'exit':
+                return
 
         s = self._set_names.pop(0)
         self.set_name = s if not is_recursive else "%s+%s" % (self.set_name, s)
