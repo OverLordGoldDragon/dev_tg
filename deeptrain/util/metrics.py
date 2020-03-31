@@ -212,7 +212,7 @@ def categorical_accuracy(y_true, y_pred):
 def sparse_categorical_accuracy(y_true, y_pred):
     y_true, y_pred = _standardize(y_true, y_pred)
     # flatten y_true in case it's shaped (num_samples, 1)
-    return np.equal(y_true.flatten(),
+    return np.equal(y_true.ravel(),
                     np.argmax(y_pred, axis=-1).astype(PREC)
                     ).astype(PREC)
 

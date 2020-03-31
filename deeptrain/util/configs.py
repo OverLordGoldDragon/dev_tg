@@ -237,12 +237,10 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
 
 _path = r"D:\Desktop\School\Deep Learning\DL_code\\"
 _TRAINGEN_CFG = dict(
-    dynamic_predict_threshold_min_max = (0.35, 0.90),
-    use_dynamic_predict_threshold     = False,
-    weighted_slices_range       = None,
+    dynamic_predict_threshold_min_max = None,
+    loss_weighted_slices_range  = None,
+    pred_weighted_slices_range  = None,
     use_passed_dirs_over_loaded = False,
-    static_predict_threshold    = 0.5,
-    dynamic_predict_threshold   = 0.5,  # initial
     visual_outputs_layer_names  = None,
     visual_weights_layer_names  = None,
     logs_use_full_model_name    = True,
@@ -250,6 +248,7 @@ _TRAINGEN_CFG = dict(
     max_checkpoints_to_keep     = 5,
     keep_one_best_model   = False,
     save_post_epoch       = False,
+    predict_threshold  = 0.5,  # static or initial
     best_subset_size   = 0,
     check_model_health = True,
     outputs_visualizer = 'comparative_histogram',

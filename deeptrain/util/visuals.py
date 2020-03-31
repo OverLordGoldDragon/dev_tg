@@ -49,7 +49,7 @@ def show_predictions_distribution(preds, labels, pred_th):
         ax.set_yticks([])
         ax.set_xlim(-.02, 1.02)
         
-    preds_f, labels_f = np.array(preds).flatten(), np.array(labels).flatten()
+    preds_f, labels_f = np.array(preds).ravel(), np.array(labels).ravel()
     colors = _get_pred_colors(labels_f)
     alignment_arr = _make_alignment_array(labels_f, n_lines=10)
 
@@ -220,7 +220,7 @@ def comparative_histogram(model, layer_name, data, keep_borders=True,
     _, axes = plt.subplots(2, 1, sharex=True, sharey=True, 
                            figsize=(13 * w, 6 * h))
     for i, (ax, out) in enumerate(zip(axes.flat, outs)):
-        ax.hist(np.asarray(out).flatten(), bins=bins)
+        ax.hist(np.asarray(out).ravel(), bins=bins)
 
         mode = "ON" if i == 0 else "OFF"
         ax.set_title("Train mode " + mode, weight='bold')

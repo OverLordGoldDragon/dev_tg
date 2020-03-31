@@ -45,8 +45,9 @@ VAL_DATAGEN_CFG = dict(
     shuffle=False,
 )
 TRAINGEN_CFG = dict(
-    epochs=2,
+    epochs=1,
     val_freq={'epoch': 1},
+    dynamic_predict_threshold_min_max=(.35, .95),
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     model_configs=MODEL_CFG,
@@ -62,17 +63,17 @@ def test_main():
     t0 = time()
     with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
+        CONFIGS['traingen']['epochs'] = 2
         _test_main()
+        CONFIGS['traingen']['epochs'] = 1
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    print("\n>MAIN TEST PASSED")
     _notify('main', tests_done)
 
 
 def _test_main():
     tg = _init_session(CONFIGS)
     tg.train()
-
     _test_load(tg, CONFIGS)
 
 
@@ -183,7 +184,7 @@ def _destroy_session(tg):
 
 def _notify(name, tests_done):
     tests_done[name] = True
-    print("\n%s TEST PASSED" % name.upper())
+    print("\n>%s TEST PASSED" % name.upper())
 
     if all(tests_done.values()):
         cprint("<< IMAGE TEST PASSED >>\n", 'green')

@@ -4,12 +4,15 @@
     - visualizations
     - metric aliases
     - make report_generator optional per requiring PIL
+    - loss_weighted_slices_range & pred_weighted_slices_range?
+    - check support for batch_size=None
     - unit tests:
         - save/load
         - report generator
         - data generators
         - visualizations
         - weighted sample_weight
+    - Utils classes (@staticmethod def fn(cls, ..))
     - MetaTrainer
 """
 
@@ -33,7 +36,7 @@ from .util.visuals import show_predictions_distribution
 from .util.visuals import comparative_histogram
 from .util.saving  import save, load, _save_history
 from .util.saving  import save_best_model, checkpoint_model_IF
-from .util.misc    import pass_on_error
+from .util.misc    import pass_on_error, _validate_traingen_configs
 from .util.introspection import print_dead_weights, print_nan_weights
 from .util.introspection import compute_gradient_l2norm
 from .util import Unbuffered, NOTE, WARN
@@ -66,8 +69,8 @@ class TrainGenerator():
                  eval_fn_name='evaluate',
                  key_metric='loss',
                  key_metric_fn=None,
-                 train_metrics=None,
-                 val_metrics=None,
+                 train_metrics='loss',
+                 val_metrics='loss',
                  custom_metrics=None,
                  input_as_labels=False,
                  max_is_best=None,
@@ -384,9 +387,9 @@ class TrainGenerator():
         return x, y, sample_weight
 
     def get_sample_weight(self, labels, val=False, slice_idx=None):
-        if self.weighted_slices_range is not None:
+        if self.loss_weighted_slices_range is not None:
             return _get_weighted_sample_weight(
-                self, labels, val, self.weighted_slices_range, slice_idx)
+                self, labels, val, self.loss_weighted_slices_range, slice_idx)
 
         cw = self.val_class_weights if val else self.class_weights
         if cw is not None:
@@ -620,127 +623,6 @@ class TrainGenerator():
             if self.val_metrics is None:
                 self.val_metrics = model_metrics
 
-        def _validate_metrics():
-            for name in ('train_metrics', 'val_metrics'):
-                value = getattr(self, name)
-                if not isinstance(value, list):
-                    if isinstance(value, str):
-                        setattr(self, name, [value])
-                    else:
-                        setattr(self, name, list(value))
-
-            def _from_model(metric):
-                return metric != 'loss' and metric not in [
-                    self.model.loss, *self.model.metrics]
-
-            metrics = (*self.train_metrics, *self.val_metrics, self.key_metric)
-            supported = TrainGenerator.BUILTIN_METRICS
-            customs = self.custom_metrics or [None]
-
-            if self.eval_fn_name == 'predict':
-                for metric in metrics:
-                    metric = metric if metric != 'loss' else self.model.loss
-                    if metric not in (*supported, *customs):
-                        raise ValueError((
-                            "'{0}' metric is not supported; add a function to "
-                            "`custom_metrics` as '{0}': func. Supported "
-                            "are: {1}").format(metric, ', '.join(supported)))
-
-                if self.model.loss not in (*supported, *customs):
-                    raise ValueError((
-                        "'{0}' loss is not supported w/ `eval_fn_name = "
-                        "'predict'`; add a function to `custom_metrics` "
-                        "as '{0}': func, or set `eval_fn_name = 'evaluate'`."
-                        " Supported are: {1}").format(
-                            self.model.loss, ', '.join(supported)))
-
-                km = (self.key_metric if self.key_metric != 'loss'
-                      else self.model.loss)
-                if km not in supported and self.key_metric_fn is None:
-                    raise ValueError(("`key_metric = '{}'` is unsupported; set "
-                                      "`key_metric_fn = func`. Supported are: {}"
-                                      ).format(km, ', '.join(supported)))
-
-            if self.max_is_best and self.key_metric == 'loss':
-                print(NOTE + "`max_is_best = True` and `key_metric = 'loss'`"
-                      "; will consider higher loss to be better")
-
-        def _validate_directories():
-            if self.logs_dir is None and self.best_models_dir is None:
-                print(WARN, "`logs_dir = None` and `best_models_dir = None`; "
-                      "logging is OFF")
-            elif self.logs_dir is None:
-                print(NOTE, "`logs_dir = None`; will not checkpoint "
-                      "periodically")
-            elif self.best_models_dir is None:
-                print(NOTE, "`best_models_dir = None`; best models will not "
-                      "be checkpointed")
-
-
-        def _validate_optimizer_saving_configs():
-            cfgs = (self.optimizer_save_configs, self.optimizer_load_configs)
-            for cfg in cfgs:
-                if cfg is not None and 'include' in cfg and 'exclude' in cfg:
-                    raise ValueError("cannot have both 'include' and 'exclude' "
-                                     "in `optimizer_save_configs` or "
-                                     "`optimizer_load_configs`")
-
-        def _validate_visualizers():
-            if (self.visualizers is not None and self.eval_fn_name != 'predict'
-                and not any([isinstance(x, LambdaType) for x in
-                               self.visualizers])):
-                print(WARN, "`eval_fn_name != 'predict'`, cannot use built-in "
-                      "`visualizers`; include a custom function")
-
-        def _validate_savelist():
-            if self.input_as_labels and 'labels' in self.savelist:
-                print(NOTE, "will exclude `labels` from saving when "
-                      "`input_as_labels=True`; to override, "
-                      "supply '{labels}' instead")
-                self.savelist.pop(self.savelist.index('labels'))
-            if '{labels}' in self.savelist:
-                self.savelist.pop(self.savelist.index('{labels}'))
-                self.savelist.append('labels')
-
-        def _validate_weighted_slices_range():
-            if self.weighted_slices_range is not None:
-                if self.eval_fn_name != 'predict':
-                    raise ValueError("`weighted_slices_range` requires "
-                                     "`eval_fn_name = 'predict'`")
-
-                if not (hasattr(self.datagen, 'weighted_slices_range') and
-                        hasattr(self.val_datagen, 'weighted_slices_range')):
-                    raise ValueError("to use `weighted_slices_range`, `datagen`"
-                                     " and `val_datagen` must have `weighted_"
-                                     "slices_range` attribute defined ( via "
-                                     "`preprocessor`).")
-
-                no_slices = self.val_datagen.slices_per_batch in {1, None}
-                if no_slices:
-                    print(WARN, "BatchGenerator uses no slices; setting "
-                          "`weighted_slices_range=None`")
-                    self.weighted_slices_range = None
-
-        def _validate_class_weights():
-            for name in ('class_weights', 'val_class_weights'):
-                cw = getattr(self, name)
-                if cw is not None:
-                    assert all([isinstance(x, int) for x in cw.keys()]), (
-                        "`{}` classes must be of type int (got {})"
-                        ).format(name, cw)
-                    assert ((0 in cw and 1 in cw) or cw.sum() > 1), (
-                        "`{}` must contain classes 1 and 0, or greater "
-                        "(got {})").format(name, cw)
-
-        def _validate_best_subset_size():
-            if self.best_subset_size is not None:
-                if self.batch_size is None:
-                    raise ValueError("`batch_size` cannot be None to use "
-                                     "`best_subset_size`")
-                if self.val_datagen.shuffle_group_samples:
-                    raise ValueError("`val_datagen` cannot use `shuffle_group_"
-                                     "samples` with `best_subset_size`")
-
         def _validate_kwarg_names(kwargs):
             for kw in kwargs:
                 if kw not in _DEFAULT_TRAINGEN_CFG:
@@ -755,17 +637,10 @@ class TrainGenerator():
 
         _validate_kwarg_names(kwargs)
         _set_kwargs(kwargs)
+        _validate_traingen_configs(self)
 
         if self.train_metrics is None or self.val_metrics is None:
             _set_metrics_from_model()
-        _validate_metrics()
-        _validate_directories()
-        _validate_optimizer_saving_configs()
-        _validate_visualizers()
-        _validate_savelist()
-        _validate_weighted_slices_range()
-        _validate_class_weights()
-        _validate_best_subset_size()
 
         if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
             km = self.key_metric if self.key_metric != 'loss' else (

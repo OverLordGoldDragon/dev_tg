@@ -50,31 +50,32 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
+tests_done = {name: None for name in ('main', 'load', 'weighted_slices')}
 
 
 def test_main():
     t0 = time()
     with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
-        _test_main()
-
+        tg = _init_session(CONFIGS)
+        tg.train()
+        _test_load(tg, CONFIGS)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< TIMESERIES TEST PASSED >>\n", 'green')
+    _notify('main', tests_done)
 
 
-def _test_main():
-    tg = _init_session(CONFIGS)
-    tg.train()
-
-    _test_weighted_slices(tg)
-    _test_load(tg, CONFIGS)
-
-
-def _test_weighted_slices(tg):
-    CONFIGS.update(dict(eval_fn_name='predict',
-                        weighted_slices_range=(.5, 1.5)))
-    tg = _init_session(CONFIGS)
-    tg.train()
+def test_weighted_slices():
+    t0 = time()
+    CONFIGS['traingen'].update(dict(eval_fn_name='predict',
+                                    loss_weighted_slices_range=(.5, 1.5),
+                                    pred_weighted_slices_range=(.5, 1.5)))
+    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
+            CONFIGS['traingen']['best_models_dir']):
+        tg = _init_session(CONFIGS)
+        tg.train()
+        _destroy_session(tg)
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('weighted_slices', tests_done)
 
 
 def _test_load(tg, CONFIGS):
@@ -89,7 +90,8 @@ def _test_load(tg, CONFIGS):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(CONFIGS, weights_path, loadpath)
-    print("\n>LOAD TEST PASSED")
+
+    _notify('load', tests_done)
 
 
 def _make_model(weights_path=None, **kw):
@@ -131,6 +133,13 @@ def _destroy_session(tg):
     [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
     del tg
 
+
+def _notify(name, tests_done):
+    tests_done[name] = True
+    print("\n>%s TEST PASSED" % name.upper())
+
+    if all(tests_done.values()):
+        cprint("<< TIMESERIES TEST PASSED >>\n", 'green')
 
 if __name__ == '__main__':
     pytest.main([__file__, "--capture=sys"])

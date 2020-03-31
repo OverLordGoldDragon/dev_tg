@@ -67,48 +67,7 @@ def _get_sample_weight(cls, labels, val=False):
 
 
 def _get_weighted_sample_weight(cls, labels_all, val=False,
-                                 weight_range=(0.5, 1.5), slice_idx=None):        
-    def _standardize_labels(cls, labels_all, val, slice_idx):
-        # CASES:
-        #  a. (batches, slices, samples, X)
-        #  b. (1, slices, samples, X)
-        #  c. (slices, samples, X)
-        #  d. (1, samples, X)
-        #  e. (samples, X)
-        #
-        #  1-5:   X = n_classes
-        #  6-10:  X = 1
-        #  11-15: X = None (missing)
-
-        def _infer_task(cls, labels_all, val):
-            cw = cls.val_class_weights if val else cls.class_weights
-            if cw is None:  # some checks will skip
-                return None
-            if sum(cw.keys()) > 1:
-                if labels_all.ndim == 1:
-                    return 'sparse_categorical'
-                elif labels_all.ndim == 2:
-                    return 'categorical'
-            return 'binary'
-
-        labels_all = np.asarray(labels_all)
-        task = _infer_task(cls, labels_all, val)
-
-        if task == 'sparse_categorical':
-            assert (labels_all.shape[-1] != 1), ("last dim must be > 1 for "
-                                                 "'sparse_categorical' labels")
-        elif task in ('binary', 'categorical'):
-            if labels_all.shape[-1] != 1:
-                labels_all = np.expand_dims(labels_all, -1)
-        while labels_all.ndim < 4:  # ensure dims (batches, slices, samples, y)
-            labels_all = np.expand_dims(labels_all, 0)
-
-        if slice_idx is None:  # `None` as in not passed in, not dg-absent
-            dg = cls.val_datagen if val else cls.datagen
-            assert (labels_all.shape[1] == dg.slices_per_batch), (
-                "num slices in `labels_all` doesn't match num slices in datagen")
-        return labels_all
-
+                                weight_range=(0.5, 1.5), slice_idx=None):
     def _sliced_sample_weight(cls, labels_all, val):
         sw_all = []
         for batch_labels in labels_all:
@@ -117,47 +76,27 @@ def _get_weighted_sample_weight(cls, labels_all, val=False,
                 sw = _get_sample_weight(cls, slice_labels, val)
                 sw_all[-1].append(sw)
         sw_all = np.asarray(sw_all)
-        if sw_all.ndim == 3:
+        if sw_all.ndim >= 3 and sw_all.shape[0] == 1:
             sw_all = sw_all.squeeze(axis=0)
         return sw_all
-    
-    labels_all = _standardize_labels(cls, labels_all, val, slice_idx)
 
+    do_val = slice_idx is None  # `None` as in not passed in, not dg-absent
+    labels_all = _validate_data_shapes(cls, {'labels_all': labels_all},
+                                       validate_n_slices=do_val)['labels_all']
     dg = cls.val_datagen if val else cls.datagen
     n_slices = dg.slices_per_batch
 
-    sw_weights = np.zeros((n_slices, 1, 1))
-    sw_weights[:, 0, 0] = np.linspace(*weight_range, n_slices)
+    sw = _sliced_sample_weight(cls, labels_all, val)
+    sw = _validate_data_shapes(cls, {'sw': sw}, validate_n_slices=do_val)['sw']
+    sw_weights = np.linspace(*weight_range, n_slices).reshape(
+        [1, n_slices] + [1]*(sw.ndim - 2))
 
-    sw = _sliced_sample_weight(cls, labels_all, val) * sw_weights
-    sw = sw if slice_idx is None else sw[slice_idx]
+    sw = sw * sw_weights
+    sw = sw if slice_idx is None else sw[:, slice_idx]
     return sw.squeeze()
 
 
-def _compute_metric(metric_name, y_true, y_pred, sample_weight=None,
-                    pred_threshold=None):
-    kw1 = dict(y_true=y_true, y_pred=y_pred, pred_threshold=pred_threshold)
-    kw2 = dict(y_true=y_true, y_pred=y_pred, sample_weight=sample_weight)
-    non_loss = ('tpr', 'tnr', 'f1-score', 'categorical_accuracy',
-                'sparse_categorical_accuracy', 'binary_accuracy', 
-                'tnr_tpr', 'binary_informedness')
-    
-    if metric_name in non_loss:
-        return getattr(metric_fns, metric_name)(**kw1)
-    else:
-        return getattr(metric_fns, metric_name)(**kw2)
-
-
-def _set_predict_threshold(cls, predict_threshold, for_current_iter=False):
-    if cls.use_dynamic_predict_threshold:
-        if not for_current_iter:
-            cls.dynamic_predict_threshold = predict_threshold
-        cls.predict_threshold = predict_threshold
-    else:
-        cls.predict_threshold = cls.static_predict_threshold 
-            
-
-def _get_val_history(cls, for_current_iter=False):    
+def _get_val_history(cls, for_current_iter=False):
     if (cls.best_subset_size != 0) and not for_current_iter:
         return _get_best_subset_val_history(cls)
 
@@ -176,53 +115,23 @@ def _get_val_history(cls, for_current_iter=False):
             sample_weight_all = cls._sw_cache.copy()
         return {'labels_all': labels_all, 'preds_all': preds_all,
                 'sample_weight_all': sample_weight_all}
-    
-    def _get_api_metric_name(name, model):
-        if name == 'loss':
-            api_name = model.loss
-        elif name in ('accuracy', 'acc'):
-            if model.loss[0] == 'categorical_crossentropy':
-                api_name = 'categorical_accuracy'
-            elif model.loss[0] == 'sparse_categorical_crossentropy':
-                api_name = 'sparse_categorical_accuracy'
-            else:
-                api_name = 'binary_accuracy'
-        else:
-            api_name = name
-        return api_name
 
     d = _unpack_data(cls)
-    (labels_all, preds_all, sample_weight_all, 
+    (labels_all, preds_all, sample_weight_all,
      preds_all_norm, labels_all_norm) = _transform_eval_data(
          cls, d['labels_all'], d['preds_all'], d['sample_weight_all'],
          return_as_dict=False)
-    
-    pred_threshold, key_metric = get_best_predict_threshold(
-        labels_all_norm, preds_all_norm, cls.key_metric_fn,
-        search_interval=.01,
-        search_min_max=cls.dynamic_predict_threshold_min_max,
-        return_best_metric=True)
-    _set_predict_threshold(cls, pred_threshold, for_current_iter)
 
-    metric_names = cls.val_metrics.copy()
-    metric_names.remove(cls.key_metric)  # already computed
-    metrics = {}
-    for name in metric_names:
-        api_name = _get_api_metric_name(name, cls.model)
-        kw = dict(metric_name=api_name, y_true=labels_all_norm, 
-                  y_pred=preds_all_norm,
-                  sample_weight=sample_weight_all,
-                  pred_threshold=cls.predict_threshold)
+    # TODO
+    if cls.dynamic_predict_threshold_min_max is not None:
+        pred_threshold = get_best_predict_threshold(
+            labels_all_norm, preds_all_norm, cls.key_metric_fn,
+            search_interval=.01,
+            search_min_max=cls.dynamic_predict_threshold_min_max)
+        _set_predict_threshold(cls, pred_threshold, for_current_iter)
 
-        if name == 'loss':
-            kw['_y_true'], kw['_y_pred'] = labels_all, preds_all
-            metrics[name] = _compute_metric(**kw)
-            metrics[name] += l1l2_weight_loss(cls.model)
-        else:
-            metrics[name] = _compute_metric(**kw)
-
-    metrics[cls.key_metric] = key_metric
-    return metrics
+    return _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
+                            labels_all_norm, preds_all_norm)
 
 
 def _get_best_subset_val_history(cls):
@@ -238,19 +147,28 @@ def _get_best_subset_val_history(cls):
                 else:
                     restored += [x.reshape(n_batches, batch_size)]
             return {name: x for name, x in zip(data, restored)}
-    
+
         labels_all = cls._labels_cache.copy()
         preds_all  = cls._preds_cache.copy()
         sample_weight_all = cls._sw_cache.copy()
         return _restore_flattened(
-            *_transform_eval_data(cls, labels_all, preds_all, sample_weight_all))
+            _transform_eval_data(cls, labels_all, preds_all, sample_weight_all))
 
     def _find_best_subset_from_preds(cls, d):
+        metric_fn = getattr(metric_fns,
+                            _get_api_metric_name(cls.key_metric, cls.model))
+        if 'pred_threshold' not in metric_fn.__code__.co_varnames:
+            search_min_max = None
+        elif cls.dynamic_predict_threshold_min_max is None:
+            search_min_max = (cls.predict_threshold, cls.predict_threshold)
+        else:
+            search_min_max = cls.dynamic_predict_threshold_min_max
+
         best_subset_idxs, pred_threshold, _ = find_best_subset(
-            d['labels_all_norm'], d['preds_all_norm'], 
+            d['labels_all_norm'], d['preds_all_norm'],
             search_interval=.01,
-            search_min_max=cls.dynamic_predict_threshold_min_max,
-            metric_fn=getattr(metric_fns, cls.key_metric),
+            search_min_max=search_min_max,
+            metric_fn=metric_fn,
             subset_size=cls.best_subset_size)
         return best_subset_idxs, pred_threshold
 
@@ -259,46 +177,31 @@ def _get_best_subset_val_history(cls):
         best_subset_idxs = find_best_subset_from_history(
             metric, cls.best_subset_size, cls.max_is_best)
         return best_subset_idxs
-    
+
     def _best_subset_metrics_from_history(cls, best_subset_idxs):
         return {name: np.asarray(metric)[best_subset_idxs].mean()
                 for name, metric in cls.val_temp_history.items()}
-        
+
     def _best_subset_metrics_from_preds(cls, d, best_subset_idxs):
         def _filter_by_indices(indices, *arrs):
             return [np.asarray([x[idx] for idx in indices]) for x in arrs]
-    
-        def _flat(*arrs):
-            return [np.asarray(x).flatten() for x in arrs]
 
-        ALL = _filter_by_indices(best_subset_idxs, d['labels_all'], 
-                                 d['preds_all'], d['sample_weight_all'], 
+        ALL = _filter_by_indices(best_subset_idxs, d['labels_all'],
+                                 d['preds_all'], d['sample_weight_all'],
                                  d['preds_all_norm'], d['labels_all_norm'])
         (labels_all, preds_all, sample_weight_all, preds_all_norm,
-         labels_all_norm) = _flat(*ALL)
-    
-        metric_names = cls.val_metrics.copy()
-        metrics = {}
-        for name in metric_names:
-            kw = dict(metric_name=name, y_true=labels_all_norm, 
-                      y_pred=preds_all_norm,
-                      sample_weight=sample_weight_all, 
-                      pred_threshold=cls.predict_threshold)
-            if name == 'loss':
-                kw['_y_true'], kw['_y_pred'] = labels_all, preds_all
-                kw['metric_name'] = cls.model.loss  # TODO multiple losses
-                metrics[name] = _compute_metric(**kw)
-                metrics[name] += l1l2_weight_loss(cls.model)
-            else:
-                metrics[name] = _compute_metric(**kw)
-        return metrics
-    
+         labels_all_norm) = _unroll_samples(cls.model.output_shape, *ALL)
+
+        return _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
+                                labels_all_norm, preds_all_norm)
+
     if cls.eval_fn_name == 'evaluate':
         best_subset_idxs = _find_best_subset_from_history(cls)
     elif cls.eval_fn_name == 'predict':
         d = _unpack_data(cls)
         best_subset_idxs, pred_threshold = _find_best_subset_from_preds(cls, d)
-        _set_predict_threshold(cls, pred_threshold)
+        if cls.dynamic_predict_threshold_min_max is not None:
+            _set_predict_threshold(cls, pred_threshold)
     else:
         raise ValueError("unknown `eval_fn_name`: %s" % cls.eval_fn_name)
 
@@ -309,55 +212,133 @@ def _get_best_subset_val_history(cls):
         return _best_subset_metrics_from_preds(cls, d, best_subset_idxs)
 
 
+def _compute_metric(data, metric_name=None, metric_fn=None):
+    def _del_if_not_in_metric_fn(name, data, metric_fn):
+        if name in data and name not in metric_fn.__code__.co_varnames:
+            del data[name]
+
+    if metric_name is not None:
+        metric_fn = getattr(metric_fns, metric_name)
+    _del_if_not_in_metric_fn('pred_threshold', data, metric_fn)
+    _del_if_not_in_metric_fn('sample_weight', data, metric_fn)
+    return metric_fn(**data)
+
+
+def _get_api_metric_name(name, model):
+    if name == 'loss':
+        api_name = model.loss
+    elif name in ('accuracy', 'acc'):
+        if model.loss[0] == 'categorical_crossentropy':
+            api_name = 'categorical_accuracy'
+        elif model.loss[0] == 'sparse_categorical_crossentropy':
+            api_name = 'sparse_categorical_accuracy'
+        else:
+            api_name = 'binary_accuracy'
+    else:
+        api_name = name
+    return api_name
+
+
+def _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
+                     labels_all_norm, preds_all_norm):
+    metric_names = cls.val_metrics.copy()
+    metrics = {}
+    for name in metric_names:
+        api_name = _get_api_metric_name(name, cls.model)
+        data = dict(y_true=labels_all_norm,  # TODO remove `preds_all` cases?
+                    y_pred=preds_all_norm,
+                    sample_weight=sample_weight_all,
+                    pred_threshold=cls.predict_threshold)
+
+        # TODO: cleanup
+        if name == cls.key_metric:
+            if 'sample_weight' in cls.key_metric_fn.__code__.co_varnames:
+                data['y_true'] = labels_all.ravel()
+                data['y_pred'] = preds_all.ravel()
+                data['sample_weight'] = sample_weight_all.ravel()
+            metrics[name] = _compute_metric(data, metric_fn=cls.key_metric_fn)
+            if name == 'loss' or name[-1] == '*':
+                metrics[name] += l1l2_weight_loss(cls.model)
+            data['y_true'], data['y_pred'] = labels_all_norm, preds_all_norm
+            data['sample_weight'] = sample_weight_all
+        elif name == 'loss':
+            data['y_true'] = labels_all.ravel()
+            data['y_pred'] = preds_all.ravel()
+            data['sample_weight'] = sample_weight_all.ravel()
+            metrics[name] = _compute_metric(data, metric_name=api_name)
+            metrics[name] += l1l2_weight_loss(cls.model)
+            data['y_true'], data['y_pred'] = labels_all_norm, preds_all_norm
+            data['sample_weight'] = sample_weight_all
+        else:
+            metrics[name] = _compute_metric(data, metric_name=api_name)
+    return metrics
+
+
+def _unroll_samples(output_shape, *arrs):
+    ls = []
+    for x in arrs:
+        while x.shape[0] == 1:
+            x = x.squeeze(axis=0)
+        if x.shape != output_shape:
+            x = x.reshape(-1, *output_shape)
+        ls.append(x)
+    return ls
+
+
 def _transform_eval_data(cls, labels_all, preds_all, sample_weight_all,
                          return_as_dict=True):
-    if cls.weighted_slices_range is not None:
-        def _check_and_fix_dims(labels_all, preds_all):
-            labels_all, preds_all = np.array(labels_all), np.array(preds_all)
-            if labels_all.ndim == 1:
-                labels_all = labels_all.reshape(-1, 1)
-            if preds_all.ndim == 1:
-                preds_all = preds_all.reshape(-1, 1)
-            
-            assert labels_all.shape == preds_all.shape
-            if getattr(cls.val_datagen, 'slices_per_batch', None) is not None:
-                assert cls.val_datagen.slices_per_batch in preds_all.shape
-            return labels_all, preds_all
+    d = {'labels_all': labels_all, 'preds_all': preds_all}
+    d = _validate_data_shapes(cls, d)
+    labels_all, preds_all = d['labels_all'], d['preds_all']
 
-        ##TODO: sample weights
-        labels_all, preds_all = _check_and_fix_dims(labels_all, preds_all)
-        if cls.val_datagen.slices_per_batch is not None:
-            preds_all_norm = cls._normalize_preds(preds_all)
+    if cls.pred_weighted_slices_range is not None:
+        if cls.pred_weighted_slices_range is not None:
+            preds_all_norm = _normalize_preds(cls, preds_all)
         else:
             preds_all_norm = preds_all
         sample_weight_all = cls.get_sample_weight(labels_all, val=True)
         labels_all_norm = np.array([labels[0] for labels in labels_all])
     else:
-        preds_all  = np.vstack(preds_all).flatten()
-        labels_all = np.vstack(labels_all).flatten()
-        sample_weight_all = np.asarray(sample_weight_all).flatten()
+        preds_all  = np.vstack(preds_all)
+        labels_all = np.vstack(labels_all)
+        sample_weight_all = np.asarray(sample_weight_all)
         preds_all_norm = preds_all
         labels_all_norm = labels_all
-    
+
     if cls.eval_fn_name == 'predict':
         assert (preds_all_norm.max() <= 1) and (preds_all_norm.min() >= 0)
-    
-    data = (labels_all, preds_all, sample_weight_all, 
+
+    data = (labels_all, preds_all, sample_weight_all,
             preds_all_norm, labels_all_norm)
+    data = _unroll_samples(cls.model.output_shape, *data)
+
     if return_as_dict:
         names = ('labels_all', 'preds_all', 'sample_weight_all',
                  'preds_all_norm', 'labels_all_norm')
-        return {name: x.flatten() for name, x in zip(names, data)}
+        return {name: x for name, x in zip(names, data)}
     else:
         return data
 
+
 def _normalize_preds(cls, preds_all):
+    def _validate_data(preds_all, n_slices):
+        spb = cls.val_datagen.slices_per_batch
+        assert (n_slices == spb), ("`n_slices` inferred from `preds_all` differs"
+                                   " from `val_datagen.slices_per_batch` "
+                                   "(%s != %s)" % (n_slices, spb))
+        assert (np.asarray(preds_all).max() < 1.01), (
+            "`max(preds_all) > 1`; can only normalize in (0, 1) range")
+        assert (np.asarray(preds_all).min() > -.01), (
+            "`min(preds_all) < 0`; can only normalize in (0, 1) range")
+
     n_slices = preds_all.shape[1]
-    assert (n_slices == cls.val_datagen.slices_per_batch), ("`n_slices` "
-            "inferred from `preds_all` != `val_datagen.slices_per_batch`")
+    # validate even if n_slices == 1 to ensure expected behavior
+    # in metrics computation
+    _validate_data(preds_all, n_slices)
+
     if n_slices == 1:
         return preds_all
-    slice_weights = np.linspace(*cls.weighted_slices_range, n_slices)
+    slice_weights = np.linspace(*cls.pred_weighted_slices_range, n_slices)
 
     weighted_preds = []
     for preds in preds_all:
@@ -368,10 +349,78 @@ def _normalize_preds(cls, preds_all):
 
     weight_norm = np.sum(slice_weights)
     preds_norm = np.sum(np.array(weighted_preds), axis=1) / weight_norm + .5
-    
+
     # fix possible float imprecision
     if np.min(preds_norm) < 0:
         preds_norm -= np.min(preds_norm)
     if np.max(preds_norm) > 1:
         preds_norm -= np.max(preds_norm)
     return preds_norm
+
+
+def _validate_data_shapes(cls, data, validate_n_slices=True):
+    """Ensures `data` entires are shaped (batches, slices, *model.output_shape)
+    """
+    def _validate_batch_size(data, outs_shape):
+        batch_size = outs_shape[0]
+        for name, x in data.items():
+            assert (batch_size in x.shape), (
+                f"`{name}.shape` must include batch_size (={batch_size})")
+
+    def _validate_last_dim(data, outs_shape):
+        for name, x in data.items():
+            if x.shape[-1] != outs_shape[-1]:
+                assert (outs_shape[-1] == 1), (
+                    f"`{name}` shapes must contain model.output_shape "
+                    "[%s != %s]" % (x.shape, outs_shape))
+                data[name] = np.expand_dims(x, -1)
+        return data
+
+    def _validate_last_dims_match_outs_shape(data, outs_shape, ndim):
+        for name, x in data.items():
+            assert (x.shape[-ndim:] == outs_shape), (
+                "last dims of `preds_all` must equal model.output_shape "
+                "[%s != %s]" % (x.shape, outs_shape))
+
+    def _validate_iter_ndim(data, ndim):
+        if cls.pred_weighted_slices_range is not None:
+            expected_iter_ndim = ndim + 2  # +(batches, slices)
+        else:
+            expected_iter_ndim = ndim + 1  # +(batches,)
+
+        for name in data:
+            while data[name].ndim != expected_iter_ndim:
+                data[name] = np.expand_dims(data[name], 0)
+        return data
+
+    def _validate_equal_shapes(data):
+        x = data[list(data.keys())[0]]
+        assert all([y.shape == x.shape for y in data.values()])
+
+    def _validate_n_slices(data):
+        x = data[list(data.keys())[0]]
+        if getattr(cls.val_datagen, 'slices_per_batch', None) is not None:
+            assert cls.val_datagen.slices_per_batch in x.shape
+
+    for name in data:
+        data[name] = np.asarray(data[name])
+    outs_shape = cls.model.output_shape
+    ndim = len(outs_shape)
+
+    if outs_shape[0] is not None:
+        _validate_batch_size(data, outs_shape)
+    data = _validate_last_dim(data, outs_shape)
+
+    _validate_last_dims_match_outs_shape(data, outs_shape, ndim)
+    data = _validate_iter_ndim(data, ndim)
+    _validate_equal_shapes(data)
+    if validate_n_slices:
+        _validate_n_slices(data)
+
+    return data
+
+
+def _set_predict_threshold(cls, predict_threshold, for_current_iter=False):
+    if not for_current_iter:
+        cls.dynamic_predict_threshold = predict_threshold
+    cls.predict_threshold = predict_threshold

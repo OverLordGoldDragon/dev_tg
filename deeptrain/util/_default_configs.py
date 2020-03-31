@@ -237,9 +237,9 @@ def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, configs):
 
 _path = r"D:\Desktop\School\Deep Learning\DL_code\\"
 _DEFAULT_TRAINGEN_CFG = dict(
-    dynamic_predict_threshold_min_max = (0.35, 0.90),
-    use_dynamic_predict_threshold     = False,
-    weighted_slices_range       = None,
+    dynamic_predict_threshold_min_max = None,
+    loss_weighted_slices_range  = None,
+    pred_weighted_slices_range  = None,
     use_passed_dirs_over_loaded = False,
     static_predict_threshold    = 0.5,
     dynamic_predict_threshold   = 0.5,  # initial
