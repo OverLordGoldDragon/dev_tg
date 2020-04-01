@@ -16,6 +16,7 @@ if TF_KERAS:
     from tensorflow.keras import metrics as keras_metrics
     from tensorflow.keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+    from tensorflow.keras.regularizers import l2
     from tensorflow.keras.models import Model
 else:
     from keras import backend as K
@@ -23,6 +24,7 @@ else:
     from keras import metrics as keras_metrics
     from keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+    from keras.regularizers import l2
     from keras.models import Model
 
 

@@ -7,6 +7,7 @@ from termcolor import cprint
 from time import time
 
 from .backend import Input, Dense, LSTM
+from .backend import l2
 from .backend import Model
 from .backend import BASEDIR, tempdir
 from deeptrain import TrainGenerator, SimpleBatchgen
@@ -124,7 +125,9 @@ def _make_model(weights_path=None, **kw):
     batch_shape, loss, units, optimizer = _unpack_configs(kw)
 
     ipt = Input(batch_shape=batch_shape)
-    x   = LSTM(units, return_sequences=False, stateful=True)(ipt)
+    x   = LSTM(units, return_sequences=False, stateful=True,
+               kernel_regularizer=l2(1e-4), recurrent_regularizer=l2(1e-4),
+               bias_regularizer=l2(1e-4))(ipt)
     out = Dense(1, activation='sigmoid')(x)
 
     model = Model(ipt, out)
