@@ -15,7 +15,10 @@ def _standardize(y_true, y_pred, sample_weight=None, clip_pred=False,
 
     if sample_weight is not None:
         if isinstance(sample_weight, (list, np.ndarray)):
-            sample_weight = np.asarray(sample_weight).squeeze().astype(PREC)
+            sample_weight = np.asarray(sample_weight).astype(PREC)
+            if sample_weight.shape[-1] != y_true.shape[-1] and (
+                    sample_weight.ndim < y_true.ndim):
+                sample_weight = np.expand_dims(sample_weight, -1)
         return y_true, y_pred, sample_weight
     if pred_thresholds is not None:
         pred_thresholds = np.asarray(pred_thresholds).reshape(1, -1).astype(PREC)
@@ -24,7 +27,7 @@ def _standardize(y_true, y_pred, sample_weight=None, clip_pred=False,
 
 
 def f1_score(y_true, y_pred, pred_threshold=0.5, beta=1):
-    y_true, y_pred = map(np.squeeze, 
+    y_true, y_pred = map(np.squeeze,
                          _standardize(y_true, y_pred, clip_pred=True))
     y_pred = y_pred > pred_threshold
 
@@ -75,8 +78,12 @@ def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
 
 def _weighted_loss(losses, sample_weight):
     losses = np.asarray(losses)
-    if isinstance(sample_weight, np.ndarray) and losses.ndim > 1:
-        sample_weight = sample_weight.reshape(len(losses), *[1]*losses.ndim)
+    if isinstance(sample_weight, np.ndarray) and (
+            sample_weight.ndim != losses.ndim):
+        if losses.ndim < sample_weight.ndim:
+            losses = np.expand_dims(losses, -1)
+        assert (sample_weight.ndim == losses.ndim), (
+            "[%s vs %s]" % (sample_weight.shape, losses.shape))
     return np.mean(losses * sample_weight)
 
 
@@ -88,7 +95,7 @@ def binary_crossentropy(y_true, y_pred, sample_weight=1):
     logits = np.log(y_pred) - np.log(1 - y_pred)  # sigmoid inverse
     neg_abs_logits = np.where(logits >= 0, -logits, logits)
     relu_logits    = np.where(logits >= 0, logits, 0)
-    
+
     loss_vec = relu_logits - logits * y_true + np.log(1 + np.exp(neg_abs_logits))
     return _weighted_loss(loss_vec, sample_weight)
 
@@ -97,7 +104,7 @@ def categorical_crossentropy(y_true, y_pred, sample_weight=1):
     y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight,
                                                  clip_pred=True)
     y_pred = y_pred.reshape(1, -1) if y_pred.ndim == 1 else y_pred
-    
+
     losses = []
     for label, pred in zip(y_true, y_pred):
         pred /= pred.sum(axis=-1, keepdims=True)
@@ -117,7 +124,7 @@ def sparse_categorical_crossentropy(y_true, y_pred, sample_weight=1):
 
 def mean_squared_error(y_true, y_pred, sample_weight=1):
     y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
-    return _weighted_loss(np.mean((y_true - y_pred)**2, axis=-1), 
+    return _weighted_loss(np.mean((y_true - y_pred)**2, axis=-1),
                           sample_weight)
 
 
@@ -144,13 +151,13 @@ def mean_squared_logarithmic_error(y_true, y_pred, sample_weight=1):
 
 def squared_hinge(y_true, y_pred, sample_weight=1):
     y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
-    return _weighted_loss(np.mean(np.maximum(1. - y_true * y_pred, 0.)**2, 
+    return _weighted_loss(np.mean(np.maximum(1. - y_true * y_pred, 0.)**2,
                                   axis=-1), sample_weight)
 
 
 def hinge(y_true, y_pred, sample_weight=1):
     y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
-    return _weighted_loss(np.mean(np.maximum(1. - y_true * y_pred, 0.), 
+    return _weighted_loss(np.mean(np.maximum(1. - y_true * y_pred, 0.),
                                   axis=-1), sample_weight)
 
 
@@ -191,7 +198,7 @@ def poisson(y_true, y_pred, sample_weight=1):
 def cosine_proximity(y_true, y_pred, sample_weight=1):
     def _l2_normalize(x, axis=-1, eps=1e-7):
         return x / np.sqrt(np.maximum(np.sum(x**2), eps))
-    
+
     y_true, y_pred, sample_weight = _standardize(y_true, y_pred, sample_weight)
     y_true = _l2_normalize(y_true, axis=-1)
     y_pred = _l2_normalize(y_pred, axis=-1)
@@ -244,7 +251,7 @@ def binary_accuracy_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
     y_true, y_pred = y_true.reshape(-1, 1), y_pred.reshape(-1, 1)
 
     return np.equal(y_true, y_pred > pred_thresholds).mean(axis=-1)
-    
+
 def tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
     y_true, y_pred, pred_thresholds = _standardize(
         y_true, y_pred, pred_thresholds=pred_thresholds)

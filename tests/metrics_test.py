@@ -36,17 +36,24 @@ def _make_test_fn(name):
     def _keras_metric(name):
         if name not in KERAS_METRICS:
             def _weighted_loss(y_true, y_pred, sample_weight):
+                def _standardize(losses, sample_weight):
+                    if isinstance(sample_weight, np.ndarray):
+                        if (sample_weight.shape[-1] != y_true.shape[-1]) and (
+                                sample_weight.ndim < y_true.ndim):
+                            sample_weight = np.expand_dims(sample_weight, -1)
+                        if losses.ndim < sample_weight.ndim:
+                            losses = np.expand_dims(losses, -1)
+                    return losses, sample_weight
+
                 losses = K.get_value(getattr(keras_losses, name)(
                     K.variable(y_true), K.variable(y_pred)))
-                if isinstance(sample_weight, np.ndarray) and losses.ndim > 1:
-                    sample_weight = sample_weight.reshape(
-                        len(losses), *[1]*losses.ndim)
+                losses, sample_weight = _standardize(losses, sample_weight)
                 return np.mean(losses * sample_weight)
             return _weighted_loss
         else:
             # sample_weight makes no sense for keras `metrics`
             return lambda y_true, y_pred: (
-                K.get_value(getattr(keras_metrics, name)(K.variable(y_true), 
+                K.get_value(getattr(keras_metrics, name)(K.variable(y_true),
                                                          K.variable(y_pred))))
 
     def _test_metric(name):
@@ -56,7 +63,7 @@ def _make_test_fn(name):
         else:
             # sample_weight makes no sense for keras `metrics`
             return lambda y_true, y_pred: getattr(metrics, name)(y_true, y_pred)
-    
+
     _test_metric_fn = _test_metric(name)
     _keras_metric_fn = _keras_metric(name)
 
@@ -115,7 +122,7 @@ def _make_data_fn(name):
 def _test_unweighted(name):
     y_true, y_pred, _ = _make_data_fn(name)()
     results = _make_test_fn(name)(y_true, y_pred)
-    fail_msg = (name, "unweighted", 
+    fail_msg = (name, "unweighted",
                 "diff: {} tested: {}, keras: {}".format(
                     np.abs(results[1] - results[0]), results[0], results[1]))
     return np.allclose(*results, atol=1e-3, rtol=1e-5), fail_msg
@@ -127,7 +134,7 @@ def _test_sample_weighted(name):
         return True, ''
     y_true, y_pred, sample_weight = _make_data_fn(name)()
     results = _make_test_fn(name)(y_true, y_pred, sample_weight)
-    fail_msg = (name, "sample_weighted", 
+    fail_msg = (name, "sample_weighted",
                 "diff: {}tested: {}, keras: {}".format(
                     np.abs(results[1] - results[0]), results[0], results[1]))
     return np.allclose(*results, atol=1e-3, rtol=1e-5), fail_msg
@@ -166,7 +173,7 @@ def _notify(name):
  TestBinaryAccuracy,
  TestCategoricalAccuracy,
  TestSparseCategoricalAccuracy,
- ) = [type(_to_test_name(name), (), 
+ ) = [type(_to_test_name(name), (),
            {'test_unweighted': _assert(_test_unweighted, name),
             'test_sample_weighted': _assert(_test_sample_weighted, name),
             'test_notify': _notify(name)}
@@ -187,19 +194,19 @@ custom_to_test = ['f1_score', 'f1_score_multi_th',
 def test_f1_score():
     def _test_basic():
         y_true = [0,     0,   1,   0,   0, 0, 1, 1]
-        y_pred = [.01, .93, .42, .61, .15, 0, 1, .5]    
+        y_pred = [.01, .93, .42, .61, .15, 0, 1, .5]
         assert abs(f1_score(y_true, y_pred) - 1 / 3) < 1e-15
-    
+
     def _test_no_positive_labels():
         y_true = [0] * 6
         y_pred = [.1, .2, .3, .65, .7, .8]
         assert f1_score(y_true, y_pred) == 0.5
-        
+
     def _test_no_positive_predictions():
         y_true = [0, 0, 1]
         y_pred = [0, 0, 0]
         assert f1_score(y_true, y_pred) == 0
-    
+
     _test_basic()
     _test_no_positive_labels()
     _test_no_positive_predictions()
@@ -222,12 +229,12 @@ def test_f1_score_multi_th():
     def _compare_against_f1_score():
         y_true = np.random.randint(0, 2, (64,))
         y_pred = np.random.uniform(0, 1, (64,))
-        pred_thresholds = [.01, .05, .1, .2, .4, .5, .6, .8, .95, .99]    
-        
+        pred_thresholds = [.01, .05, .1, .2, .4, .5, .6, .8, .95, .99]
+
         single_scores = [f1_score(y_true, y_pred, th) for th in pred_thresholds]
         parallel_scores = f1_score_multi_th(y_true, y_pred, pred_thresholds)
         assert np.allclose(single_scores, parallel_scores, atol=1e-15)
-    
+
     _test_no_positive_labels()
     _test_nan_handling()
     _compare_against_f1_score()
@@ -241,7 +248,7 @@ def test_binaries():
     assert tpr(y_true, y_pred) == .5
     assert tnr_tpr(y_true, y_pred) == [.5, .5]
     assert binary_informedness(y_true, y_pred) == 0.
-    
-    
+
+
 if __name__ == '__main__':
     pytest.main([__file__, "--capture=sys"])

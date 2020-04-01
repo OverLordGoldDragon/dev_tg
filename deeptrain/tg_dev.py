@@ -387,7 +387,10 @@ class TrainGenerator():
         return x, y, sample_weight
 
     def get_sample_weight(self, labels, val=False, slice_idx=None):
-        if self.loss_weighted_slices_range is not None:
+        loss_weighted = self.loss_weighted_slices_range
+        pred_weighted = self.pred_weighted_slices_range
+        either_weighted = loss_weighted or pred_weighted
+        if loss_weighted is not None or (val and either_weighted):
             return _get_weighted_sample_weight(
                 self, labels, val, self.loss_weighted_slices_range, slice_idx)
 
@@ -635,17 +638,20 @@ class TrainGenerator():
             for attribute in class_kwargs:
                 setattr(self, attribute, class_kwargs[attribute])
 
+        def _maybe_set_key_metric_fn():
+            if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
+                km_name = self.key_metric if self.key_metric != 'loss' else (
+                    self.model.loss)
+                self.key_metric_fn = getattr(metrics_fns, km_name)
+
         _validate_kwarg_names(kwargs)
         _set_kwargs(kwargs)
+        _maybe_set_key_metric_fn()
         _validate_traingen_configs(self)
 
         if self.train_metrics is None or self.val_metrics is None:
             _set_metrics_from_model()
 
-        if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
-            km = self.key_metric if self.key_metric != 'loss' else (
-                self.model.loss)
-            self.key_metric_fn = getattr(metrics_fns, km)
 
     def _init_fit_and_pred_fns(self):
         self.fit_fn_name = self.fit_fn_name or 'train_on_batch'

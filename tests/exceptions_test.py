@@ -52,8 +52,9 @@ TRAINGEN_CFG = dict(
     model_configs=MODEL_CFG,
 )
 
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
+CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
+tests_done = {name: None for name in ('datagen_exceptions',)}
 
 
 def test_datagen_exceptions():
@@ -62,7 +63,7 @@ def test_datagen_exceptions():
             CONFIGS['traingen']['best_models_dir']):
         tg = _init_session(CONFIGS)
         tg.train()
-        
+
         dg = tg.datagen
         dg.advance_batch()
         dg.batch = dg.batch[:1]
@@ -70,15 +71,15 @@ def test_datagen_exceptions():
         _pass_on_fail(dg.advance_batch)
         dg.batch_loaded = True
         dg.advance_batch(forced=False)
-        
-        dg.shuffle = True        
+
+        dg.shuffle = True
         dg.all_data_exhausted = True
         dg._validate_batch()
 
         dg.batch = []
-        dg.batch_exhausted = True        
+        dg.batch_exhausted = True
         dg._validate_batch()
-        
+
         dg.set_nums_to_process = dg.set_nums_original.copy()
         _pass_on_fail(dg._set_class_params, ['99', '100'], ['100', '101'])
         _pass_on_fail(dg._set_class_params, ['1', '2'], ['100', '101'])
@@ -87,14 +88,14 @@ def test_datagen_exceptions():
 
         dg._set_preprocessor(None, {})
         dg._set_preprocessor("x", {})
-        
+
         _pass_on_fail(dg._infer_and_get_data_info, dg.data_dir,
                       data_format="x")
         dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
-        
+
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    cprint("<< IMAGE TEST PASSED >>\n", 'green')
+    _notify('datagen_exceptions', tests_done)
 
 
 def _test_load(tg, CONFIGS):
@@ -115,13 +116,13 @@ def _test_load(tg, CONFIGS):
 def _make_model(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'num_classes', 'filters', 'kernel_size', 
+                       'num_classes', 'filters', 'kernel_size',
                        'dropout', 'dense_units')
         return [kw[key] for key in expected_kw]
 
     (batch_shape, loss, metrics, optimizer, num_classes, filters,
      kernel_size, dropout, dense_units) = _unpack_configs(kw)
-    
+
     ipt = Input(batch_shape=batch_shape)
     x   = ipt
 
@@ -135,10 +136,10 @@ def _make_model(weights_path=None, **kw):
 
     x   = Dropout(dropout[1])(x)
     out = Dense(num_classes, activation='softmax')(x)
-    
+
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)
-    
+
     if weights_path is not None:
         model.load_weights(weights_path)
     return model
@@ -170,6 +171,14 @@ def _pass_on_fail(fn, *args, **kwargs):
         fn(*args, **kwargs)
     except Exception as e:
         print("Errmsg", e)
+
+
+def _notify(name, tests_done):
+    tests_done[name] = True
+    print("\n>%s TEST PASSED" % name.upper())
+
+    if all(tests_done.values()):
+        cprint("<< EXCEPTIONS TEST PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

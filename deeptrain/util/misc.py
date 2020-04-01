@@ -202,6 +202,19 @@ def _validate_traingen_configs(cls):
                 raise ValueError("`val_datagen` cannot use `shuffle_group_"
                                  "samples` with `best_subset_size`")
 
+    def _validate_dynamic_predict_threshold_min_max():
+        if cls.dynamic_predict_threshold_min_max is not None:
+            if cls.key_metric_fn is None:
+                print(WARN, "`key_metric_fn=None` (likely per `eval_fn_name !="
+                      " 'predict'`); setting"
+                      "`dynamic_predict_threshold_min_max=None`")
+                cls.dynamic_predict_threshold_min_max = None
+            elif 'pred_threshold' not in cls.key_metric_fn.__code__.co_varnames:
+                print(WARN, "`pred_threshold` parameter missing from "
+                      "`key_metric_fn`; setting "
+                      "`dynamic_predict_threshold_min_max=None`")
+                cls.dynamic_predict_threshold_min_max = None
+
     _validate_metrics()
     _validate_directories()
     _validate_optimizer_saving_configs()
@@ -210,3 +223,5 @@ def _validate_traingen_configs(cls):
     _validate_weighted_slices_range()
     _validate_class_weights()
     _validate_best_subset_size()
+    _validate_dynamic_predict_threshold_min_max()
+
