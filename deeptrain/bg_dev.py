@@ -192,7 +192,6 @@ class BatchGenerator():
         if self.all_data_exhausted:
             print(WARN, "all data exhausted; automatically resetting "
                   "datagen state")
-            raise Exception
             self.reset_state()
         if self.batch_exhausted:
             print(WARN, "batch exhausted; automatically advancing batch")
