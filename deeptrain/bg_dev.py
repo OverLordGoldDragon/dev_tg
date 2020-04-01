@@ -77,8 +77,9 @@ class BatchGenerator():
 
 
     ######### Main methods #########
-    def get(self):
-        self._validate_batch()
+    def get(self, skip_validation=False):
+        if not skip_validation:
+            self._validate_batch()
         return self.preprocessor.process(self.batch)
 
     def advance_batch(self, forced=False, is_recursive=False):
@@ -191,6 +192,7 @@ class BatchGenerator():
         if self.all_data_exhausted:
             print(WARN, "all data exhausted; automatically resetting "
                   "datagen state")
+            raise Exception
             self.reset_state()
         if self.batch_exhausted:
             print(WARN, "batch exhausted; automatically advancing batch")

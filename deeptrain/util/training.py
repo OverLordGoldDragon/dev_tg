@@ -29,17 +29,25 @@ def _update_temp_history(cls, metrics, val=False):
                   "after load() -- attempting fix via append()...")
             temp_history[name].append(value)
 
+    def _process_metric_names(metrics):
+        # TODO redundant check, e.g. 'f1_score' can't be in model.metrics
+        if TF_KERAS:
+            metric_names = ['loss', cls.model.metrics[0]._name]  # TODO multi
+        else:
+            metric_names = ['loss', *cls.model.metrics]
+        name_aliases = [cls._alias_to_metric_name(n) for n in metric_names]
+
+        if cls.eval_fn_name == 'evaluate':
+            assert len(metric_names) == len(metrics)
+            check_metrics = cls.val_metrics if val else cls.train_metrics
+            for name in check_metrics:
+                assert (name in name_aliases)
+        return name_aliases
+
     metrics = metrics if isinstance(metrics, (list, tuple)) else [metrics]
-
-    if TF_KERAS:
-        metric_names = ['loss', cls.model.metrics[0]._name]  # TODO multi
-    else:
-        metric_names = ['loss', *cls.model.metrics]
-    assert len(metric_names) == len(metrics)
-    name_aliases = [cls._alias_to_metric_name(n) for n in metric_names]
-
-    for name in cls.train_metrics:
-        assert (name in name_aliases)
+    if val:
+        1 == 1
+    name_aliases = _process_metric_names(metrics)
 
     temp_history = cls.val_temp_history if val else cls.temp_history
     datagen = cls.val_datagen if val else cls.datagen
@@ -369,13 +377,18 @@ def _validate_data_shapes(cls, data, validate_n_slices=True):
         return data
 
     def _validate_iter_ndim(data, ndim):
-        if cls.pred_weighted_slices_range is not None:
+        if getattr(cls.val_datagen, 'slices_per_batch', None) is not None:
             expected_iter_ndim = ndim + 2  # +(batches, slices)
         else:
             expected_iter_ndim = ndim + 1  # +(batches,)
 
         for name in data:
-            while data[name].ndim != expected_iter_ndim:
+            dndim = data[name].ndim
+            if dndim > expected_iter_ndim:
+                raise Exception(f"{name}.ndim exceeds `expected_iter_ndim` "
+                                f"({dndim} > {expected_iter_ndim}) "
+                                f"-- {data[name].shape}")
+            while data[name].ndim < expected_iter_ndim:
                 data[name] = np.expand_dims(data[name], 0)
         return data
 

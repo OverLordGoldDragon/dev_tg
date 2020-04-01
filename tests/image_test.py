@@ -96,8 +96,10 @@ def test_predict():
     t0 = time()
     with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
+        eval_fn_name = CONFIGS['traingen'].get('eval_fn_name', None)
         CONFIGS['traingen']['eval_fn_name'] = 'predict'
         _test_main()
+        CONFIGS['traingen']['eval_fn_name'] = eval_fn_name
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('predict', tests_done)

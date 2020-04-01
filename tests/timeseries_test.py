@@ -42,6 +42,7 @@ TRAINGEN_CFG = dict(
     epochs=2,
     reset_statefuls=True,
     max_is_best=False,
+    dynamic_predict_threshold_min_max=(.35, .9),
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,
@@ -50,7 +51,8 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'weighted_slices')}
+tests_done = {name: None for name in ('main', 'load', 'weighted_slices',
+                                      'predict')}
 
 
 def test_main():
@@ -76,6 +78,26 @@ def test_weighted_slices():
         _destroy_session(tg)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('weighted_slices', tests_done)
+
+
+def test_predict():
+    t0 = time()
+    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
+            CONFIGS['traingen']['best_models_dir']):
+        eval_fn_name = CONFIGS['traingen'].get('eval_fn_name', None)
+        key_metric = CONFIGS['traingen'].get('key_metric', None)
+        CONFIGS['traingen']['eval_fn_name'] = 'predict'
+        CONFIGS['traingen']['key_metric'] = 'f1_score'
+
+        tg = _init_session(CONFIGS)
+        tg.train()
+        _test_load(tg, CONFIGS)
+
+        CONFIGS['traingen']['eval_fn_name'] = eval_fn_name
+        CONFIGS['traingen']['key_metric'] = key_metric
+
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('predict', tests_done)
 
 
 def _test_load(tg, CONFIGS):

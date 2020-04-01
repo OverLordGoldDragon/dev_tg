@@ -151,20 +151,21 @@ _METRIC_TO_ALIAS = {
     'loss'    : 'Loss',
     'accuracy': 'Acc',
     'acc'     : 'Acc',
-    'f1-score': 'F1',
+    'f1_score': 'F1',
     'tnr'     : '0-Acc',
     'tpr'     : '1-Acc',
 }
 
 _ALIAS_TO_METRIC = {
-    'acc':    'accuracy',
-    'mae':    'mean_absolute_error',
-    'mse':    'mean_squared_error',
-    'mape':   'mean_absolute_percentage_error',
-    'msle':   'mean_squared_logarithmic_error',
-    'kld':    'kullback_leibler_divergence',
-    'cosine': 'cosine_proximity',
-    'f1':     'f1-score',
+    'acc':     'accuracy',
+    'mae':     'mean_absolute_error',
+    'mse':     'mean_squared_error',
+    'mape':    'mean_absolute_percentage_error',
+    'msle':    'mean_squared_logarithmic_error',
+    'kld':     'kullback_leibler_divergence',
+    'cosine':  'cosine_proximity',
+    'f1':      'f1_score',
+    'f1-score':'f1_score',
 }
 
 

@@ -56,7 +56,7 @@ class TrainGenerator():
                        'kullback_leibler_divergence', 'poisson',
                        'cosine_proximity', 'accuracy', 'binary_accuracy',
                        'categorical_accuracy', 'sparse_categorical_accuracy',
-                       'f1', 'tnr', 'tpr', 'tnr_tpr',
+                       'f1_score', 'tnr', 'tpr', 'tnr_tpr',
                        'binary_informedness')
 
     def __init__(self, model, datagen, val_datagen,
@@ -540,7 +540,7 @@ class TrainGenerator():
             comparative_histogram(
                 self.model,
                 layer_name=self.model.layers[-1].name,
-                data=self.val_datagen.get(),
+                data=self.val_datagen.get(skip_validation=True),
                 vline=self.predict_threshold,
                 xlims=(0, 1))
         elif isinstance(self.outputs_visualizer, LambdaType):

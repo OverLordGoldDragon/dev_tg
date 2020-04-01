@@ -77,6 +77,10 @@ def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
 
 def _validate_traingen_configs(cls):
     def _validate_metrics():
+        def _from_model(metric):
+            return metric != 'loss' and metric not in [
+                cls.model.loss, *cls.model.metrics]
+
         for name in ('train_metrics', 'val_metrics'):
             value = getattr(cls, name)
             if not isinstance(value, list):
@@ -84,14 +88,17 @@ def _validate_traingen_configs(cls):
                     setattr(cls, name, [value])
                 else:
                     setattr(cls, name, list(value))
-
-        def _from_model(metric):
-            return metric != 'loss' and metric not in [
-                cls.model.loss, *cls.model.metrics]
+            value = getattr(cls, name)
+            for alias in value:
+                setattr(cls, name, [cls._alias_to_metric_name(alias)])
+        cls.key_metric = cls._alias_to_metric_name(cls.key_metric)
 
         metrics = (*cls.train_metrics, *cls.val_metrics, cls.key_metric)
         supported = cls.BUILTIN_METRICS
         customs = cls.custom_metrics or [None]
+
+        if cls.key_metric not in cls.val_metrics:
+            cls.val_metrics.append(cls.key_metric)
 
         if cls.eval_fn_name == 'predict':
             for metric in metrics:
