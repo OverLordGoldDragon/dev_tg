@@ -20,7 +20,7 @@ def save_best_model(cls, del_previous_best=False):
             [os.remove(f) for f in prev_files]
 
         prev_files = _get_prev_files()
-        if len(prev_files) > cls.max_best_model_files:
+        if len(prev_files) > 0:
             command = input(WARN,  "_save_best_model_IF IS ASKING PERMISSION "
                             "TO DELETE MULTIPLE FILES IN", cls.best_models_dir
                             + "; PROCEED? [y/n]")
@@ -32,7 +32,7 @@ def save_best_model(cls, del_previous_best=False):
     def _update_best_key_metric_in_model_name(keyword='__max'):
         cls.model_name = cls.model_name.split(keyword)[0] + keyword + (
             '%.3f' % cls.best_key_metric).replace('0.', '.')
-        
+
     if del_previous_best:
         try:
             _del_previous_best()
@@ -40,10 +40,10 @@ def save_best_model(cls, del_previous_best=False):
             print(WARN,  "previous best model files could not be deleted; "
                   "skipping")
             print("Errmsg:", e)
-    
+
     cls.best_key_metric = round(cls.key_metric_history[-1], 6)
     _update_best_key_metric_in_model_name()
-    
+
     savepath = os.path.join(cls.best_models_dir, cls.model_name)
     cls.model.save_weights(savepath + '.h5')
     cls._history_fig = cls._get_history_fig()
@@ -70,7 +70,7 @@ def checkpoint_model_IF(cls, forced=False):
                 raise Exception("unable to `force_checkpoint` without `logdir`")
             return False
         return do_temp, do_unique
-    
+
     def _get_savename(do_temp, do_unique, forced):
         if do_temp and not do_unique:  # give latter precedence
             return "_temp_model"
@@ -78,8 +78,8 @@ def checkpoint_model_IF(cls, forced=False):
         if cls.logs_use_full_model_name:
             return "{}_{}vals__".format(cls.model_name, cls._times_validated)
         else:
-            return "max_{:.3f}_{}vals__".format(cls.best_key_metric, 
-                                                cls._times_validated)        
+            return "max_{:.3f}_{}vals__".format(cls.best_key_metric,
+                                                cls._times_validated)
 
     def _clear_logs_IF():
         _paths = [os.path.join(cls.logdir, name) for name
@@ -88,7 +88,7 @@ def checkpoint_model_IF(cls, forced=False):
         # TODO infer actual number, do not hard-code
         paths_per_checkpoint = 4
 
-        while len(_paths) / paths_per_checkpoint > cls.max_checkpoints_to_keep:
+        while len(_paths) / paths_per_checkpoint > cls.max_checkpoint_saves:
             [os.remove(_paths.pop(0)) for _ in range(paths_per_checkpoint)]
 
     do_checkpoint = _do_checkpoint(forced)
@@ -133,13 +133,13 @@ def save(cls, savepath=None):
                 return K.get_value(tensor)
             except:
                 return K.eval(tensor)
-            
+
         def _get_optimizer_weights(optimizer):
             weights = K.batch_get_value(optimizer.weights)
             if weights == []:
                 print(WARN, "optimizer 'weights' empty, and will not be saved")
             return weights
-        
+
         state = {}
         to_save = _get_attrs_to_save(opt)
         for name in to_save:
@@ -152,12 +152,12 @@ def save(cls, savepath=None):
                 if weights != []:
                     state['weights'] = weights
                 continue
-            
+
             value = getattr(opt, name, None)
             if isinstance(value, tf.Variable):
                 state[name] = _get_tensor_value(value)
             else:
-                state[name] = value          
+                state[name] = value
         return state
 
     def _cache_datagen_attributes():
@@ -165,7 +165,7 @@ def save(cls, savepath=None):
         def _cache_then_del_attrs(parent_obj, child_obj_names, to_exclude):
             if not isinstance(child_obj_names, (list, tuple)):
                 child_obj_names = [child_obj_names]
-        
+
             cached_attrs = {}
             for child_name in child_obj_names:
                 for attr_name in to_exclude:
@@ -176,7 +176,7 @@ def save(cls, savepath=None):
                     cached_attrs[cache_name] = attr_value
                     delattr(obj, attr_name)
             return cached_attrs
-    
+
         cached_attrs = {}
         for dg_name in ('datagen', 'val_datagen'):
             dg = getattr(cls, dg_name)
@@ -215,7 +215,7 @@ def save(cls, savepath=None):
         print("Errmsg:", e)
 
     _restore_cached_attributes(cls, cached_attrs)
-    
+
     for dg in (cls.datagen, cls.val_datagen):
         if 'hdf5_dataset' in vars(dg):
             dg.hdf5_dataset = h5py.File(dg.data_dir, 'r')  # re-open
@@ -249,7 +249,7 @@ def load(cls, filepath=None):
         def _restore_preprocessor_attrs(pp, pp_cache):
             for attr, value in pp_cache.items():
                 setattr(pp, attr, value)
-            
+
         def _check_and_fix_set_nums(dg):
             if hasattr(dg, 'set_nums_original'):
                 if any([(set_num not in dg.set_nums_original) for
@@ -265,12 +265,12 @@ def load(cls, filepath=None):
             _check_and_fix_set_nums(dg)
             pp_cache = caches[dg_name].pop('preprocessor')
             _restore_preprocessor_attrs(dg.preprocessor, pp_cache)
-            
+
             for attr, value in caches[dg_name].items():
                 setattr(dg, attr, value)
 
     def _unpack_passed_dirs(caches, dgs):
-        for dg_type, dg in zip(caches, dgs):                
+        for dg_type, dg in zip(caches, dgs):
             for attr in dg._path_attrs:
                 setattr(dg, attr, caches[dg_type][attr])
 
@@ -286,7 +286,7 @@ def load(cls, filepath=None):
 
         # assign loaded/cached attributes
         cls.__dict__.update(loadfile_parsed)
-  
+
         if cls.use_passed_dirs_over_loaded:
             _unpack_passed_dirs(caches)
         if hasattr(cls, 'optimizer_state'):
@@ -313,7 +313,7 @@ def load(cls, filepath=None):
     cls._val_labels  = cls.val_datagen.labels
     cls._set_num     = cls.datagen.set_num
     cls._val_set_num = cls.val_datagen.set_num
-    
+
     print("... finished--")
 
 
@@ -321,7 +321,7 @@ def _load_optimizer_state(cls):
     def _get_attrs_to_load(opt):
         cfg = cls.optimizer_load_configs
         all_attrs = [a for a in list(vars(opt).keys()) if a != 'updates']
-        
+
         if cfg is None:
             return all_attrs
         if 'exclude' in cfg:
@@ -340,7 +340,7 @@ def _load_optimizer_state(cls):
             continue
         elif name == 'weights':
             continue  # set later
-            
+
         if isinstance(getattr(opt, name), tf.Variable):
             K.set_value(getattr(opt, name), value)
         else:
@@ -357,9 +357,9 @@ def _load_optimizer_state(cls):
 
 def _save_history(cls, savepath=None):
     def _save_epoch_fig():
-        prev_figs = [os.path.join(cls.final_fig_dir, name) 
+        prev_figs = [os.path.join(cls.final_fig_dir, name)
             for name in os.listdir(cls.final_fig_dir)
-            if str(cls.model_num) in name]        
+            if str(cls.model_num) in name]
         if len(prev_figs) != 0:
             [os.remove(fig) for fig in prev_figs]
 

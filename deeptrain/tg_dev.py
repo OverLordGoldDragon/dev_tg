@@ -196,6 +196,7 @@ class TrainGenerator():
     ######################### MAIN METHOD HELPERS ########################
     def _train_postiter_processing(self):
         def _on_iter_end():
+            self._fit_iters += 1
             self.datagen.update_state()
 
         def _on_batch_end():
@@ -246,6 +247,7 @@ class TrainGenerator():
 
     def _val_postiter_processing(self, record_progress=True):
         def _on_iter_end():
+            self._val_iters += 1
             if self.eval_fn_name == 'predict':
                 self._update_val_iter_cache()
             self.val_datagen.update_state()
@@ -286,8 +288,7 @@ class TrainGenerator():
                 new_best = not new_best
 
             if new_best and self.best_models_dir is not None:
-                self._save_best_model(
-                    del_previous_best=self.keep_one_best_model)
+                self._save_best_model(del_previous_best=self.max_one_best_save)
             self._checkpoint_model_IF()
 
         def _clear_cache():
@@ -356,7 +357,7 @@ class TrainGenerator():
         freq_mode, freq_value = list(config.items())[0]
 
         if freq_mode == 'iter':
-            return True
+            return self._fit_iters % freq_value == 0
         elif freq_mode == 'batch':
             batch_done = self.datagen.batch_exhausted
             return (self._batches_fit % freq_value == 0) and batch_done
@@ -674,6 +675,8 @@ class TrainGenerator():
             self._times_validated=0
             self._batches_fit=0
             self._batches_validated=0
+            self._fit_iters=0
+            self._val_iters=0
             self._has_trained=False
             self._has_validated=False
             self._has_postiter_processed=True
