@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from .fonts import fontsdir
 
 
 _PLOT_CFG = {
@@ -236,25 +237,24 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
     return "_{}{}".format(alias, val)
 
 
-_path = r"D:\Desktop\School\Deep Learning\DL_code\\"
 _TRAINGEN_CFG = dict(
     dynamic_predict_threshold_min_max = None,
     loss_weighted_slices_range  = None,
     pred_weighted_slices_range  = None,
     use_passed_dirs_over_loaded = False,
-    static_predict_threshold    = 0.5,
-    dynamic_predict_threshold   = 0.5,  # initial
     visual_outputs_layer_names  = None,
     visual_weights_layer_names  = None,
     logs_use_full_model_name    = True,
     model_num_continue_from_max = True,
+    dynamic_predict_threshold   = 0.5,  # initial
+    predict_threshold    = 0.5,
     save_post_epoch      = False,
     best_subset_size     = 0,
     check_model_health   = True,
     outputs_visualizer   = 'comparative_histogram',
     max_checkpoint_saves = 5,
     max_one_best_save  = None,
-    report_fontpath = r"C:\Windows\Fonts\consola.ttf",
+    report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",
     make_new_logdir = True,
     final_fig_dir   = None,
