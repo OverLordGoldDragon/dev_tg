@@ -227,9 +227,6 @@ class TrainGenerator():
             self._hist_vlines     += [self._batches_fit]
             self._val_hist_vlines += [self._times_validated]
 
-            if self.save_post_epoch:
-                self._checkpoint_model_IF()
-
         def _should_validate():
             return self._should_do(self.val_freq)
 
@@ -306,7 +303,7 @@ class TrainGenerator():
             best_size = self.best_subset_size
             print("Best {}-subset: {}".format(best_size, best_nums))
 
-        if self.best_subset_size != 0:
+        if self.best_subset_size:
             _print_best_subset()
 
         plot_history, do_visualization = _should_plot()

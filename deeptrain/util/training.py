@@ -105,7 +105,7 @@ def _get_weighted_sample_weight(cls, labels_all, val=False,
 
 
 def _get_val_history(cls, for_current_iter=False):
-    if (cls.best_subset_size != 0) and not for_current_iter:
+    if cls.best_subset_size and not for_current_iter:
         return _get_best_subset_val_history(cls)
 
     if cls.eval_fn_name == 'evaluate':
