@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 PREC = os.environ.get('PRECISION', 'float32')
 EPS = 1e-7  # epsilon (keras default, K.epsilon())
@@ -276,3 +277,34 @@ def tnr_tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
 def binary_informedness_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
     return np.sum(tnr_tpr_multi_th(y_true, y_pred, pred_thresholds),
                   axis=-1) - 1
+
+
+def roc_auc_score(y_true, y_pred, visualize=False):
+    y_true, y_pred = _standardize(y_true, y_pred)
+
+    i_x = [(i, x) for (i, x) in enumerate(y_pred)]
+    i_xs = list(sorted(i_x, key=lambda x: x[1], reverse=True))
+    idxs = [d[0] for d in i_xs]
+    xs = y_pred[idxs]
+    ys = y_true[idxs]
+
+    p_inv = 1 / ys.sum()
+    n_inv = 1 / (len(ys) - ys.sum())
+    pts = np.zeros((len(ys) + 1, 2))
+
+    for i, (x, y) in enumerate(zip(xs, ys)):
+        inc = p_inv if y == 1 else n_inv
+        if y == 1:
+            pts[i + 1] = [pts[i][0], pts[i][1] + inc]
+        else:
+            pts[i + 1] = [pts[i][0] + inc, pts[i][1]]
+
+    score = np.trapz(pts[:, 1], pts[:, 0])
+    if visualize:
+        kw = dict(fontsize=12, weight='bold')
+        plt.scatter(pts[:, 0], pts[:, 1])
+        plt.title("Receiver Operating Characteristic (AUC = %.3f)" % score, **kw)
+        plt.xlabel("1 - specificity", **kw)
+        plt.ylabel("sensitivity", **kw)
+        plt.gcf().set_size_inches(6, 6)
+    return score

@@ -167,4 +167,4 @@ def _notify(name, tests_done):
         cprint("<< TIMESERIES TEST PASSED >>\n", 'green')
 
 if __name__ == '__main__':
-    pytest.main([__file__, "--capture=sys"])
+    pytest.main([__file__, "-s"])

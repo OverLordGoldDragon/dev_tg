@@ -193,4 +193,4 @@ def _notify(name, tests_done):
 
 
 if __name__ == '__main__':
-    pytest.main([__file__, "--capture=sys"])
+    pytest.main([__file__, "-s"])

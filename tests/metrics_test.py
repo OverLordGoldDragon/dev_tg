@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 import numpy as np
+import sklearn.metrics
 
 from tests.backend import K
 from tests.backend import keras_losses, keras_metrics
@@ -185,10 +186,11 @@ custom_to_test = ['f1_score', 'f1_score_multi_th',
                   'tpr',
                   'tnr_tpr',
                   'binary_informedness',
+                  'roc_auc_score',
                   ]
 
-[f1_score, f1_score_multi_th, tnr, tpr, tnr_tpr, binary_informedness
- ] = [getattr(metrics, name) for name in custom_to_test]
+[f1_score, f1_score_multi_th, tnr, tpr, tnr_tpr, binary_informedness,
+ roc_auc_score] = [getattr(metrics, name) for name in custom_to_test]
 
 
 def test_f1_score():
@@ -207,9 +209,21 @@ def test_f1_score():
         y_pred = [0, 0, 0]
         assert f1_score(y_true, y_pred) == 0
 
+    def _test_vs_sklearn():
+        y_true = np.array([1] * 5 + [0] * 27)  # imbalanced
+        np.random.shuffle(y_true)
+        y_pred = np.random.uniform(0, 1, 32)
+
+        test_score = f1_score(y_true, y_pred, pred_threshold=.5)
+        sklearn_score = sklearn.metrics.f1_score(y_true, y_pred > .5)
+        adiff = abs(test_score - sklearn_score)
+        assert (adiff < 1e-10), ("sklearn: {:.15f}\ntest:    {:.15f}"
+                                "\nabsdiff: {}".format(
+                                    sklearn_score, test_score, adiff))
     _test_basic()
     _test_no_positive_labels()
     _test_no_positive_predictions()
+    _test_vs_sklearn()
 
 
 def test_f1_score_multi_th():
@@ -250,5 +264,17 @@ def test_binaries():
     assert binary_informedness(y_true, y_pred) == 0.
 
 
+def test_roc_auc():
+    y_true = np.array([1] * 5 + [0] * 27)  # imbalanced
+    np.random.shuffle(y_true)
+    y_pred = np.random.uniform(0, 1, 32)
+
+    test_score = roc_auc_score(y_true, y_pred, visualize=True)
+    sklearn_score = sklearn.metrics.roc_auc_score(y_true, y_pred)
+    adiff = abs(test_score - sklearn_score)
+    assert (adiff < 1e-10), ("sklearn: {:.15f}\ntest:    {:.15f}"
+                            "\nabsdiff: {}".format(
+                                sklearn_score, test_score, adiff))
+
 if __name__ == '__main__':
-    pytest.main([__file__, "--capture=sys"])
+    pytest.main([__file__, "-s"])
