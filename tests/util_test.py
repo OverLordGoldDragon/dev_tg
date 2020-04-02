@@ -2,6 +2,7 @@
 import os
 import pytest
 import numpy as np
+import shutil
 
 from pathlib import Path
 from termcolor import cprint
@@ -27,34 +28,55 @@ def test_searching():
 
 
 def test_misc():
-    assert misc.nCk(10, 2) == 45
-    assert misc.nCk(4, 5) == 1
+    def _test_nCk():
+        assert misc.nCk(10, 2) == 45
+        assert misc.nCk(4, 5) == 1
+
+    def _test_ordered_shuffle():
+        ls = [1, 2, 3, 4, 'a']
+        x = np.array([5, 6, 7, 8, 9])
+        dc = {'a': 1, 5: ls, (2, 3): x, '4': None, None: {1: 2}}
+        ls, x, dc = misc.ordered_shuffle(ls, x, dc)
+
+        assert len(ls) == len(x) == len(dc) == 5
+        assert isinstance(ls, list)
+        assert isinstance(x, np.ndarray)
+        assert isinstance(dc, dict)
+
+    _test_nCk()
+    _test_ordered_shuffle()
     _notify('misc')
 
 
 def test_preprocessing(monkeypatch):
-    datadir = os.path.join(BASEDIR, "_data")
-    with tempdir(datadir):
+    def _test_numpy_data_to_numpy_sets(datadir):
+        with tempdir(datadir):
+            data = np.random.randn(161, 2)
+            labels = np.random.randint(0, 2, (161,))
+            preprocessing.numpy_data_to_numpy_sets(
+                datadir, data, labels, batch_size=32, shuffle=True,
+                data_basename='ex', oversample_remainder=True)
+
+            paths = [str(x) for x in Path(datadir).iterdir() if
+                     x.suffix == '.npy']
+            assert (len(paths) == 6), ("%s paths" % len(paths))  # 160 / 32
+
+        os.mkdir(datadir)
         data = np.random.randn(161, 2)
         labels = np.random.randint(0, 2, (161,))
-        preprocessing.numpy_data_to_numpy_sets(
-            datadir, data, labels, batch_size=32, shuffle=True,
-            data_basename='ex', oversample_remainder=True)
 
-        paths = [str(x) for x in Path(datadir).iterdir() if x.suffix == '.npy']
-        assert (len(paths) == 6), ("%s paths" % len(paths))  # 160 / 32
-
-    with tempdir(datadir):
-        data = np.random.randn(161, 2)
-        labels = np.random.randint(0, 2, (161,))
         preprocessing.numpy_data_to_numpy_sets(
             datadir, data, labels, batch_size=32, shuffle=True,
             data_basename='ex', oversample_remainder=False)
         os.remove(os.path.join(datadir, "labels.h5"))
 
-        paths = [str(x) for x in Path(datadir).iterdir() if x.suffix == '.npy']
+        paths = [str(x) for x in Path(datadir).iterdir() if
+                 x.suffix == '.npy']
         assert (len(paths) == 5), ("%s paths" % len(paths))  # 160 / 32
 
+        return paths
+
+    def _test_data_to_hdf5(datadir, paths):
         X = np.array([np.load(path) for path in paths])
         kw = dict(savepath=os.path.join(datadir, "data.h5"), batch_size=32,
                   shuffle=True, compression='lzf', overwrite=None)
@@ -66,6 +88,10 @@ def test_preprocessing(monkeypatch):
         kw.update(dict(overwrite=True, load_fn=lambda x: x))
         preprocessing.data_to_hdf5(data=X, **kw)
 
+
+    datadir = os.path.join(BASEDIR, "_data")
+    paths = _test_numpy_data_to_numpy_sets(datadir)
+    _test_data_to_hdf5(datadir, paths)
     _notify('preprocessing')
 
 
