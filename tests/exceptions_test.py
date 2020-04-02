@@ -6,9 +6,9 @@ from pathlib import Path
 from termcolor import cprint
 from time import time
 
-from .backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
-from .backend import Model
-from .backend import BASEDIR, tempdir
+from tests.backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from tests.backend import Model
+from tests.backend import BASEDIR, tempdir
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 

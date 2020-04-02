@@ -2,8 +2,8 @@
 import pytest
 import numpy as np
 
-from .backend import K
-from .backend import keras_losses, keras_metrics
+from tests.backend import K
+from tests.backend import keras_losses, keras_metrics
 from deeptrain.util import metrics
 
 

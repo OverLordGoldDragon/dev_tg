@@ -66,7 +66,6 @@ def test_preprocessing(monkeypatch):
         kw.update(dict(overwrite=True, load_fn=lambda x: x))
         preprocessing.data_to_hdf5(data=X, **kw)
 
-    assert True
     _notify('preprocessing')
 
 

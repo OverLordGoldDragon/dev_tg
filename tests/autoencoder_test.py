@@ -6,9 +6,9 @@ from pathlib import Path
 from termcolor import cprint
 from time import time
 
-from .backend import Input, Conv2D, UpSampling2D
-from .backend import Model
-from .backend import BASEDIR, tempdir
+from tests.backend import Input, Conv2D, UpSampling2D
+from tests.backend import Model
+from tests.backend import BASEDIR, tempdir
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
@@ -54,7 +54,7 @@ TRAINGEN_CFG = dict(
     input_as_labels=True,
 )
 
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG, 
+CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 
 
@@ -63,7 +63,7 @@ def test_main():
     with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
             CONFIGS['traingen']['best_models_dir']):
         _test_main()
-    
+
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     cprint("<< AUTOENCODER TEST PASSED >>\n", 'green')
 
@@ -71,7 +71,7 @@ def test_main():
 def _test_main():
     tg = _init_session(CONFIGS)
     tg.train()
-    
+
     _test_load(tg, CONFIGS)
 
 
@@ -93,7 +93,7 @@ def _test_load(tg, CONFIGS):
 def _make_model(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'activation', 'filters', 'kernel_size', 'strides', 
+                       'activation', 'filters', 'kernel_size', 'strides',
                        'up_sampling_2d')
         return [kw[key] for key in expected_kw]
 
@@ -102,7 +102,7 @@ def _make_model(weights_path=None, **kw):
 
     ipt = Input(batch_shape=batch_shape)
     x   = ipt
-    
+
     configs = (activation, filters, kernel_size, strides, up_sampling_2d)
     for act, f, ks, s, ups in zip(*configs):
         if ups is not None:
@@ -112,7 +112,7 @@ def _make_model(weights_path=None, **kw):
 
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)
-    
+
     if weights_path is not None:
         model.load_weights(weights_path)
     return model
@@ -140,4 +140,4 @@ def _destroy_session(tg):
 
 
 if __name__ == '__main__':
-    pytest.main([__file__, "--capture=sys"])
+    pytest.main([__file__, "-s"])
