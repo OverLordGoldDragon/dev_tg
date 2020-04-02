@@ -236,7 +236,6 @@ def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, configs):
     return "_{}{}".format(alias, val)
 
 
-_path = r"D:\Desktop\School\Deep Learning\DL_code\\"
 _DEFAULT_TRAINGEN_CFG = dict(
     dynamic_predict_threshold_min_max = None,
     loss_weighted_slices_range  = None,

@@ -11,10 +11,13 @@ from deeptrain.util import metrics
 from deeptrain.util import searching
 from deeptrain.util import misc
 from deeptrain.util import preprocessing
+from deeptrain.util import configs
+from deeptrain.util import _default_configs
 from tests.backend import BASEDIR, tempdir
 
 
-tests_done = {name: None for name in ('searching', 'misc', 'preprocessing')}
+tests_done = {name: None for name in ('searching', 'misc', 'configs',
+                                      'preprocessing')}
 
 
 def test_searching():
@@ -46,6 +49,31 @@ def test_misc():
     _test_nCk()
     _test_ordered_shuffle()
     _notify('misc')
+
+
+def test_configs():
+    for name_fn in (configs._NAME_PROCESS_KEY_FN,
+                    _default_configs._DEFAULT_NAME_PROCESS_KEY_FN):
+        cfg = dict(init_lr=[2e-4, 2e-4, 2e-4, 1e-4],
+                   timesteps=13500,
+                   name='leaf',
+                   best_key_metric=0.91)
+        assert name_fn('init_lr', 'lr', cfg) == '_lr2e-4x3_1e-4'
+        assert name_fn('timesteps', '', cfg) == '_13.5k'
+        assert name_fn('name', 'name', cfg) == '_name'
+        assert name_fn('best_key_metric', 'max', cfg) == '_max.910'
+
+    names = ['PLOT_CFG', 'BINARY_CLASSIFICATION_PLOT_CFG',
+             'MODEL_NAME_CFG', 'REPORT_CFG', 'TRAINGEN_SAVE_LIST',
+             'METRIC_PRINTSKIP_CFG', 'METRIC_TO_ALIAS', 'ALIAS_TO_METRIC',
+             'TRAINGEN_CFG', 'DATAGEN_CFG']
+    for config in (configs, _default_configs):
+        for name in names:
+            name = [x for x in vars(config) if name in x][0]
+            _ = getattr(config, name)
+            assert True
+
+    _notify('configs')
 
 
 def test_preprocessing(monkeypatch):
@@ -87,6 +115,8 @@ def test_preprocessing(monkeypatch):
         monkeypatch.setattr('builtins.input', lambda: "y")
         kw.update(dict(overwrite=True, load_fn=lambda x: x))
         preprocessing.data_to_hdf5(data=X, **kw)
+
+        shutil.rmtree(datadir)
 
 
     datadir = os.path.join(BASEDIR, "_data")
