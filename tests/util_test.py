@@ -10,7 +10,7 @@ from deeptrain.util import metrics
 from deeptrain.util import searching
 from deeptrain.util import misc
 from deeptrain.util import preprocessing
-from .backend import BASEDIR, tempdir
+from tests.backend import BASEDIR, tempdir
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'preprocessing')}
@@ -32,23 +32,38 @@ def test_misc():
     _notify('misc')
 
 
-def test_preprocessing():
+def test_preprocessing(monkeypatch):
     datadir = os.path.join(BASEDIR, "_data")
     with tempdir(datadir):
-        data = np.random.randn(160, 2)
-        labels = np.random.randint(0, 2, (160,))
+        data = np.random.randn(161, 2)
+        labels = np.random.randint(0, 2, (161,))
         preprocessing.numpy_data_to_numpy_sets(
             datadir, data, labels, batch_size=32, shuffle=True,
             data_basename='ex', oversample_remainder=True)
+
+        paths = [str(x) for x in Path(datadir).iterdir() if x.suffix == '.npy']
+        assert (len(paths) == 6), ("%s paths" % len(paths))  # 160 / 32
+
+    with tempdir(datadir):
+        data = np.random.randn(161, 2)
+        labels = np.random.randint(0, 2, (161,))
+        preprocessing.numpy_data_to_numpy_sets(
+            datadir, data, labels, batch_size=32, shuffle=True,
+            data_basename='ex', oversample_remainder=False)
         os.remove(os.path.join(datadir, "labels.h5"))
 
         paths = [str(x) for x in Path(datadir).iterdir() if x.suffix == '.npy']
         assert (len(paths) == 5), ("%s paths" % len(paths))  # 160 / 32
-        X = np.array([np.load(path) for path in paths])
 
+        X = np.array([np.load(path) for path in paths])
         kw = dict(savepath=os.path.join(datadir, "data.h5"), batch_size=32,
-                  shuffle=True, compression='lzf', overwrite=True)
+                  shuffle=True, compression='lzf', overwrite=None)
+
         preprocessing.data_to_hdf5(loaddir=datadir, **kw)
+        preprocessing.data_to_hdf5(data=X, **kw)
+
+        monkeypatch.setattr('builtins.input', lambda: "y")
+        kw.update(dict(overwrite=True, load_fn=lambda x: x))
         preprocessing.data_to_hdf5(data=X, **kw)
 
     assert True
@@ -64,4 +79,4 @@ def _notify(name):
 
 
 if __name__ == '__main__':
-    pytest.main([__file__, "--capture=sys"])
+    pytest.main([__file__, "-s"])

@@ -10,13 +10,15 @@ from . import WARN, NOTE
 def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
                              shuffle=True, data_basename='batch',
                              oversample_remainder=True, verbose=1):
-    def _process_remainder(data, labels, oversample_remainder, batch_size):
+    def _process_remainder(remainder, data, labels, oversample_remainder,
+                           batch_size):
         action = "will" if oversample_remainder else "will not"
         print(("{} remainder samples for `batch_size={}`; {} oversample"
                ).format(int(remainder), batch_size, action))
 
         if oversample_remainder:
-            idxs = np.random.randint(0, len(data), remainder)
+            to_oversample = batch_size - remainder
+            idxs = np.random.randint(0, len(data), to_oversample)
             data = np.vstack([data, data[idxs]])
             labels = labels if labels.ndim > 1 else np.expand_dims(labels, 1)
             labels = np.vstack([labels, labels[idxs]])
@@ -25,19 +27,22 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
             labels = labels[:-remainder]
         return data, labels
 
-    remainder = batch_size - len(data) % batch_size
-    if remainder != 0 and remainder != batch_size:
-        data, labels = _process_remainder(data, labels, oversample_remainder,
-                                          batch_size)
+    remainder = len(data) % batch_size
+    if remainder != 0:
+        data, labels = _process_remainder(remainder, data, labels,
+                                          oversample_remainder, batch_size)
     if shuffle:
         idxs = np.arange(0, len(data))
         np.random.shuffle(idxs)
         data, labels = data[idxs], labels[idxs]
         print("`data` & `labels` samples shuffled")
 
-    n_batches = len(data) // batch_size
-    data = data.reshape(n_batches, batch_size, *data.shape[1:])
-    labels = labels.reshape(n_batches, batch_size, *labels.shape[1:])
+    n_batches = len(data) / batch_size
+    assert (n_batches.is_integer()), ("len(data) must be divisible by "
+                                      "`batch_size` ({} / {} = {})".format(
+                                          len(data), batch_size, n_batches))
+    data = data.reshape(int(n_batches), batch_size, *data.shape[1:])
+    labels = labels.reshape(int(n_batches), batch_size, *labels.shape[1:])
 
     labels_path = os.path.join(savedir, "labels.h5")
     labels_hdf5 = h5py.File(labels_path, mode='w', libver='latest')
@@ -97,7 +102,7 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
         if loaddir is not None and data is not None:
             raise ValueError("can't use both `loaddir` and `data`")
         if data is not None and load_fn is not None:
-            print(WARN, "`load_fn` ignored with `data_fn != None`")
+            print(WARN, "`load_fn` ignored with `data != None`")
 
         _validate_savepath(savepath)
         if loaddir is not None:
