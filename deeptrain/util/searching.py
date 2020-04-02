@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import metrics
 import numpy as np
-from functools import reduce
 
 
 def get_best_predict_threshold(labels, preds, metric_fn, search_interval=0.05,
@@ -100,14 +99,6 @@ def find_best_subset(labels_all, preds_all, metric_fn, search_interval=.01,
         best_th = None
         best_metric = metric_fn(best_labels_flat, best_preds_flat)
     return best_batch_idxs, best_th, best_metric
-
-
-def nCk(n, k):  # n-Choose-k
-    mul = lambda a, b: a * b
-    r = min(k, n - k)
-    numer = reduce(mul, range(n, n - r, -1), 1)
-    denom = reduce(mul, range(1, r + 1), 1)
-    return numer / denom
 
 
 # TODO collapse slices as means, since searching per batch not per slice

@@ -7,7 +7,7 @@ from pathlib import Path
 from . import WARN, NOTE
 
 
-def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32, 
+def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
                              shuffle=True, data_basename='batch',
                              oversample_remainder=True, verbose=1):
     def _process_remainder(data, labels, oversample_remainder, batch_size):
@@ -20,13 +20,13 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
             data = np.vstack([data, data[idxs]])
             labels = labels if labels.ndim > 1 else np.expand_dims(labels, 1)
             labels = np.vstack([labels, labels[idxs]])
-        else:   
+        else:
             data = data[:-remainder]
             labels = labels[:-remainder]
         return data, labels
-            
+
     remainder = batch_size - len(data) % batch_size
-    if remainder != 0:
+    if remainder != 0 and remainder != batch_size:
         data, labels = _process_remainder(data, labels, oversample_remainder,
                                           batch_size)
     if shuffle:
@@ -34,11 +34,11 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
         np.random.shuffle(idxs)
         data, labels = data[idxs], labels[idxs]
         print("`data` & `labels` samples shuffled")
-    
+
     n_batches = len(data) // batch_size
     data = data.reshape(n_batches, batch_size, *data.shape[1:])
     labels = labels.reshape(n_batches, batch_size, *labels.shape[1:])
-    
+
     labels_path = os.path.join(savedir, "labels.h5")
     labels_hdf5 = h5py.File(labels_path, mode='w', libver='latest')
 
@@ -57,44 +57,52 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
         print("{} label sets saved to {}".format(len(data), labels_path))
 
 
-def data_to_hdf5(savepath, loaddir=None, data=None, batch_size=None,
-                 shuffle=False, compression='lzf', dtype='float32', 
+def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
+                 shuffle=False, compression='lzf', dtype='float32',
                  load_fn=None, overwrite=None, verbose=1):
     def _validate_args(savepath, loaddir, data, load_fn):
+        def _validate_extensions(loaddir):
+            supported = ('.npy',)
+            extensions = list(set(x.suffix for x in Path(loaddir).iterdir()))
+            if len(extensions) > 1:
+                raise ValueError("cannot have more than one file extensions in "
+                                 "`loaddir`; found %s" % ', '.join(extensions))
+            elif load_fn is None and extensions[0] not in supported:
+                raise ValueError(("unsupported file extension {}; supported "
+                                  "are: {}. Alternatively, pass in `load_fn` "
+                                  "that takes paths & index as arguments"
+                                  ).format(extensions[0], ', '.join(supported)))
+
+        def _validate_savepath(savepath):
+            if savepath.split('.')[-1] != '.h5':
+                print(WARN, "`savepath` extension must be '.h5'; will append")
+                savepath += '.h5'
+            if Path(savepath).is_file():
+                if overwrite is None:
+                    response = input(("Found existing file in `savepath`; "
+                                      "overwrite?' [y/n]\n"))
+                    if response == 'y':
+                        os.remove(savepath)
+                    else:
+                        raise SystemExit("program terminated.")
+                elif overwrite is True:
+                    os.remove(savepath)
+                    print(NOTE, "removed existing file from `savepath`")
+                else:
+                    raise SystemExit(("program terminated. (existing file in "
+                                      "`savepath` and `overwrite=False`)"))
+
         if loaddir is None and data is None:
             raise ValueError("one of `loaddir` or `data` must be not None")
         if loaddir is not None and data is not None:
             raise ValueError("can't use both `loaddir` and `data`")
         if data is not None and load_fn is not None:
             print(WARN, "`load_fn` ignored with `data_fn != None`")
-        if savepath.split('.')[-1] != '.h5':
-            print(WARN, "`savepath` extension must be '.h5'; will append")
-            savepath += '.h5'
-        if Path(savepath).is_file():
-            if overwrite is None:
-                response = input(("Found existing file in `savepath`; "
-                                  "overwrite?' [y/n]\n"))
-                if response == 'y':
-                    os.remove(savepath)
-                else:
-                    raise SystemExit("program terminated.")
-            elif overwrite is True:
-                os.remove(savepath)
-                print(NOTE, "removed existing file from `savepath`")
-            else:
-                raise SystemExit(("program terminated. (existing file in "
-                                  "`savepath` and `overwrite=False`)"))
 
-        supported = ('.npy',)
-        extensions = list(set(x.suffix for x in Path(loaddir).iterdir()))
-        if len(extensions) > 1:
-            raise ValueError("cannot have more than one file extensions "
-                             "in `loaddir`; found %s" % ', '.join(extensions))
-        elif load_fn is None and extensions[0] not in supported:
-            raise ValueError(("unsupported file extension {}; supported are: "
-                              "{}. Alternatively, pass in `load_fn` that takes "
-                              "paths & index as arguments").format(
-                                  extensions[0], ', '.join(supported)))
+        _validate_savepath(savepath)
+        if loaddir is not None:
+            _validate_extensions(loaddir)
+
         return savepath
 
     def _get_data_source(loaddir, data, batch_size, compression, shuffle):
@@ -144,7 +152,7 @@ def data_to_hdf5(savepath, loaddir=None, data=None, batch_size=None,
             batch, j = _make_batch(source, j, batch_size, load_fn, verbose)
             if batch is None:
                 break
-            hdf5_file.create_dataset(str(set_num), data=batch, dtype=dtype, 
+            hdf5_file.create_dataset(str(set_num), data=batch, dtype=dtype,
                                      chunks=True, compression=compression)
             if verbose:
                 print('', set_num, 'done', flush=True)
@@ -155,7 +163,7 @@ def data_to_hdf5(savepath, loaddir=None, data=None, batch_size=None,
     source = _get_data_source(loaddir, data, batch_size, compression, shuffle)
 
     with h5py.File(savepath, mode='w', libver='latest') as hdf5_file:
-        last_set_num = _make_hdf5(hdf5_file, source, batch_size, dtype, 
+        last_set_num = _make_hdf5(hdf5_file, source, batch_size, dtype,
                                   load_fn, verbose)
     if verbose:
         print(last_set_num, "batches converted & saved as .hdf5 to", savepath)

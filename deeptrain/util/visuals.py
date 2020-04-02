@@ -8,7 +8,7 @@ from . import K
 def show_predictions_per_iteration(_labels_cache, _preds_cache):
     for batch_idx, label in enumerate(_labels_cache):
         preds_per_batch = len(_preds_cache[batch_idx])
-        
+
         f, axes = plt.subplots(preds_per_batch + 1, 1,
                      gridspec_kw={'height_ratios': [2] + [1]*preds_per_batch})
         f.set_size_inches(14, 0.75)
@@ -16,13 +16,13 @@ def show_predictions_per_iteration(_labels_cache, _preds_cache):
         axes[0].imshow(label_2d, cmap='bwr')
         axes[0].set_axis_off()
         axes[0].axis('tight')
-        
+
         for pred_idx, y_preds in enumerate(_preds_cache[batch_idx]):
             preds_2d = np.atleast_2d(np.asarray(y_preds).T)
             axes[pred_idx + 1].imshow(preds_2d, cmap='bwr', vmin=0, vmax=1)
             axes[pred_idx + 1].set_axis_off()
             axes[pred_idx + 1].axis('tight')
-        
+
         plt.show()
 
 
@@ -33,7 +33,7 @@ def show_predictions_distribution(preds, labels, pred_th):
         red  = np.array([1, 0, 0]*N).reshape(N, 3)
         blue = np.array([0, 0, 1]*N).reshape(N, 3)
         return labels_f * red + (1 - labels_f) * blue
-    
+
     def _make_alignment_array(labels_f, n_lines=10):
         N = len(labels_f)
         k = N / n_lines
@@ -41,14 +41,14 @@ def show_predictions_distribution(preds, labels, pred_th):
             n_lines -= 1
             k = N / n_lines
         return np.array(list(range(n_lines)) * int(k))
-    
+
     def _plot(preds_f, pred_th, alignment_arr, colors):
         _, ax = plt.subplots(1, 1, figsize=(13, 4))
         ax.axvline(pred_th, color='black', linewidth=4)
         ax.scatter(preds_f, alignment_arr, c=colors)
         ax.set_yticks([])
         ax.set_xlim(-.02, 1.02)
-        
+
     preds_f, labels_f = np.array(preds).ravel(), np.array(labels).ravel()
     colors = _get_pred_colors(labels_f)
     alignment_arr = _make_alignment_array(labels_f, n_lines=10)
@@ -56,9 +56,9 @@ def show_predictions_distribution(preds, labels, pred_th):
     _plot(preds_f, pred_th, alignment_arr, colors)
 
 
-def get_history_fig(cls, plot_configs=None, w=1, h=1):    
+def get_history_fig(cls, plot_configs=None, w=1, h=1):
     def _unpack_plot_kws(config):
-        reserved_keys = ('metrics', 'x_ticks', 'vhlines', 'mark_best_idx', 
+        reserved_keys = ('metrics', 'x_ticks', 'vhlines', 'mark_best_idx',
                          'ylims')
         values_per_key = len(list(config.values())[0])
 
@@ -67,7 +67,7 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
             plot_kws.append({key:config[key][i] for key in config
                              if key not in reserved_keys})
         return plot_kws
-    
+
     def _equalize_ticks_range(x_ticks, metrics):
         max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks)>0])
 
@@ -89,7 +89,7 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
             for idx, name in enumerate(metrics['train']):
                 metrics['train'][idx] = cls._alias_to_metric_name(name)
         if 'val'   in metrics:
-            for idx, name in enumerate(metrics['val']):    
+            for idx, name in enumerate(metrics['val']):
                 metrics['val'][idx]   = cls._alias_to_metric_name(name)
         return config
 
@@ -124,7 +124,7 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
 
     if plot_configs is None:
         plot_configs = cls.plot_configs
-    
+
     fig, axes = plt.subplots(len(plot_configs), 1)
     axes = np.atleast_1d(axes)
 
@@ -152,7 +152,7 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
     if axis is not None:
         ax = axis
     else:
-        _, ax = ax.subplots()
+        _, ax = plt.subplots()
 
     def _plot_vhlines(vhlines, ax):
         def non_iterable(x):
@@ -172,7 +172,7 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
         idx = mark_best_idx
         assert (idx <= len(metrics))
         metric = metrics[idx]
-        
+
         best_fn = np.min if key_metric=='loss' else np.max
         x_best_idx = np.where(metric == best_fn(metric))[0][0]
         x_best = x_ticks[idx][x_best_idx]
@@ -180,20 +180,13 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
         ax.plot(x_best, best_fn(metric), 'o', color=[.3, .95, .3],
                 markersize=15, markeredgewidth=4, markerfacecolor='none')
 
-    def _to_list_of_dicts(configs):
-        vals_per_key = len(list(configs.values())[0])
-        ls = []        
-        for i in range(vals_per_key):
-            ls.append({key:configs[key][i] for key in configs})
-        return ls
-
     def _plot_main(x_ticks, metrics, plot_kws, ax):
         for ticks, metric, kws in zip(x_ticks, metrics, plot_kws):
             ax.plot(ticks, metric, **kws)
-            
+
     _plot_main(x_ticks, metrics, plot_kws, ax)
     _plot_vhlines(vhlines, ax)
-        
+
     if mark_best_idx is not None:
         _mark_best_metric(x_ticks, metrics, mark_best_idx, ax)
 
@@ -211,13 +204,13 @@ def comparative_histogram(model, layer_name, data, keep_borders=True,
             outs_tensors = [l.output for l in model.layers
                             if layer_name in l.name]
             return K.function([model.input, K.learning_phase()], outs_tensors)
-        
+
         outs_fn = _make_outs_fn(model, layer_name)
         return outs_fn([data, 1]), outs_fn([data, 0])
-    
+
     outs = _get_layer_outs(model, layer_name, data)
-    
-    _, axes = plt.subplots(2, 1, sharex=True, sharey=True, 
+
+    _, axes = plt.subplots(2, 1, sharex=True, sharey=True,
                            figsize=(13 * w, 6 * h))
     for i, (ax, out) in enumerate(zip(axes.flat, outs)):
         ax.hist(np.asarray(out).ravel(), bins=bins)

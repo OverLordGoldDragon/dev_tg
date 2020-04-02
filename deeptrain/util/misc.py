@@ -2,6 +2,7 @@
 import numpy as np
 
 from types import LambdaType
+from functools import reduce
 from . import WARN, NOTE
 
 
@@ -33,6 +34,14 @@ def ordered_shuffle(*args):
     np.random.shuffle(zipped_args)
     return [(_type(data) if _type != np.ndarray else np.asarray(data))
             for _type, data in zip(map(type, args), zip(*zipped_args))]
+
+
+def nCk(n, k):  # n-Choose-k
+    mul = lambda a, b: a * b
+    r = min(k, n - k)
+    numer = reduce(mul, range(n, n - r, -1), 1)
+    denom = reduce(mul, range(1, r + 1), 1)
+    return numer / denom
 
 
 # TODO: improve case coverage
