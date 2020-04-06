@@ -55,9 +55,11 @@ def test_configs():
     for name_fn in (configs._NAME_PROCESS_KEY_FN,
                     _default_configs._DEFAULT_NAME_PROCESS_KEY_FN):
         cfg = dict(init_lr=[2e-4, 2e-4, 2e-4, 1e-4],
+                   eta_t=(.9, 1.1, 2),
                    timesteps=13500,
                    name='leaf',
-                   best_key_metric=0.91)
+                   best_key_metric=0.91,
+                   a=.5)
         assert name_fn('init_lr', 'lr', cfg) == '_lr2e-4x3_1e-4'
         assert name_fn('timesteps', '', cfg) == '_13.5k'
         assert name_fn('name', 'name', cfg) == '_name'

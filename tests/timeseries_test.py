@@ -44,6 +44,7 @@ TRAINGEN_CFG = dict(
     reset_statefuls=True,
     max_is_best=False,
     dynamic_predict_threshold_min_max=(.35, .9),
+    visualizers=['predictions_per_iterations', 'predictions_distribution'],
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,

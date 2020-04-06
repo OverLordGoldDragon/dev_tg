@@ -42,7 +42,9 @@ def f1_score(y_true, y_pred, pred_threshold=0.5, beta=1):
     specificity = TN / (TN + FP) if not (TN == 0 and FP == 0) else 0
 
     if not (precision == 0 and recall == 0):
-        return (1 + beta) * precision * recall / (beta * precision + recall)
+        numer = (1 + beta ** 2) * precision * recall
+        denom = beta ** 2 * precision + recall
+        return numer / denom
     if y_true.sum() == 0:
         return specificity  # '1' labels absent,  return '0' class accuracy
     return 0                # '1' labels present, none guessed

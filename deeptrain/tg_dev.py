@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """TODO:
+    - support all sklearn metrics directly via sklearn? (that aren't already
+                                                         implemented)
     - replace metrics= w/ history=?
     - visualizations
     - metric aliases
     - make report_generator optional per requiring PIL
-    - loss_weighted_slices_range & pred_weighted_slices_range?
     - check support for batch_size=None
     - unit tests:
         - save/load
         - report generator
         - data generators
         - visualizations
-        - weighted sample_weight
     - Utils classes (@staticmethod def fn(cls, ..))
     - MetaTrainer
 """
@@ -156,10 +156,9 @@ class TrainGenerator():
                     if self.iter_verbosity:
                         self._print_iter_progress()
                     metrics = self.fit_fn(x, y, sample_weight)
-                    self._update_temp_history(metrics)
+                    self._has_postiter_processed = False
 
-                self._has_postiter_processed = False
-                self._train_postiter_processing()
+                self._train_postiter_processing(metrics)
                 self._has_postiter_processed = True
         else:
             self.validate()
@@ -184,18 +183,18 @@ class TrainGenerator():
                     metrics = self.model.evaluate(
                         x, y, sample_weight=self._val_sw,
                         batch_size=len(x), verbose=0)
-                    self._update_temp_history(metrics, val=True)
+                self._val_has_postiter_processed = False
 
-            self._val_has_postiter_processed = False
-            self._val_postiter_processing(record_progress)
+            self._val_postiter_processing(metrics, record_progress)
             self._val_has_postiter_processed = True
 
         if self._has_validated:
             self._on_val_end(record_progress, clear_cache)
 
     ######################### MAIN METHOD HELPERS ########################
-    def _train_postiter_processing(self):
-        def _on_iter_end():
+    def _train_postiter_processing(self, metrics):
+        def _on_iter_end(metrics):
+            self._update_temp_history(metrics)
             self._fit_iters += 1
             self.datagen.update_state()
 
@@ -230,7 +229,7 @@ class TrainGenerator():
         def _should_validate():
             return self._should_do(self.val_freq)
 
-        _on_iter_end()
+        _on_iter_end(metrics)
         if self.datagen.batch_exhausted:
             _on_batch_end()
         if self.datagen.all_data_exhausted:
@@ -242,8 +241,9 @@ class TrainGenerator():
             self._has_validated = False
             self.validate()
 
-    def _val_postiter_processing(self, record_progress=True):
-        def _on_iter_end():
+    def _val_postiter_processing(self, metrics, record_progress=True):
+        def _on_iter_end(metrics):
+            self._update_temp_history(metrics, val=True)
             self._val_iters += 1
             if self.eval_fn_name == 'predict':
                 self._update_val_iter_cache()
@@ -270,7 +270,7 @@ class TrainGenerator():
             self._val_x_ticks += [self._times_validated]
             self._val_train_x_ticks += [self._batches_fit]
 
-        _on_iter_end()
+        _on_iter_end(metrics)
         if self.val_datagen.batch_exhausted:
             _on_batch_end()
         if self.val_datagen.all_data_exhausted:

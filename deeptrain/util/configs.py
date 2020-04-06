@@ -196,11 +196,6 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
                 reps = _max_reps_from_beginning(ls, reps + 1)
             return reps
 
-        def _format_if_small_decimal(val, th=1e-2):
-            if isinstance(val, float) and abs(val) < th:
-                return ('%.e' % val).replace('-0', '-')
-            return val
-
         _str = ''
         while len(ls) != 0:
             reps = _max_reps_from_beginning(ls)
@@ -229,7 +224,7 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
     val = _process_special_keys(key, val)
 
     if isinstance(val, (list, tuple)):
-        val = val if isinstance(val, list) else [val]
+        val = list(val)  # in case tuple
         val = _squash_list(val)
     if isinstance(val, float):
         val = _format_float(val)
