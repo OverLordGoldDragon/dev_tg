@@ -146,7 +146,7 @@ def _get_val_history(cls, for_current_iter=False):
 def _get_best_subset_val_history(cls):
     def _unpack_data(cls):
         def _restore_flattened(data):
-            batch_size = cls.batch_size
+            batch_size = cls.batch_size or cls._inferred_batch_size
             n_slices  = cls.val_datagen.slices_per_batch or 1
             n_batches = len(cls.val_datagen.superbatch)
             restored = []
@@ -363,9 +363,14 @@ def _validate_data_shapes(cls, data, validate_n_slices=True):
     """
     def _validate_batch_size(data, outs_shape):
         batch_size = outs_shape[0]
+        if batch_size is None:
+            batch_size = cls.batch_size or cls._inferred_batch_size
+            assert batch_size is not None
+
         for name, x in data.items():
             assert (batch_size in x.shape), (
                 f"`{name}.shape` must include batch_size (={batch_size})")
+        return batch_size
 
     def _validate_last_dim(data, outs_shape):
         for name, x in data.items():
@@ -409,11 +414,11 @@ def _validate_data_shapes(cls, data, validate_n_slices=True):
 
     for name in data:
         data[name] = np.asarray(data[name])
-    outs_shape = cls.model.output_shape
+
+    outs_shape = list(cls.model.output_shape)
     ndim = len(outs_shape)
 
-    if outs_shape[0] is not None:
-        _validate_batch_size(data, outs_shape)
+    outs_shape[0] = _validate_batch_size(data, outs_shape)
     data = _validate_last_dim(data, outs_shape)
     data = _validate_iter_ndim(data, ndim)
 
@@ -430,8 +435,13 @@ def _validate_sample_weight_shape(cls, sample_weight_all,
                                   validate_n_slices=False):
     def _validate_batch_size(x, outs_shape):
         batch_size = outs_shape[0]
+        if batch_size is None:
+            batch_size = cls.batch_size or cls._inferred_batch_size
+            assert batch_size is not None
+
         assert (batch_size in x.shape), (
             f"`sample_weight_all.shape` must include batch_size (={batch_size})")
+        return batch_size
 
     # TODO: (36, 128) != (128, 10)
     # TODO: (1, 36, 128) != (128, 10)
@@ -467,11 +477,10 @@ def _validate_sample_weight_shape(cls, sample_weight_all,
             assert cls.val_datagen.slices_per_batch in x.shape
 
     x = np.asarray(sample_weight_all)
-    outs_shape = cls.model.output_shape
+    outs_shape = list(cls.model.output_shape)
     ndim = len(outs_shape)
 
-    if outs_shape[0] is not None:
-        _validate_batch_size(x, outs_shape)
+    outs_shape[0] = _validate_batch_size(x, outs_shape)
     x = _validate_last_dim(x, outs_shape)
     x = _validate_iter_ndim(x, ndim)
 

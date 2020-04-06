@@ -164,13 +164,13 @@ class TrainGenerator():
             self.validate()
             self.train()
 
-    def validate(self, record_progress=True, plot_history=True,
-                 do_visualization=True, clear_cache=True):
+    def validate(self, record_progress=True, clear_cache=True):
         txt = ("Validating" if not self._has_validated else
                "Finishing post-val processing")
         print("\n\n{}...".format(txt))
 
         while not self._has_validated:
+            kw = {}
             if self._val_has_postiter_processed:
                 x, y, self._val_sw = self.get_data(val=True)
                 self._y_true = y
@@ -180,12 +180,13 @@ class TrainGenerator():
                 if self.eval_fn_name == 'predict':
                     self._y_preds = self.model.predict(x, batch_size=len(x))
                 elif self.eval_fn_name == 'evaluate':
-                    metrics = self.model.evaluate(
+                    kw['metrics'] = self.model.evaluate(
                         x, y, sample_weight=self._val_sw,
                         batch_size=len(x), verbose=0)
+                kw['batch_size'] = len(x)
                 self._val_has_postiter_processed = False
 
-            self._val_postiter_processing(metrics, record_progress)
+            self._val_postiter_processing(record_progress, **kw)
             self._val_has_postiter_processed = True
 
         if self._has_validated:
@@ -241,13 +242,21 @@ class TrainGenerator():
             self._has_validated = False
             self.validate()
 
-    def _val_postiter_processing(self, metrics, record_progress=True):
-        def _on_iter_end(metrics):
-            self._update_temp_history(metrics, val=True)
+    def _val_postiter_processing(self, record_progress=True, metrics=None,
+                                 batch_size=None):
+        def _on_iter_end(metrics=None, batch_size=None):
+            if metrics is not None:
+                self._update_temp_history(metrics, val=True)
             self._val_iters += 1
             if self.eval_fn_name == 'predict':
                 self._update_val_iter_cache()
             self.val_datagen.update_state()
+
+            if self.batch_size is None:
+                if self._inferred_batch_size is None:
+                    self._inferred_batch_size = batch_size
+                elif self._inferred_batch_size != batch_size:
+                    self._inferred_batch_size = 'varies'
 
         def _on_batch_end():
             self._batches_validated += 1
@@ -270,7 +279,7 @@ class TrainGenerator():
             self._val_x_ticks += [self._times_validated]
             self._val_train_x_ticks += [self._batches_fit]
 
-        _on_iter_end(metrics)
+        _on_iter_end(metrics, batch_size)
         if self.val_datagen.batch_exhausted:
             _on_batch_end()
         if self.val_datagen.all_data_exhausted:
@@ -303,6 +312,15 @@ class TrainGenerator():
             best_size = self.best_subset_size
             print("Best {}-subset: {}".format(best_size, best_nums))
 
+        def _validate_batch_size():
+            batch_size = self.batch_size or self._inferred_batch_size
+            if not isinstance(batch_size, int):
+                raise ValueError(
+                    "to use `eval_fn_name = 'predict'`, either (1) `batch_size`"
+                    " must be defined, or (2) data fed in `validation()` "
+                    "must have same len() / .shape[0] across iterations.")
+
+        _validate_batch_size()
         if self.best_subset_size:
             _print_best_subset()
 
@@ -319,6 +337,7 @@ class TrainGenerator():
         if self.check_model_health:
             self.check_health()
 
+        self._inferred_batch_size = None  # reset
         self._has_validated = False
         self._has_trained = False
 
