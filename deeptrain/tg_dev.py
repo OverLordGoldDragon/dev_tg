@@ -6,8 +6,8 @@
     - visualizations
     - metric aliases
     - make report_generator optional per requiring PIL
-    - check support for batch_size=None
     - unit tests:
+        - batch_size = None
         - save/load
         - report generator
         - data generators
@@ -699,6 +699,7 @@ class TrainGenerator():
             self._val_has_postiter_processed=True
             self._train_has_notified_of_new_batch=False
             self._val_has_notified_of_new_batch=False
+            self._inferred_batch_size=None
 
             as_empty_list = [
                 'key_metric_history', 'best_subset_nums', '_labels',

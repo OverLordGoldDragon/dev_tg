@@ -75,7 +75,7 @@ _DEFAULT_REPORT_CFG = {
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
              'report_configs', 'datagen', 'val_datagen',
              'logdir', 'logs_dir', 'best_models_dir', 'fit_fn', 'eval_fn',
-             '_history_fig', 'metric_printskip_configs',
+             '_history_fig', 'metric_printskip_configs', '_inferred_batch_size',
              '*_has_', '*temp_history_empty',
              ],
         'exclude_types':

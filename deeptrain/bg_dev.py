@@ -115,7 +115,7 @@ class BatchGenerator():
             self.labels.extend(self._labels_from_group_batch())
         self.batch.extend(self._get_next_batch())
 
-        if len(self.batch) != self.batch_size:
+        if self.batch_size is not None and len(self.batch) != self.batch_size:
             flag = _handle_batch_size_mismatch(forced)
             if flag == 'exit':
                 return

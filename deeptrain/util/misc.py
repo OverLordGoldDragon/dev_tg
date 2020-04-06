@@ -48,23 +48,20 @@ def nCk(n, k):  # n-Choose-k
 def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
                           input_as_labels=False):
     """Instantiates trainer & optimizer, but does NOT train (update weights)"""
-    def _make_toy_inputs(model):
-        return np.random.randn(*model.input_shape)
+    def _make_toy_inputs(batch_size, input_shape):
+        return np.random.randn(batch_size, *input_shape[1:])
 
-    def _make_toy_labels(model):
-        loss = model.loss
-        shape = model.output_shape
-
+    def _make_toy_labels(batch_size, output_shape, loss):
         if loss == 'binary_crossentropy':
-            return np.random.randint(0, 1, shape)
+            return np.random.randint(0, 1, output_shape)
         elif loss == 'categorical_crossentropy':
-            n_classes = shape[-1]
-            class_labels = np.random.randint(0, n_classes, shape[0])
+            n_classes = output_shape[-1]
+            class_labels = np.random.randint(0, n_classes, batch_size)
             return np.eye(n_classes)[class_labels]
         elif loss == 'sparse_categorical_crossentropy':
-            return np.random.randint(0, shape[-1], shape[0])
+            return np.random.randint(0, output_shape[-1], batch_size)
         elif loss == 'mse':
-            return np.random.randn(*shape)
+            return np.random.randn(batch_size, *output_shape[1:])
         else:
             raise ValueError("unsupported loss: '{}'".format(loss))
 
@@ -74,8 +71,12 @@ def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
         else:
             return np.ones(toy_labels.shape[0])
 
-    toy_inputs = _make_toy_inputs(model)
-    toy_labels = _make_toy_labels(model)
+    batch_size = model.output_shape[0]
+    if batch_size is None:
+        batch_size = 32
+
+    toy_inputs = _make_toy_inputs(batch_size, model.input_shape)
+    toy_labels = _make_toy_labels(batch_size, model.output_shape, model.loss)
     toy_sample_weight = _make_sample_weight(toy_labels, class_weights)
     if input_as_labels:
         toy_labels = toy_inputs
@@ -211,9 +212,9 @@ def _validate_traingen_configs(cls):
 
     def _validate_best_subset_size():
         if cls.best_subset_size is not None:
-            if cls.batch_size is None:
-                raise ValueError("`batch_size` cannot be None to use "
-                                 "`best_subset_size`")
+            # if cls.batch_size is None:
+            #     raise ValueError("`batch_size` cannot be None to use "
+            #                      "`best_subset_size`")
             if cls.val_datagen.shuffle_group_samples:
                 raise ValueError("`val_datagen` cannot use `shuffle_group_"
                                  "samples` with `best_subset_size`")
