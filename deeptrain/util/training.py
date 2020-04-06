@@ -401,7 +401,7 @@ def _validate_data_shapes(cls, data, validate_n_slices=True):
         for name, x in data.items():
             assert (x.shape[-ndim:] == outs_shape), (
                 f"last dims of `{name}` must equal model.output_shape "
-                "[%s != %s]" % (x.shape, outs_shape))
+                "[%s != %s]" % (x.shape[-ndim:], outs_shape))
 
     def _validate_equal_shapes(data):
         x = data[list(data.keys())[0]]
@@ -419,6 +419,8 @@ def _validate_data_shapes(cls, data, validate_n_slices=True):
     ndim = len(outs_shape)
 
     outs_shape[0] = _validate_batch_size(data, outs_shape)
+    outs_shape = tuple(outs_shape)
+
     data = _validate_last_dim(data, outs_shape)
     data = _validate_iter_ndim(data, ndim)
 
@@ -481,6 +483,8 @@ def _validate_sample_weight_shape(cls, sample_weight_all,
     ndim = len(outs_shape)
 
     outs_shape[0] = _validate_batch_size(x, outs_shape)
+    outs_shape = tuple(outs_shape)
+
     x = _validate_last_dim(x, outs_shape)
     x = _validate_iter_ndim(x, ndim)
 
