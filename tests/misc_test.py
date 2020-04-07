@@ -75,7 +75,8 @@ def test_main():
         CONFIGS['traingen'].update(dict(
             val_freq={'iter': 20},
             temp_checkpoint_freq={'val': 3},
-            optimizer_save_configs={'exclude': ['iterations']}
+            optimizer_save_configs={'exclude': ['iterations']},
+            optimizer_load_configs={'include': ['momentum', 'momentam']},
             ))
         _test_main()
 
