@@ -74,8 +74,8 @@ def test_weighted_slices():
     t0 = time()
     C = deepcopy(CONFIGS)
     C['traingen'].update(dict(eval_fn_name='predict',
-                                    loss_weighted_slices_range=(.5, 1.5),
-                                    pred_weighted_slices_range=(.5, 1.5)))
+                              loss_weighted_slices_range=(.5, 1.5),
+                              pred_weighted_slices_range=(.5, 1.5)))
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         tg = _init_session(C)

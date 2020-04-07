@@ -165,7 +165,7 @@ def _get_best_subset_val_history(cls):
 
     def _find_best_subset_from_preds(cls, d):
         metric_fn = getattr(
-            metric_fns, _get_api_metric_name(cls.key_metric, cls.model.loss[0]))
+            metric_fns, _get_api_metric_name(cls.key_metric, cls.model.loss))
         if 'pred_threshold' not in metric_fn.__code__.co_varnames:
             search_min_max = None
         elif cls.dynamic_predict_threshold_min_max is None:
@@ -253,7 +253,7 @@ def _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
     metric_names = cls.val_metrics.copy()
     metrics = {}
     for name in metric_names:
-        api_name = _get_api_metric_name(name, cls.model.loss[0])
+        api_name = _get_api_metric_name(name, cls.model.loss)
         data = dict(y_true=labels_all_norm,  # TODO remove `preds_all` cases?
                     y_pred=preds_all_norm,
                     sample_weight=sample_weight_all,
