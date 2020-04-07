@@ -5,6 +5,7 @@ import pytest
 from pathlib import Path
 from termcolor import cprint
 from time import time
+from copy import deepcopy
 
 from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
@@ -60,22 +61,22 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
 
 def test_main():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        _test_main()
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     cprint("<< AUTOENCODER TEST PASSED >>\n", 'green')
 
 
-def _test_main():
-    tg = _init_session(CONFIGS)
+def _test_main(C):
+    tg = _init_session(C)
     tg.train()
+    _test_load(tg, C)
 
-    _test_load(tg, CONFIGS)
 
-
-def _test_load(tg, CONFIGS):
+def _test_load(tg, C):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
         paths.sort(key=os.path.getmtime)
@@ -86,7 +87,7 @@ def _test_load(tg, CONFIGS):
     _destroy_session(tg)
 
     weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(CONFIGS, weights_path, loadpath)
+    tg = _init_session(C, weights_path, loadpath)
     print("\n>LOAD TEST PASSED")
 
 
@@ -118,12 +119,11 @@ def _make_model(weights_path=None, **kw):
     return model
 
 
-def _init_session(CONFIGS, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **CONFIGS['model'])
-    dg  = SimpleBatchgen(**CONFIGS['datagen'])
-    vdg = SimpleBatchgen(**CONFIGS['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
-                         **CONFIGS['traingen'])
+def _init_session(C, weights_path=None, loadpath=None):
+    model = _make_model(weights_path, **C['model'])
+    dg  = SimpleBatchgen(**C['datagen'])
+    vdg = SimpleBatchgen(**C['val_datagen'])
+    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
     return tg
 
 

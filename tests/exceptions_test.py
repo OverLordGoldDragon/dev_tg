@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import pytest
+import numpy as np
 
 from unittest.mock import patch
 from pathlib import Path
@@ -11,8 +12,7 @@ from copy import deepcopy
 from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
-from deeptrain.util import saving
-from deeptrain.util import misc
+from deeptrain import util
 from deeptrain.util.misc import pass_on_error
 from deeptrain import TrainGenerator, SimpleBatchgen
 
@@ -61,7 +61,7 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {f'{name}_exceptions': None for name in ('datagen', 'traingen')}
+tests_done = {f'{name}_exceptions': None for name in ('datagen', 'util')}
 
 
 def test_datagen():
@@ -104,7 +104,7 @@ def test_datagen():
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('datagen_exceptions', tests_done)
 
-def test_traingen():
+def test_util():
     t0 = time()
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
@@ -119,12 +119,29 @@ def test_traingen():
         tg.train()
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            saving.save_best_model(tg, del_previous_best=True)
+            util.saving.save_best_model(tg, del_previous_best=True)
 
+        # _update_temp_history() [util.training]
+        tg.val_temp_history['loss'] = (1, 2, 3)
+        util.training._update_temp_history(tg, metrics=(4,), val=True)
+        tg.val_temp_history['loss'] = []
+        util.training._update_temp_history(tg, metrics=(4,), val=True)
+
+        # _get_sample_weight() [util.training]
+        labels = np.random.randint(0, 2, (32, 3))
+        tg.class_weights = {0: 1, 1: 2, 2: 3}
+        util.training._get_sample_weight(tg, labels)
+
+        # _get_api_metric_name() [util.training]
+        util.training._get_api_metric_name(
+            'accuracy', 'categorical_crossentropy')
+        util.training._get_api_metric_name(
+            'acc', 'sparse_categorical_crossentropy')
+        util.training._get_api_metric_name('acc', 'binary_crossentropy')
 
         # _validate_weighted_slices_range() [util.misc]
         tg.datagen.slices_per_batch = None
-        misc._validate_traingen_configs(tg)  ##
+        util.misc._validate_traingen_configs(tg)  ##
         del tg
         C['traingen']['max_is_best'] = True  # elsewhere
         C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
@@ -165,7 +182,7 @@ def test_traingen():
         pass_on_error(_init_session, C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('traingen_exceptions', tests_done)
+    _notify('util_exceptions', tests_done)
 
 
 def _test_load(tg, C):

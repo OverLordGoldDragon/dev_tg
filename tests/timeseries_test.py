@@ -5,6 +5,7 @@ import pytest
 from pathlib import Path
 from termcolor import cprint
 from time import time
+from copy import deepcopy
 
 from tests.backend import Input, Dense, LSTM
 from tests.backend import l2
@@ -59,23 +60,25 @@ tests_done = {name: None for name in ('main', 'load', 'weighted_slices',
 
 def test_main():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        tg = _init_session(CONFIGS)
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        tg = _init_session(C)
         tg.train()
-        _test_load(tg, CONFIGS)
+        _test_load(tg, C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('main', tests_done)
 
 
 def test_weighted_slices():
     t0 = time()
-    CONFIGS['traingen'].update(dict(eval_fn_name='predict',
+    C = deepcopy(CONFIGS)
+    C['traingen'].update(dict(eval_fn_name='predict',
                                     loss_weighted_slices_range=(.5, 1.5),
                                     pred_weighted_slices_range=(.5, 1.5)))
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        tg = _init_session(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        tg = _init_session(C)
         tg.train()
         _destroy_session(tg)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
@@ -84,25 +87,26 @@ def test_weighted_slices():
 
 def test_predict():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        eval_fn_name = CONFIGS['traingen'].get('eval_fn_name', None)
-        key_metric = CONFIGS['traingen'].get('key_metric', None)
-        CONFIGS['traingen']['eval_fn_name'] = 'predict'
-        CONFIGS['traingen']['key_metric'] = 'f1_score'
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        eval_fn_name = C['traingen'].get('eval_fn_name', None)
+        key_metric = C['traingen'].get('key_metric', None)
+        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['key_metric'] = 'f1_score'
 
-        tg = _init_session(CONFIGS)
+        tg = _init_session(C)
         tg.train()
-        _test_load(tg, CONFIGS)
+        _test_load(tg, C)
 
-        CONFIGS['traingen']['eval_fn_name'] = eval_fn_name
-        CONFIGS['traingen']['key_metric'] = key_metric
+        C['traingen']['eval_fn_name'] = eval_fn_name
+        C['traingen']['key_metric'] = key_metric
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('predict', tests_done)
 
 
-def _test_load(tg, CONFIGS):
+def _test_load(tg, C):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
         paths.sort(key=os.path.getmtime)
@@ -113,7 +117,7 @@ def _test_load(tg, CONFIGS):
     _destroy_session(tg)
 
     weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(CONFIGS, weights_path, loadpath)
+    tg = _init_session(C, weights_path, loadpath)
 
     _notify('load', tests_done)
 
@@ -139,12 +143,12 @@ def _make_model(weights_path=None, **kw):
     return model
 
 
-def _init_session(CONFIGS, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **CONFIGS['model'])
-    dg  = SimpleBatchgen(**CONFIGS['datagen'])
-    vdg = SimpleBatchgen(**CONFIGS['val_datagen'])
+def _init_session(C, weights_path=None, loadpath=None):
+    model = _make_model(weights_path, **C['model'])
+    dg  = SimpleBatchgen(**C['datagen'])
+    vdg = SimpleBatchgen(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
-                         **CONFIGS['traingen'])
+                         **C['traingen'])
     return tg
 
 

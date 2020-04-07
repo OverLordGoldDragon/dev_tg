@@ -5,6 +5,7 @@ import pytest
 from pathlib import Path
 from termcolor import cprint
 from time import time
+from copy import deepcopy
 
 from tests.backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from tests.backend import Model
@@ -61,23 +62,23 @@ tests_done = {name: None for name in ('main', 'load', 'predict',
 
 def test_main():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        CONFIGS['traingen']['epochs'] = 2
-        _test_main()
-        CONFIGS['traingen']['epochs'] = 1
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        C['traingen']['epochs'] = 2
+        _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('main', tests_done)
 
 
-def _test_main():
-    tg = _init_session(CONFIGS)
+def _test_main(C):
+    tg = _init_session(C)
     tg.train()
-    _test_load(tg, CONFIGS)
+    _test_load(tg, C)
 
 
-def _test_load(tg, CONFIGS):
+def _test_load(tg, C):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
         paths.sort(key=os.path.getmtime)
@@ -88,18 +89,17 @@ def _test_load(tg, CONFIGS):
     _destroy_session(tg)
 
     weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(CONFIGS, weights_path, loadpath)
+    tg = _init_session(C, weights_path, loadpath)
     _notify('load', tests_done)
 
 
 def test_predict():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        eval_fn_name = CONFIGS['traingen'].get('eval_fn_name', None)
-        CONFIGS['traingen']['eval_fn_name'] = 'predict'
-        _test_main()
-        CONFIGS['traingen']['eval_fn_name'] = eval_fn_name
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        C['traingen']['eval_fn_name'] = 'predict'
+        _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('predict', tests_done)
@@ -107,12 +107,13 @@ def test_predict():
 
 def test_group_batch():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
         for name in ('traingen', 'datagen', 'val_datagen'):
-            CONFIGS[name]['batch_size'] = 64
-        CONFIGS['model']['batch_shape'] = (64, width, height, channels)
-        _test_main()
+            C[name]['batch_size'] = 64
+        C['model']['batch_shape'] = (64, width, height, channels)
+        _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('recursive_batch', tests_done)
@@ -120,12 +121,13 @@ def test_group_batch():
 
 def test_recursive_batch():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
         for name in ('traingen', 'datagen', 'val_datagen'):
-            CONFIGS[name]['batch_size'] = 256
-        CONFIGS['model']['batch_shape'] = (256, width, height, channels)
-        _test_main()
+            C[name]['batch_size'] = 256
+        C['model']['batch_shape'] = (256, width, height, channels)
+        _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('recursive_batch', tests_done)
@@ -163,12 +165,11 @@ def _make_model(weights_path=None, **kw):
     return model
 
 
-def _init_session(CONFIGS, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **CONFIGS['model'])
-    dg  = SimpleBatchgen(**CONFIGS['datagen'])
-    vdg = SimpleBatchgen(**CONFIGS['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
-                         **CONFIGS['traingen'])
+def _init_session(C, weights_path=None, loadpath=None):
+    model = _make_model(weights_path, **C['model'])
+    dg  = SimpleBatchgen(**C['datagen'])
+    vdg = SimpleBatchgen(**C['val_datagen'])
+    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
     return tg
 
 

@@ -164,8 +164,8 @@ def _get_best_subset_val_history(cls):
             _transform_eval_data(cls, labels_all, preds_all, sample_weight_all))
 
     def _find_best_subset_from_preds(cls, d):
-        metric_fn = getattr(metric_fns,
-                            _get_api_metric_name(cls.key_metric, cls.model))
+        metric_fn = getattr(
+            metric_fns, _get_api_metric_name(cls.key_metric, cls.model.loss[0]))
         if 'pred_threshold' not in metric_fn.__code__.co_varnames:
             search_min_max = None
         elif cls.dynamic_predict_threshold_min_max is None:
@@ -233,13 +233,13 @@ def _compute_metric(data, metric_name=None, metric_fn=None):
     return metric_fn(**data)
 
 
-def _get_api_metric_name(name, model):
+def _get_api_metric_name(name, loss_name):
     if name == 'loss':
-        api_name = model.loss
+        api_name = loss_name
     elif name in ('accuracy', 'acc'):
-        if model.loss[0] == 'categorical_crossentropy':
+        if loss_name == 'categorical_crossentropy':
             api_name = 'categorical_accuracy'
-        elif model.loss[0] == 'sparse_categorical_crossentropy':
+        elif loss_name == 'sparse_categorical_crossentropy':
             api_name = 'sparse_categorical_accuracy'
         else:
             api_name = 'binary_accuracy'
@@ -253,7 +253,7 @@ def _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
     metric_names = cls.val_metrics.copy()
     metrics = {}
     for name in metric_names:
-        api_name = _get_api_metric_name(name, cls.model)
+        api_name = _get_api_metric_name(name, cls.model.loss[0])
         data = dict(y_true=labels_all_norm,  # TODO remove `preds_all` cases?
                     y_pred=preds_all_norm,
                     sample_weight=sample_weight_all,
