@@ -66,7 +66,6 @@ tests_done = {f'{name}_exceptions': None for name in ('datagen', 'traingen')}
 
 def test_datagen():
     t0 = time()
-    global CONFIGS
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
@@ -107,7 +106,6 @@ def test_datagen():
 
 def test_traingen():
     t0 = time()
-    global CONFIGS
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):

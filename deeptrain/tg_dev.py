@@ -649,7 +649,7 @@ class TrainGenerator():
                     raise ValueError("unknown kwarg: '{}'".format(kw))
 
         def _set_kwargs(kwargs):
-            class_kwargs = _TRAINGEN_CFG
+            class_kwargs = deepcopy(_TRAINGEN_CFG)
             class_kwargs.update(kwargs)
 
             for attribute in class_kwargs:
