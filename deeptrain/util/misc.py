@@ -87,10 +87,6 @@ def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
 
 def _validate_traingen_configs(cls):
     def _validate_metrics():
-        def _from_model(metric):
-            return metric != 'loss' and metric not in [
-                cls.model.loss, *cls.model.metrics]
-
         for name in ('train_metrics', 'val_metrics'):
             value = getattr(cls, name)
             if not isinstance(value, list):
@@ -151,12 +147,11 @@ def _validate_traingen_configs(cls):
 
 
     def _validate_optimizer_saving_configs():
-        cfgs = (cls.optimizer_save_configs, cls.optimizer_load_configs)
-        for cfg in cfgs:
+        for name in ('optimizer_save_configs', 'optimizer_load_configs'):
+            cfg = getattr(cls, name)
             if cfg is not None and 'include' in cfg and 'exclude' in cfg:
                 raise ValueError("cannot have both 'include' and 'exclude' "
-                                 "in `optimizer_save_configs` or "
-                                 "`optimizer_load_configs`")
+                                 f"in `{name}`")
 
     def _validate_visualizers():
         if (cls.visualizers is not None and cls.eval_fn_name != 'predict'

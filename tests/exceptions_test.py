@@ -2,13 +2,18 @@
 import os
 import pytest
 
+from unittest.mock import patch
 from pathlib import Path
 from termcolor import cprint
 from time import time
+from copy import deepcopy
 
-from tests.backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
+from deeptrain.util import saving
+from deeptrain.util import misc
+from deeptrain.util.misc import pass_on_error
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
@@ -19,14 +24,15 @@ datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
 
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
-    loss='categorical_crossentropy',
-    metrics=['accuracy'],
+    loss='mse',
+    metrics=None,#['mape'],
     optimizer='adam',
     num_classes=10,
-    filters=[32, 64],
-    kernel_size=[(3, 3), (3, 3)],
-    dropout=[.25, .5],
-    dense_units=128,
+    activation=['relu']*4 + ['sigmoid'],
+    filters=[2, 2, 1, 2, 1],
+    kernel_size=[(3, 3)]*5,
+    strides=[(2, 2), (2, 2), 1, 1, 1],
+    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
@@ -47,6 +53,7 @@ VAL_DATAGEN_CFG = dict(
 TRAINGEN_CFG = dict(
     epochs=1,
     val_freq={'epoch': 1},
+    input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     model_configs=MODEL_CFG,
@@ -54,14 +61,16 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('datagen_exceptions',)}
+tests_done = {f'{name}_exceptions': None for name in ('datagen', 'traingen')}
 
 
-def test_datagen_exceptions():
+def test_datagen():
     t0 = time()
-    with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-            CONFIGS['traingen']['best_models_dir']):
-        tg = _init_session(CONFIGS)
+    global CONFIGS
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        tg = _init_session(C)
         tg.train()
 
         dg = tg.datagen
@@ -93,12 +102,75 @@ def test_datagen_exceptions():
                       data_format="x")
         dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
 
-
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('datagen_exceptions', tests_done)
 
+def test_traingen():
+    t0 = time()
+    global CONFIGS
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        configs_orig = deepcopy(C)
+        # _validate_savelist() + _validate_metrics() [util.misc]
+        C['traingen']['savelist'] = ['{labels}']
+        C['traingen']['train_metrics'] = ('loss',)
+        tg = _init_session(C)
 
-def _test_load(tg, CONFIGS):
+        # save_best_model() [util.saving]
+        tg.train()
+        with patch('os.remove') as mock_remove:
+            mock_remove.side_effect = OSError('Permission Denied')
+            saving.save_best_model(tg, del_previous_best=True)
+
+
+        # _validate_weighted_slices_range() [util.misc]
+        tg.datagen.slices_per_batch = None
+        misc._validate_traingen_configs(tg)  ##
+        del tg
+        C['traingen']['max_is_best'] = True  # elsewhere
+        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
+        C['traingen']['eval_fn_name'] = 'evaluate'
+        pass_on_error(_init_session, C)  ##
+        C['traingen']['eval_fn_name'] = 'predict'
+        pass_on_error(_init_session, C)  ##
+
+        # _validate_directories() [util.misc]
+        C = deepcopy(configs_orig)
+        C['traingen']['best_models_dir'] = None
+        pass_on_error(_init_session, C)
+        C = deepcopy(configs_orig)
+        C['traingen']['logs_dir'] = None
+        pass_on_error(_init_session, C)
+        C = deepcopy(configs_orig)
+        C['traingen']['best_models_dir'] = None
+        C['traingen']['logs_dir'] = None
+        pass_on_error(_init_session, C)
+
+        # _validate_optimizer_saving_configs() [util.misc]
+        C = deepcopy(configs_orig)
+        C['traingen']['optimizer_save_configs'] = {
+            'include': 'weights', 'exclude': 'updates'}
+        pass_on_error(_init_session, C)
+
+        # _validate_class_weights() [util.misc]
+        C = deepcopy(configs_orig)
+        C['traingen']['class_weights'] = {'0': 1, 1: 2}
+        pass_on_error(_init_session, C)
+        C['traingen']['class_weights'] = {0: 1}
+        pass_on_error(_init_session, C)
+
+        # _validate_best_subset_size() [util.misc]
+        C = deepcopy(configs_orig)
+        C['traingen']['best_subset_size'] = 5
+        C['val_datagen']['shuffle_group_samples'] = True
+        pass_on_error(_init_session, C)
+
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('traingen_exceptions', tests_done)
+
+
+def _test_load(tg, C):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
         paths.sort(key=os.path.getmtime)
@@ -109,33 +181,29 @@ def _test_load(tg, CONFIGS):
     _destroy_session(tg)
 
     weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(CONFIGS, weights_path, loadpath)
+    tg = _init_session(C, weights_path, loadpath)
     print("\n>LOAD TEST PASSED")
 
 
 def _make_model(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'num_classes', 'filters', 'kernel_size',
-                       'dropout', 'dense_units')
+                       'activation', 'filters', 'kernel_size', 'strides',
+                       'up_sampling_2d')
         return [kw[key] for key in expected_kw]
 
-    (batch_shape, loss, metrics, optimizer, num_classes, filters,
-     kernel_size, dropout, dense_units) = _unpack_configs(kw)
+    (batch_shape, loss, metrics, optimizer, activation, filters, kernel_size,
+     strides, up_sampling_2d) = _unpack_configs(kw)
 
     ipt = Input(batch_shape=batch_shape)
     x   = ipt
 
-    for f, ks in zip(filters, kernel_size):
-        x = Conv2D(f, ks, activation='relu', padding='same')(x)
-
-    x   = MaxPooling2D(pool_size=(2, 2))(x)
-    x   = Dropout(dropout[0])(x)
-    x   = Flatten()(x)
-    x   = Dense(dense_units, activation='relu')(x)
-
-    x   = Dropout(dropout[1])(x)
-    out = Dense(num_classes, activation='softmax')(x)
+    configs = (activation, filters, kernel_size, strides, up_sampling_2d)
+    for act, f, ks, s, ups in zip(*configs):
+        if ups is not None:
+            x = UpSampling2D(ups)(x)
+        x = Conv2D(f, ks, strides=s, activation=act, padding='same')(x)
+    out = x
 
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)
@@ -145,12 +213,12 @@ def _make_model(weights_path=None, **kw):
     return model
 
 
-def _init_session(CONFIGS, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **CONFIGS['model'])
-    dg  = SimpleBatchgen(**CONFIGS['datagen'])
-    vdg = SimpleBatchgen(**CONFIGS['val_datagen'])
+def _init_session(C, weights_path=None, loadpath=None):
+    model = _make_model(weights_path, **C['model'])
+    dg  = SimpleBatchgen(**C['datagen'])
+    vdg = SimpleBatchgen(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
-                         **CONFIGS['traingen'])
+                         **C['traingen'])
     return tg
 
 

@@ -19,16 +19,6 @@ def save_best_model(cls, del_previous_best=False):
         if len(prev_files) != 0:
             [os.remove(f) for f in prev_files]
 
-        prev_files = _get_prev_files()
-        if len(prev_files) > 0:
-            command = input(WARN,  "_save_best_model_IF IS ASKING PERMISSION "
-                            "TO DELETE MULTIPLE FILES IN", cls.best_models_dir
-                            + "; PROCEED? [y/n]")
-            if command == "y":
-                for file in prev_files:
-                    os.remove(file)
-                    print("Deleted", file)
-
     def _update_best_key_metric_in_model_name(keyword='__max'):
         cls.model_name = cls.model_name.split(keyword)[0] + keyword + (
             '%.3f' % cls.best_key_metric).replace('0.', '.')

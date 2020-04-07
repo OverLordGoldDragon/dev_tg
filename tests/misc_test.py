@@ -12,7 +12,7 @@ from tests.backend import BASEDIR, tempdir
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
-batch_size = None#128
+batch_size = None
 width, height = 28, 28
 channels = 1
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')

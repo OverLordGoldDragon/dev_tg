@@ -48,10 +48,10 @@ VAL_DATAGEN_CFG = dict(
 TRAINGEN_CFG = dict(
     epochs=2,
     val_freq={'epoch': 1},
+    input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     model_configs=MODEL_CFG,
-    input_as_labels=True,
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
