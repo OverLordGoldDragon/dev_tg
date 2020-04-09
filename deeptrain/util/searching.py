@@ -3,7 +3,7 @@ from . import metrics
 import numpy as np
 
 
-def get_best_predict_threshold(labels, preds, metric_fn, search_interval=0.05,
+def find_best_predict_threshold(labels, preds, metric_fn, search_interval=.01,
                                search_min_max=(0, 1), return_best_metric=False,
                                verbosity=0, threshold_preference=0.5):
     _min    = search_min_max[0] if search_min_max[0] != 0 else search_interval
@@ -92,7 +92,7 @@ def find_best_subset(labels_all, preds_all, metric_fn, search_interval=.01,
 
     best_labels_flat, best_preds_flat = _flat(best_labels, best_preds)
     if search_min_max is not None:
-        best_th, best_metric = get_best_predict_threshold(
+        best_th, best_metric = find_best_predict_threshold(
             best_labels_flat, best_preds_flat, metric_fn, search_interval,
             search_min_max, return_best_metric=True)
     else:

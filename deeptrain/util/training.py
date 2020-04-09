@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .searching import get_best_predict_threshold, find_best_subset
+from .searching import find_best_predict_threshold, find_best_subset
 from .searching import find_best_subset_from_history
 from .introspection import l1l2_weight_loss
 from . import metrics as metric_fns
@@ -10,11 +10,37 @@ import numpy as np
 
 
 def _update_temp_history(cls, metrics, val=False):
-    def _validate_temp_history_and_names(temp_history, name_aliases):
-        for name in name_aliases:
-            if name not in temp_history:
-                name_aliases.pop(name_aliases.index(name))
-                continue
+    def _get_metric_names(metrics):
+        # TODO `metrics` should come pre-packed with correct names,
+        # validate in misc.validate_kwargs instead
+        # TODO redundant check, e.g. 'f1_score' can't be in model.metrics
+        if TF_KERAS:
+            metric_names = ['loss', cls.model.metrics[0]._name]  # TODO multi
+        else:
+            metric_names = ['loss', *cls.model.metrics]
+        metric_names = [cls._alias_to_metric_name(n) for n in metric_names]
+
+        if cls.eval_fn_name == 'evaluate':
+            assert len(metric_names) == len(metrics)
+            check_metrics = cls.val_metrics if val else cls.train_metrics
+            for name in check_metrics:
+                assert (name in metric_names)
+        return metric_names
+
+    def _get_temp_history(val):
+        temp_history = cls.val_temp_history if val else cls.temp_history
+        temp_history = _validate_temp_history(temp_history)
+        return temp_history
+
+    def _get_slice_info(val):
+        datagen = cls.val_datagen if val else cls.datagen
+        slice_idx = getattr(datagen, 'slice_idx', None)
+        no_slices = slice_idx is None
+        slices_per_batch = getattr(datagen, 'slices_per_batch', None)
+        return no_slices, slice_idx, slices_per_batch
+
+    def _validate_temp_history(temp_history):
+        for name, value in temp_history.items():
             if not isinstance(temp_history[name], list):
                 print(NOTE, "`temp_history` is non-list; attempting casting")
                 temp_history[name] = list(temp_history[name])
@@ -29,37 +55,18 @@ def _update_temp_history(cls, metrics, val=False):
                   "after load() -- attempting fix via append()...")
             temp_history[name].append(value)
 
-    def _process_metric_names(metrics):
-        # TODO redundant check, e.g. 'f1_score' can't be in model.metrics
-        if TF_KERAS:
-            metric_names = ['loss', cls.model.metrics[0]._name]  # TODO multi
-        else:
-            metric_names = ['loss', *cls.model.metrics]
-        name_aliases = [cls._alias_to_metric_name(n) for n in metric_names]
+    if not isinstance(metrics, (list, tuple)):
+        metrics = [metrics]
+    metric_names = _get_metric_names(metrics)
+    temp_history = _get_temp_history(val)
+    no_slices, slice_idx, slices_per_batch = _get_slice_info(val)
 
-        if cls.eval_fn_name == 'evaluate':
-            assert len(metric_names) == len(metrics)
-            check_metrics = cls.val_metrics if val else cls.train_metrics
-            for name in check_metrics:
-                assert (name in name_aliases)
-        return name_aliases
-
-    metrics = metrics if isinstance(metrics, (list, tuple)) else [metrics]
-    if val:
-        1 == 1
-    name_aliases = _process_metric_names(metrics)
-
-    temp_history = cls.val_temp_history if val else cls.temp_history
-    datagen = cls.val_datagen if val else cls.datagen
-    no_slices = getattr(datagen, 'slice_idx', None) is None
-    temp_history = _validate_temp_history_and_names(temp_history, name_aliases)
-
-    for name, value in zip(name_aliases, metrics):
-        if no_slices or datagen.slice_idx == 0:
+    for name, value in zip(metric_names, metrics):
+        if no_slices or slice_idx == 0:
             temp_history[name].append([])
         _try_append_with_fix(temp_history)
 
-        if not no_slices and datagen.slice_idx == (datagen.slices_per_batch - 1):
+        if not no_slices and slice_idx == (slices_per_batch - 1):
             temp_history[name][-1] = np.mean(temp_history[name][-1])
 
 
@@ -76,7 +83,7 @@ def _get_sample_weight(cls, labels, val=False):
 
 def _get_weighted_sample_weight(cls, labels_all, val=False,
                                 weight_range=(0.5, 1.5), slice_idx=None):
-    def _sliced_sample_weight(cls, labels_all, val):
+    def _sliced_sample_weight(labels_all, val):
         sw_all = []
         for batch_labels in labels_all:
             sw_all.append([])
@@ -94,13 +101,14 @@ def _get_weighted_sample_weight(cls, labels_all, val=False,
     dg = cls.val_datagen if val else cls.datagen
     n_slices = dg.slices_per_batch
 
-    sw = _sliced_sample_weight(cls, labels_all, val)
+    sw = _sliced_sample_weight(labels_all, val)
     sw = _validate_sample_weight_shape(cls, sw, validate_n_slices=do_val)
     sw_weights = np.linspace(*weight_range, n_slices).reshape(
         [1, n_slices] + [1]*(sw.ndim - 2))
 
     sw = sw * sw_weights
-    sw = sw if slice_idx is None else sw[:, slice_idx]
+    if slice_idx is not None:
+        sw = sw[:, slice_idx]
     return sw.squeeze()
 
 
@@ -112,7 +120,7 @@ def _get_val_history(cls, for_current_iter=False):
         return {metric: np.mean(values) for metric, values in
                 cls.val_temp_history.items()}
 
-    def _unpack_data(cls):
+    def _unpack_data():
         if for_current_iter:
             labels_all = cls._labels_cache[-1].copy()
             preds_all  = cls._preds_cache[-1].copy()
@@ -124,27 +132,28 @@ def _get_val_history(cls, for_current_iter=False):
         return {'labels_all': labels_all, 'preds_all': preds_all,
                 'sample_weight_all': sample_weight_all}
 
-    d = _unpack_data(cls)
+    def _find_and_set_predict_threshold():
+        pred_threshold = find_best_predict_threshold(
+            labels_all_norm, preds_all_norm, cls.key_metric_fn,
+            search_interval=.01,
+            search_min_max=cls.dynamic_predict_threshold_min_max)
+        _set_predict_threshold(cls, pred_threshold, for_current_iter)
+
+    d = _unpack_data()
     (labels_all, preds_all, sample_weight_all,
      preds_all_norm, labels_all_norm) = _transform_eval_data(
          cls, d['labels_all'], d['preds_all'], d['sample_weight_all'],
          return_as_dict=False)
 
-    # TODO
-    if cls.dynamic_predict_threshold_min_max is not None and (
-            'pred_threshold' in cls.key_metric_fn.__code__.co_varnames):
-        pred_threshold = get_best_predict_threshold(
-            labels_all_norm, preds_all_norm, cls.key_metric_fn,
-            search_interval=.01,
-            search_min_max=cls.dynamic_predict_threshold_min_max)
-        _set_predict_threshold(cls, pred_threshold, for_current_iter)
+    if cls.dynamic_predict_threshold_min_max is not None:
+        _find_and_set_predict_threshold()
 
     return _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
                             labels_all_norm, preds_all_norm)
 
 
 def _get_best_subset_val_history(cls):
-    def _unpack_data(cls):
+    def _unpack_data():
         def _restore_flattened(data):
             batch_size = cls.batch_size or cls._inferred_batch_size
             n_slices  = cls.val_datagen.slices_per_batch or 1
@@ -163,7 +172,7 @@ def _get_best_subset_val_history(cls):
         return _restore_flattened(
             _transform_eval_data(cls, labels_all, preds_all, sample_weight_all))
 
-    def _find_best_subset_from_preds(cls, d):
+    def _find_best_subset_from_preds(d):
         metric_fn = getattr(
             metric_fns, _get_api_metric_name(cls.key_metric, cls.model.loss))
         if 'pred_threshold' not in metric_fn.__code__.co_varnames:
@@ -181,17 +190,17 @@ def _get_best_subset_val_history(cls):
             subset_size=cls.best_subset_size)
         return best_subset_idxs, pred_threshold
 
-    def _find_best_subset_from_history(cls):
+    def _find_best_subset_from_history():
         metric = cls.val_temp_history[cls.key_metric]
         best_subset_idxs = find_best_subset_from_history(
             metric, cls.best_subset_size, cls.max_is_best)
         return best_subset_idxs
 
-    def _best_subset_metrics_from_history(cls, best_subset_idxs):
+    def _best_subset_metrics_from_history(best_subset_idxs):
         return {name: np.asarray(metric)[best_subset_idxs].mean()
                 for name, metric in cls.val_temp_history.items()}
 
-    def _best_subset_metrics_from_preds(cls, d, best_subset_idxs):
+    def _best_subset_metrics_from_preds(d, best_subset_idxs):
         def _filter_by_indices(indices, *arrs):
             return [np.asarray([x[idx] for idx in indices]) for x in arrs]
 
@@ -205,10 +214,10 @@ def _get_best_subset_val_history(cls):
                                 labels_all_norm, preds_all_norm)
 
     if cls.eval_fn_name == 'evaluate':
-        best_subset_idxs = _find_best_subset_from_history(cls)
+        best_subset_idxs = _find_best_subset_from_history()
     elif cls.eval_fn_name == 'predict':
-        d = _unpack_data(cls)
-        best_subset_idxs, pred_threshold = _find_best_subset_from_preds(cls, d)
+        d = _unpack_data()
+        best_subset_idxs, pred_threshold = _find_best_subset_from_preds(d)
         if cls.dynamic_predict_threshold_min_max is not None:
             _set_predict_threshold(cls, pred_threshold)
     else:
@@ -216,9 +225,9 @@ def _get_best_subset_val_history(cls):
 
     cls.best_subset_nums = np.array(cls._val_set_name_cache)[best_subset_idxs]
     if cls.eval_fn_name == 'evaluate':
-        return _best_subset_metrics_from_history(cls, best_subset_idxs)
+        return _best_subset_metrics_from_history(best_subset_idxs)
     else:
-        return _best_subset_metrics_from_preds(cls, d, best_subset_idxs)
+        return _best_subset_metrics_from_preds(d, best_subset_idxs)
 
 
 def _compute_metric(data, metric_name=None, metric_fn=None):
@@ -293,15 +302,13 @@ def _transform_eval_data(cls, labels_all, preds_all, sample_weight_all,
 
     if cls.pred_weighted_slices_range is not None:  # TODO check sw_all shape
         if cls.pred_weighted_slices_range is not None:
-            preds_all_norm = _normalize_preds(cls, preds_all)
+            preds_all_norm = _weighted_normalize_preds(cls, preds_all)
         else:
             preds_all_norm = preds_all
         sample_weight_all = cls.get_sample_weight(labels_all, val=True)
         labels_all_norm = np.array([labels[0] for labels in labels_all])
         assert (preds_all_norm.max() <= 1) and (preds_all_norm.min() >= 0)
     else:
-        if cls._val_set_name == '36':
-            1 == 1
         preds_all  = np.vstack(preds_all)
         labels_all = np.vstack(labels_all)
         sample_weight_all = np.vstack(sample_weight_all)
@@ -320,7 +327,7 @@ def _transform_eval_data(cls, labels_all, preds_all, sample_weight_all,
         return data
 
 
-def _normalize_preds(cls, preds_all):
+def _weighted_normalize_preds(cls, preds_all):
     def _validate_data(preds_all, n_slices):
         spb = cls.val_datagen.slices_per_batch
         assert (n_slices == spb), ("`n_slices` inferred from `preds_all` differs"
@@ -445,10 +452,8 @@ def _validate_sample_weight_shape(cls, sample_weight_all,
             f"`sample_weight_all.shape` must include batch_size (={batch_size})")
         return batch_size
 
-    # TODO: (36, 128) != (128, 10)
-    # TODO: (1, 36, 128) != (128, 10)
     def _validate_last_dim(x, outs_shape):
-        if x.shape[-1] != outs_shape[-1]:# and x.ndim < len(outs_shape):
+        if x.shape[-1] != outs_shape[-1]:
             x = np.expand_dims(x, -1)
         return x
 

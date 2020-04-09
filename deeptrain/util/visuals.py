@@ -71,7 +71,7 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
         return plot_kws
 
     def _equalize_ticks_range(x_ticks, metrics):
-        max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks)>0])
+        max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks) > 0])
 
         for idx, ticks, metric in zip(range(len(x_ticks)), x_ticks, metrics):
             if (len(ticks) == 0) or (ticks[-1] < max_value):

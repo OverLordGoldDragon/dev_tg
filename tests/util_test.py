@@ -24,7 +24,7 @@ def test_searching():
     labels = np.random.randint(0, 2, (32,))
     preds = np.random.uniform(0, 1, (32,))
     metric_fn = metrics.f1_score
-    searching.get_best_predict_threshold(labels, preds, metric_fn, verbosity=2)
+    searching.find_best_predict_threshold(labels, preds, metric_fn, verbosity=2)
 
     assert True
     _notify('searching')
