@@ -7,7 +7,6 @@
     - metric aliases
     - make report_generator optional per requiring PIL
     - unit tests:
-        - batch_size = None
         - save/load
         - report generator
         - data generators
