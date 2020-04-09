@@ -356,11 +356,13 @@ class TrainGenerator():
                 self.eval_fn_name == 'predict' or
                 any([isinstance(x, LambdaType) for x in self.visualizers]))
             if can_viz:
+                lc, pc = self._labels_cache, self._preds_cache
                 for viz in self.visualizers:
                     if viz == 'predictions_per_iteration':
-                        self.show_predictions_per_iteration()
+                        show_predictions_per_iteration(lc, pc)
                     elif viz == 'predictions_distribution':
-                        self.show_predictions_distribution()
+                        show_predictions_distribution(lc, pc,
+                                                      self.predict_threshold)
                     elif isinstance(viz, LambdaType):
                         viz(self)
 
@@ -561,13 +563,6 @@ class TrainGenerator():
                 xlims=(0, 1))
         elif isinstance(self.outputs_visualizer, LambdaType):
             self.outputs_visualizer(self)
-
-    def show_predictions_per_iteration(self):
-        show_predictions_per_iteration(self._labels_cache, self._preds_cache)
-
-    def show_predictions_distribution(self):
-        show_predictions_distribution(self._labels_cache, self._preds_cache,
-                                      self.predict_threshold)
 
     def compute_gradient_l2norm(self, val=True, learning_phase=0,
                                 return_values=False, w=1, h=1):

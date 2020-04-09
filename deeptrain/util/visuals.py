@@ -26,7 +26,7 @@ def show_predictions_per_iteration(_labels_cache, _preds_cache):
         plt.show()
 
 
-def show_predictions_distribution(preds, labels, pred_th):
+def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
     def _get_pred_colors(labels_f):
         labels_f = np.expand_dims(labels_f, -1)
         N = len(labels_f)
@@ -48,12 +48,14 @@ def show_predictions_distribution(preds, labels, pred_th):
         ax.scatter(preds_f, alignment_arr, c=colors)
         ax.set_yticks([])
         ax.set_xlim(-.02, 1.02)
+        plt.show()
 
-    preds_f, labels_f = np.array(preds).ravel(), np.array(labels).ravel()
-    colors = _get_pred_colors(labels_f)
-    alignment_arr = _make_alignment_array(labels_f, n_lines=10)
+    preds_flat = np.asarray(_preds_cache).ravel()
+    labels_flat = np.asarray(_labels_cache).ravel()
+    colors = _get_pred_colors(labels_flat)
+    alignment_arr = _make_alignment_array(labels_flat, n_lines=10)
 
-    _plot(preds_f, pred_th, alignment_arr, colors)
+    _plot(preds_flat, pred_th, alignment_arr, colors)
 
 
 def get_history_fig(cls, plot_configs=None, w=1, h=1):
