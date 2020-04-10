@@ -134,6 +134,41 @@ def _validate_traingen_configs(cls):
             print(NOTE + "`max_is_best = True` and `key_metric = 'loss'`"
                   "; will consider higher loss to be better")
 
+    def _validate_model_metrics_match():
+        def _set_in_matching_order(model_metrics, val):
+            """Need metrics in matching order w/ model's to collect history
+            """
+            _metrics = model_metrics.copy()
+            target = cls.val_metrics if val else cls.train_metrics
+            if target is None:
+                target = model_metrics.copy()
+                return
+
+            for metric in target:
+                if metric not in _metrics:
+                    _metrics.append(metric)
+            if val:
+                cls.val_metrics = _metrics.copy()
+            else:
+                cls.train_metrics = _metrics.copy()
+
+        model_metrics = cls.model.metrics_names.copy()
+        # ensure api-compatibility, e.g. 'acc' -> 'accuracy'
+        model_metrics = [cls._alias_to_metric_name(metric)
+                         for metric in model_metrics]
+
+        _set_in_matching_order(model_metrics, val=False)
+
+        if cls.eval_fn_name == 'evaluate':
+            if cls.val_metrics is not None:
+                for metric in cls.val_metrics:
+                    if metric not in model_metrics:
+                        print(WARN, "metric {} is not in model.metrics_names, "
+                              "w/ `eval_fn_name='evaluate'` - will drop")
+            cls.val_metrics = model_metrics.copy()
+        else:
+            _set_in_matching_order(model_metrics, val=True)
+
     def _validate_directories():
         if cls.logs_dir is None and cls.best_models_dir is None:
             print(WARN, "`logs_dir = None` and `best_models_dir = None`; "
@@ -144,7 +179,6 @@ def _validate_traingen_configs(cls):
         elif cls.best_models_dir is None:
             print(NOTE, "`best_models_dir = None`; best models will not "
                   "be checkpointed")
-
 
     def _validate_optimizer_saving_configs():
         for name in ('optimizer_save_configs', 'optimizer_load_configs'):
@@ -228,6 +262,7 @@ def _validate_traingen_configs(cls):
                 cls.dynamic_predict_threshold_min_max = None
 
     _validate_metrics()
+    _validate_model_metrics_match()
     _validate_directories()
     _validate_optimizer_saving_configs()
     _validate_visualizers()

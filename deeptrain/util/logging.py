@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
 """IDEAS:
    - save each class's source code
-   - create "init_configs" to log, then also 
+   - create "init_configs" to log, then also
    getattr(...) for x in init_configs at save time
    - dedicate 'long column'
 """
-from PIL import Image, ImageDraw, ImageFont
 
 import os
 import numpy as np
 import textwrap
 from . import NOTE, WARN
 from .misc import _dict_filter_keys
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except:
+    print(NOTE, "could not import PIL, will not generate reports")
 
 
 def generate_report(cls, savepath):
@@ -23,7 +27,7 @@ def generate_report(cls, savepath):
 
         d = ImageDraw.Draw(img)
         d.text((10,30), text, fill=(0,0,0), font=fnt)
-        
+
         img.save(savepath)
 
     text = get_report_text(cls)
@@ -35,21 +39,21 @@ def generate_report(cls, savepath):
         _write_text_image(text, savepath, cls.report_fontpath,
                           width=longest_line / 80,
                           height=num_newlines / 16)
-        print("Model report generated and saved")   
+        print("Model report generated and saved")
     except BaseException as e:
         print(WARN,  "Report could not be generated; skipping")
         print("Errmsg:", e)
-    
+
 
 def get_report_text(cls):
     def list_to_str_side_by_side_by_side(_list, space_between_cols=0):
         def _split_in_three(_list):
             L = len(_list) // 3
             return _list[:L], _list[L:2*L], _list[2*L:]
-    
+
         def _exclude_chars(_str, chars):
             return ''.join([c for c in _str if c not in chars])
-    
+
         list1, list2, list3 = _split_in_three(_list)
         longest_str1 = max(map(len, map(str, list1)))
         longest_str2 = max(map(len, map(str, list2)))
@@ -60,18 +64,18 @@ def get_report_text(cls):
             left += " " * (longest_str1 - len(left) + space_between_cols)
             mid  += " " * (longest_str2 - len(mid)  + space_between_cols)
 
-            _str += left + mid + right + '\n'            
+            _str += left + mid + right + '\n'
         return _str
-    
+
     def _dict_lists_to_tuples(_dict):
         return {key:tuple(val) for key,val in _dict.items()
                 if isinstance(val, list)}
-    
+
     def _dict_filter_value_types(dc, types):
         if not isinstance(types, tuple):
             types = tuple(types) if isinstance(types, list) else (types,)
         return {key:val for key,val in dc.items() if not isinstance(val, types)}
-    
+
     def _process_attributes_to_text_dicts(report_configs):
         def _validate_report_configs(cfg):
             def _validate_keys(keys):
@@ -83,7 +87,7 @@ def get_report_text(cls):
                               "are: {}".format(', '.join(supported)))
                         keys.pop(keys.index(key))
                 return keys
-    
+
             def _validate_subkeys(cfg):
                 supported = ('include', 'exclude', 'exclude_types')
                 for key, val in cfg.items():
@@ -100,7 +104,7 @@ def get_report_text(cls):
                                              "'exclude' subkeys in "
                                              "report_configs")
                 return cfg
-            
+
             def _unpack_tuple_keys(_dict):
                 newdict = {}
                 for key, val in _dict.items():
@@ -110,23 +114,23 @@ def get_report_text(cls):
                     else:
                         newdict[key] = val
                 return newdict
-    
+
             keys = []
             for key in cfg:
                 keys.extend([key] if isinstance(key, str) else key)
             keys = _validate_keys(keys)
-            
+
             cfg = _unpack_tuple_keys(report_configs)
             cfg = {k: v for k, v in cfg.items() if k in keys}
             cfg = _validate_subkeys(cfg)
-            
+
             return cfg
 
         def _process_wildcards(txt_dict, obj_dict, obj_cfg, exclude):
             for attr in obj_cfg:
                 if attr[0] == '*':
-                    from_wildcard = _dict_filter_keys(obj_dict, attr[1:], 
-                                                      exclude=False, 
+                    from_wildcard = _dict_filter_keys(obj_dict, attr[1:],
+                                                      exclude=False,
                                                       filter_substr=True).keys()
                     for key in from_wildcard:
                         if exclude and key in txt_dict:
@@ -134,7 +138,7 @@ def get_report_text(cls):
                         elif not exclude:
                             txt_dict[key] = obj_dict[key]
             return txt_dict
-    
+
         def _exclude_types(txt_dict, name, exclude_types):
             cache, types = {}, []
             for _type in exclude_types:
@@ -147,16 +151,16 @@ def get_report_text(cls):
                           "is unsupported (unless as an exception specifier "
                           "w/ '#' prepended), and will be skipped "
                           "(recieved '%s')" % _type)
-    
+
             txt_dict = _dict_filter_value_types(txt_dict, types)
             for attr in cache:
                 txt_dict[attr] = cache[attr]  # restore cached
             return txt_dict
-    
-        cfg = _validate_report_configs(report_configs) 
-        
+
+        cfg = _validate_report_configs(report_configs)
+
         txt_dicts = dict(model={}, traingen={}, datagen={}, val_datagen={})
-        obj_dicts = (cls.model_configs, 
+        obj_dicts = (cls.model_configs,
                      *map(vars, (cls, cls.datagen, cls.val_datagen)))
 
         for name, obj_dict in zip(txt_dicts, obj_dicts):
@@ -191,7 +195,7 @@ def get_report_text(cls):
             all_txt += [''] + _dict
 
         _all_txt = _wrap_if_long(all_txt, len_th=80)
-        _all_txt = list_to_str_side_by_side_by_side(_all_txt, 
+        _all_txt = list_to_str_side_by_side_by_side(_all_txt,
                                                     space_between_cols=0)
         _all_txt = _all_txt.replace("',", "' =" ).replace("0, ", "0," ).replace(
                                     "000,", "k,").replace("000)", "k)")
@@ -205,7 +209,7 @@ def get_report_text(cls):
         txt_dicts[name] = _dict_lists_to_tuples(_dict)
         txt_dicts[name] = list(map(list, _dict.items()))
         txt_dicts[name].insert(0, title)
-    
+
     _all_txt = _postprocess_text_dicts(txt_dicts)
     return _all_txt
 
@@ -220,10 +224,10 @@ def _get_unique_model_name(cls):
             if len(filenames) != 0:
                 model_num = np.max([int(name.split('__')[0].replace('M', ''))
                                     for name in filenames ]) + 1
-            else: 
+            else:
                 print(NOTE, "no existing models detected in",
                       cls.logs_dir + "; starting model_num from '0'")
-                
+
         if not cls.model_num_continue_from_max or len(filenames) == 0:
             model_num=0; _name='M0'
             while any([(_name in filename) for filename in
@@ -237,7 +241,7 @@ def _get_unique_model_name(cls):
     if cls.model_configs:
         configs = cls.model_configs.copy()
         configs.update(cls.__dict__)
-                    
+
         for key, alias in cls.model_name_configs.items():
             if '.' in key:
                 key = key.split('.')

@@ -4,15 +4,33 @@
                                                          implemented)
     - replace metrics= w/ history=?
     - visualizations
+    - default history plotting: val loss w/ train loss, every other val metric
+      in second pane
     - metric aliases
-    - make report_generator optional per requiring PIL
     - unit tests:
         - save/load
         - report generator
         - data generators
         - visualizations
     - Utils classes (@staticmethod def fn(cls, ..))
+    - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer
+"""
+
+"""TODO-docs:
+    - How's it different from other training frameworks?
+       - advanced data pipeline
+         - trackable
+         - batch size flexibility
+         - load speed optimizations
+         - stateful option
+       - preprocessing
+         - batch making
+         - class imbalance handling
+         - advanced signal timeseries preprocessing
+       - advanced train pipeline
+         - dynamic hyperparameters; change between epochs, auto-restart session
+         - reproducibility; seed tracking & restoring
 """
 
 import os
@@ -29,7 +47,6 @@ from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
 from .util.training import _get_weighted_sample_weight
 from .util.logging import _get_unique_model_name
-from .util.logging import generate_report
 from .util.visuals import get_history_fig, show_predictions_per_iteration
 from .util.visuals import show_predictions_distribution
 from .util.visuals import comparative_histogram
@@ -487,7 +504,10 @@ class TrainGenerator():
         assert len(names) == len(values)
 
         names_joined  = ', '.join(names)
-        values_joined = ', '.join([('%.6f' % v) for v in values])
+        try:
+            values_joined = ', '.join([('%.6f' % v) for v in values])
+        except:
+            1 == 1
         if len(names) != 1:
             names_joined  = '(%s)' % names_joined
             values_joined = '(%s)' % values_joined
@@ -511,8 +531,6 @@ class TrainGenerator():
         if self.iter_verbosity >= 2:
             print(end='.')
 
-    def generate_report(self, savepath):
-        generate_report(self, savepath)
 
     ########################## SAVE/LOAD METHODS ##########################
     def _save_best_model(self, del_previous_best=False):
@@ -630,13 +648,6 @@ class TrainGenerator():
         self.logdir = _path
 
     def _init_and_validate_kwargs(self, kwargs):
-        def _set_metrics_from_model():
-            model_metrics = ['loss', *self.model.metrics]
-            if self.train_metrics is None:
-                self.train_metrics = model_metrics
-            if self.val_metrics is None:
-                self.val_metrics = model_metrics
-
         def _validate_kwarg_names(kwargs):
             for kw in kwargs:
                 if kw not in _DEFAULT_TRAINGEN_CFG:
@@ -659,10 +670,6 @@ class TrainGenerator():
         _set_kwargs(kwargs)
         _maybe_set_key_metric_fn()
         _validate_traingen_configs(self)
-
-        if self.train_metrics is None or self.val_metrics is None:
-            _set_metrics_from_model()
-
 
     def _init_fit_and_pred_fns(self):
         self.fit_fn_name = self.fit_fn_name or 'train_on_batch'
@@ -727,6 +734,14 @@ class TrainGenerator():
             else:
                 self._val_max_set_name_chars = 2  # guess
 
+        def _try_import_pil():
+            try:
+                from PIL import Image, ImageDraw, ImageFont
+                self._pil_imported = True
+            except:
+                self._pil_imported = False  # will skip `generate_report`
+
         _init_misc()
         _init_histories()
         _init_max_set_name_chars()
+        _try_import_pil()

@@ -7,6 +7,7 @@ import tensorflow as tf
 
 from . import K, WARN, NOTE
 from .misc import pass_on_error, _train_on_batch_dummy
+from .logging import generate_report
 
 
 def save_best_model(cls, del_previous_best=False):
@@ -40,11 +41,13 @@ def save_best_model(cls, del_previous_best=False):
     cls._history_fig.savefig(savepath + '.png')
 
     cls.save(savepath + '__state.h5')
-    try:
-        cls.generate_report(savepath + '__report.png')
-    except BaseException as e:
-        print(WARN,  "Best model report could not be saved; skipping")
-        print("Errmsg", e)
+
+    if cls._pil_imported:
+        try:
+            generate_report(cls, savepath + '__report.png')
+        except BaseException as e:
+            print(WARN,  "Best model report could not be saved; skipping")
+            print("Errmsg", e)
     print("Best model saved to " + savepath)
 
 
@@ -92,7 +95,7 @@ def checkpoint_model_IF(cls, forced=False):
     cls.model.save_weights(_path + 'weights.h5')
     cls.save(_path + 'state.h5')
     cls._save_history(_path + 'hist.png')
-    cls.generate_report(_path + 'report.png')
+    generate_report(cls, _path + 'report.png')
 
     try:
         _clear_logs_IF()

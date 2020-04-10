@@ -1,30 +1,18 @@
 # -*- coding: utf-8 -*-
+import numpy as np
+
 from .searching import find_best_predict_threshold, find_best_subset
 from .searching import find_best_subset_from_history
 from .introspection import l1l2_weight_loss
 from . import metrics as metric_fns
 from . import NOTE, WARN
-from . import TF_KERAS
-
-import numpy as np
 
 
 def _update_temp_history(cls, metrics, val=False):
-    def _get_metric_names(metrics):
-        # TODO `metrics` should come pre-packed with correct names,
-        # validate in misc.validate_kwargs instead
-        # TODO redundant check, e.g. 'f1_score' can't be in model.metrics
-        if TF_KERAS:
-            metric_names = ['loss', cls.model.metrics[0]._name]  # TODO multi
-        else:
-            metric_names = ['loss', *cls.model.metrics]
-        metric_names = [cls._alias_to_metric_name(n) for n in metric_names]
-
-        if cls.eval_fn_name == 'evaluate':
+    def _get_metric_names(metrics, val):
+        metric_names = cls.val_metrics if val else cls.train_metrics
+        if not val or (val and cls.eval_fn_name == 'evaluate'):
             assert len(metric_names) == len(metrics)
-            check_metrics = cls.val_metrics if val else cls.train_metrics
-            for name in check_metrics:
-                assert (name in metric_names)
         return metric_names
 
     def _get_temp_history(val):
@@ -47,6 +35,14 @@ def _update_temp_history(cls, metrics, val=False):
                 assert isinstance(temp_history[name], list)
         return temp_history
 
+    def _handle_non_scalar(value):
+        if not isinstance(value, (list, np.ndarray)):
+            raise ValueError("unexpected metric type: %s" % type(value)
+                             + "; must be one of: list, np.ndarray")
+        value = np.asarray(value)
+        assert (value.ndim <= 1), ("unfamiliar metric.ndim: %s" % value.ndim)
+        return value.mean()
+
     def _try_append_with_fix(temp_history):
         try:
             temp_history[name][-1].append(value)
@@ -57,11 +53,14 @@ def _update_temp_history(cls, metrics, val=False):
 
     if not isinstance(metrics, (list, tuple)):
         metrics = [metrics]
-    metric_names = _get_metric_names(metrics)
+    metric_names = _get_metric_names(metrics, val)
     temp_history = _get_temp_history(val)
     no_slices, slice_idx, slices_per_batch = _get_slice_info(val)
 
     for name, value in zip(metric_names, metrics):
+        if np.ndim(value) != 0:
+            value = _handle_non_scalar(value)
+
         if no_slices or slice_idx == 0:
             temp_history[name].append([])
         _try_append_with_fix(temp_history)
@@ -119,6 +118,8 @@ def _get_val_history(cls, for_current_iter=False):
     if cls.eval_fn_name == 'evaluate':
         return {metric: np.mean(values) for metric, values in
                 cls.val_temp_history.items()}
+    else:
+        1 == 1
 
     def _unpack_data():
         if for_current_iter:
@@ -278,6 +279,13 @@ def _compute_metrics(cls, labels_all, preds_all, sample_weight_all,
             data['y_true'], data['y_pred'] = labels_all_norm, preds_all_norm
         else:
             metrics[name] = _compute_metric(data, metric_name=api_name)
+
+    # ensure all metrics are scalars
+    for name, metric in metrics.items():
+        if np.ndim(metric) != 0:
+            assert (metric.ndim <= 1), (
+                "unfamiliar metric.ndim: %s" % metric.ndim)
+            metrics[name] = metric.mean()
     return metrics
 
 
