@@ -14,7 +14,7 @@ _PLOT_CFG = {
     'vhlines'   :
         {'v': '_hist_vlines',
          'h': 1},
-    'mark_best_idx': 1,
+    'mark_best_cfg': {'val': 'loss'},
     'ylims'        : (0, 2),
 
     'linewidth': (1.5, 2),
@@ -23,7 +23,7 @@ _PLOT_CFG = {
 },
 }
 
-_BINARY_CLASSIFICATION_PLOT_CFG = {
+_BINARY_CLASSIFICATION_PLOT_CFG = {  # TODO x_ticks?
 '1': {
     'metrics':
         {'train': ['loss', 'acc'],
@@ -36,7 +36,7 @@ _BINARY_CLASSIFICATION_PLOT_CFG = {
     'linewidth': (1.5, 1, 2),
     'linestyle': ('-', '--', '-'),
     'color'    : (None, 'b', 'orange'),
-    'mark_best_idx': None,
+    'mark_best_cfg': None,
 },
 '2': {
     'metrics':
@@ -44,7 +44,7 @@ _BINARY_CLASSIFICATION_PLOT_CFG = {
     'vhlines'   :
         {'v': '_val_hist_vlines',
          'h': .5},
-    'mark_best_idx': 2,
+    'mark_best_cfg': {'val': 'f1-score'},
 
     'linewidth': (2, 2, 2),
     'linestyle': ('-', '-', '-'),
@@ -76,6 +76,7 @@ _REPORT_CFG = {
              'report_configs', 'datagen', 'val_datagen',
              'logdir', 'logs_dir', 'best_models_dir', 'fit_fn', 'eval_fn',
              '_history_fig', 'metric_printskip_configs', '_inferred_batch_size',
+             'plot_first_pane_max_vals',
              '*_has_', '*temp_history_empty',
              ],
         'exclude_types':
@@ -242,6 +243,7 @@ _TRAINGEN_CFG = dict(
     logs_use_full_model_name    = True,
     model_num_continue_from_max = True,
     dynamic_predict_threshold   = 0.5,  # initial
+    plot_first_pane_max_vals    = 2,
     predict_threshold    = 0.5,
     best_subset_size     = 0,
     check_model_health   = True,

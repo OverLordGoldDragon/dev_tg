@@ -118,8 +118,6 @@ def _get_val_history(cls, for_current_iter=False):
     if cls.eval_fn_name == 'evaluate':
         return {metric: np.mean(values) for metric, values in
                 cls.val_temp_history.items()}
-    else:
-        1 == 1
 
     def _unpack_data():
         if for_current_iter:

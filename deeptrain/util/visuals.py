@@ -60,13 +60,15 @@ def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
 
 def get_history_fig(cls, plot_configs=None, w=1, h=1):
     def _unpack_plot_kws(config):
-        reserved_keys = ('metrics', 'x_ticks', 'vhlines', 'mark_best_idx',
-                         'ylims')
-        values_per_key = len(list(config.values())[0])
+        reserved_keys = ('metrics', 'x_ticks', 'vhlines',
+                         'mark_best_cfg', 'ylims')
+        metric_keys = list(config['metrics'].keys())  # 'train', 'val'
+        values_per_key = sum(len(config['metrics'][x]) for x in metric_keys)
 
         plot_kws = []
         for i in range(values_per_key):
-            plot_kws.append({key:config[key][i] for key in config
+            plot_kws.append({key:config[key][i]
+                             for key in config
                              if key not in reserved_keys})
         return plot_kws
 
@@ -111,18 +113,36 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
         return vhlines
 
     def _unpack_ticks_and_metrics(config):
+        def _get_mark_best_idx(mark_best_cfg, i, name, val):
+            expects_val = bool('val' in mark_best_cfg)
+            expected_name = list(mark_best_cfg.values())[0]
+
+            if expects_val and not val:
+                return
+            elif expects_val and val and name == expected_name:
+                return len(cls.history) + i
+            else:
+                return i + 1
+
         x_ticks, metrics = [], []
+        mark_best_cfg = config.get('mark_best_cfg', None)
+        mark_best_idx = None
 
         if 'train' in config['metrics']:
             for i, name in enumerate(config['metrics']['train']):
                 metrics.append(cls.history[name])
                 x_ticks.append(getattr(cls, config['x_ticks']['train'][i]))
-
+                if mark_best_cfg is not None:
+                    mark_best_idx = _get_mark_best_idx(mark_best_cfg, i,
+                                                       name, val=False)
         if 'val' in config['metrics']:
             for i, name in enumerate(config['metrics']['val']):
                 metrics.append(cls.val_history[name])
                 x_ticks.append(getattr(cls, config['x_ticks']['val'][i]))
-        return x_ticks, metrics
+                if mark_best_cfg is not None:
+                    mark_best_idx = _get_mark_best_idx(mark_best_cfg, i,
+                                                       name, val=True)
+        return x_ticks, metrics, mark_best_idx
 
     if plot_configs is None:
         plot_configs = cls.plot_configs
@@ -132,15 +152,16 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
 
     for config, axis in zip(plot_configs.values(), axes):
         config = _equalize_metric_names(config)
-        x_ticks, metrics = _unpack_ticks_and_metrics(config)
+        x_ticks, metrics, mark_best_idx = _unpack_ticks_and_metrics(config)
         x_ticks = _equalize_ticks_range(x_ticks, metrics)
 
         plot_kws = _unpack_plot_kws(config)
-        vhlines  = _unpack_vhlines(config)
-        mark_best_idx, ylims = config['mark_best_idx'], config['ylims']
+        if config.get('vhlines', None) is not None:
+            vhlines  = _unpack_vhlines(config)
+        ylims = config.get('ylims', (0, 2))
 
         _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx,
-                      ylims=ylims, vhlines=vhlines, axis=axis,
+                      axis=axis, vhlines=vhlines, ylims=ylims,
                       key_metric=cls.key_metric)
 
     subplot_scaler = .5 * len(axes)
@@ -171,13 +192,11 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
             [ax.axhline(l, color='k', linewidth=2) for l in hlines if l]
 
     def _mark_best_metric(x_ticks, metrics, mark_best_idx, ax):
-        idx = mark_best_idx
-        assert (idx <= len(metrics))
-        metric = metrics[idx]
+        metric = metrics[mark_best_idx]
 
         best_fn = np.min if key_metric=='loss' else np.max
         x_best_idx = np.where(metric == best_fn(metric))[0][0]
-        x_best = x_ticks[idx][x_best_idx]
+        x_best = x_ticks[mark_best_idx][x_best_idx]
 
         ax.plot(x_best, best_fn(metric), 'o', color=[.3, .95, .3],
                 markersize=15, markeredgewidth=4, markerfacecolor='none')
@@ -187,13 +206,15 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
             ax.plot(ticks, metric, **kws)
 
     _plot_main(x_ticks, metrics, plot_kws, ax)
-    _plot_vhlines(vhlines, ax)
+    if vhlines is not None:
+        _plot_vhlines(vhlines, ax)
 
     if mark_best_idx is not None:
         _mark_best_metric(x_ticks, metrics, mark_best_idx, ax)
 
+    xmin = min([np.min(ticks) for ticks in x_ticks])
     xmax = max([np.max(ticks) for ticks in x_ticks])
-    ax.set_xlim(1, xmax)
+    ax.set_xlim(xmin, xmax)
     ax.set_ylim(*ylims)
 
 

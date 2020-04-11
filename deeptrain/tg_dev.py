@@ -42,7 +42,7 @@ from copy import deepcopy
 from types import LambdaType
 
 from .util import metrics as metrics_fns
-from .util.configs  import _PLOT_CFG, _TRAINGEN_CFG
+from .util.configs  import _TRAINGEN_CFG
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
 from .util.training import _get_weighted_sample_weight
@@ -144,7 +144,7 @@ class TrainGenerator():
         self.iter_verbosity=iter_verbosity
         self.optimizer_save_configs=optimizer_save_configs
         self.optimizer_load_configs=optimizer_load_configs
-        self.plot_configs=plot_configs or _PLOT_CFG
+        self.plot_configs=plot_configs
         self.visualizers=visualizers
         self.model_configs = model_configs
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
@@ -290,10 +290,6 @@ class TrainGenerator():
 
         def _on_epoch_end():
             self._has_validated = True
-            self.val_temp_history = deepcopy(self._val_temp_history_empty)
-            self.val_epoch = self.val_datagen.on_epoch_end()
-            self._val_x_ticks += [self._times_validated]
-            self._val_train_x_ticks += [self._batches_fit]
 
         _on_iter_end(metrics, batch_size)
         if self.val_datagen.batch_exhausted:
@@ -305,6 +301,10 @@ class TrainGenerator():
     def _on_val_end(self, record_progress, clear_cache):
         def _record_progress():
             self._times_validated += 1
+            self.val_epoch = self.val_datagen.on_epoch_end()
+            self._val_x_ticks += [self._times_validated]
+            self._val_train_x_ticks += [self._batches_fit]
+
             new_best = bool(self.key_metric_history[-1] > self.best_key_metric)
             if not self.max_is_best:
                 new_best = not new_best
@@ -318,6 +318,7 @@ class TrainGenerator():
                               '_set_name_cache', '_val_set_name_cache',
                               '_y_true', '_val_sw')
             [setattr(self, attr, []) for attr in attrs_to_clear]
+            self.val_temp_history = deepcopy(self._val_temp_history_empty)
 
         def _should_plot():
             return (self._should_do(self.plot_history_freq),
@@ -340,12 +341,12 @@ class TrainGenerator():
         if self.best_subset_size:
             _print_best_subset()
 
+        if record_progress:
+            _record_progress()
+
         plot_history, do_visualization = _should_plot()
         if plot_history or do_visualization:
             self.do_plotting(plot_history, do_visualization)
-
-        if record_progress:
-            _record_progress()
 
         if clear_cache:
             _clear_cache()
@@ -364,7 +365,7 @@ class TrainGenerator():
                           fail_msg=(WARN + " model history could not be "
                                     "plotted; skipping..."))
         if do_visualization:
-            # self.show_layer_outputs()
+            # self.show_layer_outputs() # TODO
             # self.show_layer_weights()
             if self.eval_fn_name == 'predict':
                 self.show_model_outputs()
@@ -504,10 +505,7 @@ class TrainGenerator():
         assert len(names) == len(values)
 
         names_joined  = ', '.join(names)
-        try:
-            values_joined = ', '.join([('%.6f' % v) for v in values])
-        except:
-            1 == 1
+        values_joined = ', '.join([('%.6f' % v) for v in values])
         if len(names) != 1:
             names_joined  = '(%s)' % names_joined
             values_joined = '(%s)' % values_joined

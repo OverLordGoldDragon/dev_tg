@@ -76,6 +76,7 @@ _DEFAULT_REPORT_CFG = {
              'report_configs', 'datagen', 'val_datagen',
              'logdir', 'logs_dir', 'best_models_dir', 'fit_fn', 'eval_fn',
              '_history_fig', 'metric_printskip_configs', '_inferred_batch_size',
+             'plot_first_pane_max_vals',
              '*_has_', '*temp_history_empty',
              ],
         'exclude_types':
@@ -241,6 +242,7 @@ _DEFAULT_TRAINGEN_CFG = dict(
     logs_use_full_model_name    = True,
     model_num_continue_from_max = True,
     dynamic_predict_threshold   = 0.5,  # initial
+    plot_first_pane_max_vals    = 2,
     predict_threshold    = 0.5,
     best_subset_size     = 0,
     check_model_health   = True,

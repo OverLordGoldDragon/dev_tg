@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import matplotlib.pyplot as plt
 
 from types import LambdaType
 from functools import reduce
@@ -83,6 +84,95 @@ def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
 
     model._standardize_user_data(toy_inputs, toy_labels, toy_sample_weight)
     model._make_train_function()
+
+
+def _make_plot_configs_from_metrics(cls):
+    def _make_colors():
+        train_defaults = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        train_defaults.pop(1)  # reserve 'orange' for {'val': 'loss'}
+        val_defaults = list(plt.cm.get_cmap('hsv')(np.linspace(.22, 1, 8)))
+        train_customs_map = {'loss': train_defaults.pop(0),
+                             'accuracy': 'blue'}
+        val_customs_map = {'loss': 'orange',
+                           'accuracy': 'xkcd:sun yellow',
+                           'f1-score': 'purple'}
+
+        colors = []
+        for i, metric in enumerate(cls.train_metrics):
+            if metric in train_customs_map:
+                colors.append(train_customs_map[metric])
+            else:
+                colors.append(train_defaults[i])
+
+        for metric in cls.val_metrics:
+            if metric in val_customs_map:
+                colors.append(val_customs_map[metric])
+            else:
+                colors.append(val_defaults.pop(0))
+        return colors
+
+    def _get_val_metric_colors():
+        color_cfg = {'f1-score': 'purple'}
+        colors = []
+        for name in cls.val_metrics[1:]:
+            colors.append(color_cfg.get(name, None))
+        return tuple(colors)
+
+    plot_configs = {}
+    n_train = len(cls.train_metrics)
+    n_val = len(cls.val_metrics)
+
+    val_metrics_p1 = cls.val_metrics[:cls.plot_first_pane_max_vals]
+    n_val_p1 = len(val_metrics_p1)
+    n_total_p1 = n_train + n_val_p1
+
+    colors = _make_colors()
+    if cls.key_metric == 'loss':
+        mark_best_cfg = {'val': 'loss'}
+    else:
+        mark_best_cfg = None
+
+    plot_configs['1'] = {
+        'metrics':
+            {'train': cls.train_metrics,
+             'val'  : val_metrics_p1},
+        'x_ticks':
+            {'train': ['_train_x_ticks'] * n_train,
+             'val':   ['_val_train_x_ticks'] * n_val_p1},
+        'vhlines'   :
+            {'v': '_hist_vlines',
+             'h': 1},
+        'mark_best_cfg': mark_best_cfg,
+        'ylims'        : (0, 2),
+
+        'linewidth': [1.5] * n_total_p1,
+        'color'    : colors[:n_total_p1],
+        }
+    if n_val_p1 <= cls.plot_first_pane_max_vals:
+        return plot_configs
+
+    # dedicate separate pane to remainder val_metrics
+    if cls.key_metric != 'loss':
+        mark_best_cfg = {'val': cls.key_metric}
+    else:
+        mark_best_cfg = None
+    n_val_p2 = n_val - n_val_p1
+
+    plot_configs['2'] = {
+        'metrics':
+            {'val'  : cls.val_metrics[n_val_p1:]},
+        'x_ticks':
+            {'val':   ['_val_x_ticks'] * n_val_p2},
+        'vhlines'   :
+            {'v': '_val_hist_vlines',
+             'h': .5},
+        'mark_best_cfg': mark_best_cfg,
+        'ylims'        : (0, 1),
+
+        'linewidth': [1.5] * n_val_p2,
+        'color'    : colors[n_total_p1:],
+    }
+    return plot_configs
 
 
 def _validate_traingen_configs(cls):
@@ -261,6 +351,18 @@ def _validate_traingen_configs(cls):
                       "`dynamic_predict_threshold_min_max=None`")
                 cls.dynamic_predict_threshold_min_max = None
 
+    def _validate_or_make_plot_configs():
+        if cls.plot_configs is not None:
+            cfg = cls.plot_configs
+            assert ('1' in cfg), ("`plot_configs` must number plot panes "
+                                  "via strings; see util\configs.py")
+            required = ('metrics', 'x_ticks')
+            for pane_cfg in cfg.values():
+                assert all([name in pane_cfg for name in required]), (
+                    "plot pane configs must contain %s" % ', '.join(required))
+        else:
+            cls.plot_configs = _make_plot_configs_from_metrics(cls)
+
     _validate_metrics()
     _validate_model_metrics_match()
     _validate_directories()
@@ -271,4 +373,4 @@ def _validate_traingen_configs(cls):
     _validate_class_weights()
     _validate_best_subset_size()
     _validate_dynamic_predict_threshold_min_max()
-
+    _validate_or_make_plot_configs()
