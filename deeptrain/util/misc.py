@@ -95,7 +95,9 @@ def _make_plot_configs_from_metrics(cls):
                              'accuracy': 'blue'}
         val_customs_map = {'loss': 'orange',
                            'accuracy': 'xkcd:sun yellow',
-                           'f1-score': 'purple'}
+                           'f1_score': 'purple',
+                           'tnr': np.array([0., .503, 1.]),
+                           'tpr': 'red'}
 
         colors = []
         for i, metric in enumerate(cls.train_metrics):
@@ -110,13 +112,6 @@ def _make_plot_configs_from_metrics(cls):
             else:
                 colors.append(val_defaults.pop(0))
         return colors
-
-    def _get_val_metric_colors():
-        color_cfg = {'f1-score': 'purple'}
-        colors = []
-        for name in cls.val_metrics[1:]:
-            colors.append(color_cfg.get(name, None))
-        return tuple(colors)
 
     plot_configs = {}
     n_train = len(cls.train_metrics)
@@ -148,7 +143,7 @@ def _make_plot_configs_from_metrics(cls):
         'linewidth': [1.5] * n_total_p1,
         'color'    : colors[:n_total_p1],
         }
-    if n_val_p1 <= cls.plot_first_pane_max_vals:
+    if n_val_p1 < cls.plot_first_pane_max_vals:
         return plot_configs
 
     # dedicate separate pane to remainder val_metrics
@@ -160,9 +155,9 @@ def _make_plot_configs_from_metrics(cls):
 
     plot_configs['2'] = {
         'metrics':
-            {'val'  : cls.val_metrics[n_val_p1:]},
+            {'val': cls.val_metrics[n_val_p1:]},
         'x_ticks':
-            {'val':   ['_val_x_ticks'] * n_val_p2},
+            {'val': ['_val_x_ticks'] * n_val_p2},
         'vhlines'   :
             {'v': '_val_hist_vlines',
              'h': .5},
@@ -185,13 +180,20 @@ def _validate_traingen_configs(cls):
                 else:
                     setattr(cls, name, list(value))
             value = getattr(cls, name)
-            for alias in value:
-                setattr(cls, name, [cls._alias_to_metric_name(alias)])
+            for i, maybe_alias in enumerate(value):
+                getattr(cls, name)[i] = cls._alias_to_metric_name(maybe_alias)
         cls.key_metric = cls._alias_to_metric_name(cls.key_metric)
 
         metrics = (*cls.train_metrics, *cls.val_metrics, cls.key_metric)
         supported = cls.BUILTIN_METRICS
         customs = cls.custom_metrics or [None]
+
+        model_metrics = cls.model.metrics_names
+        if cls.eval_fn_name == 'evaluate' and (
+                cls.key_metric not in model_metrics):
+            raise ValueError("`key_metric` must be in one of metrics returned "
+                             "by model, when using `eval_fn_name='evaluate'` "
+                             "(model returns: %s)" % ', '.join(model_metrics))
 
         if cls.key_metric not in cls.val_metrics:
             cls.val_metrics.append(cls.key_metric)
@@ -253,8 +255,9 @@ def _validate_traingen_configs(cls):
             if cls.val_metrics is not None:
                 for metric in cls.val_metrics:
                     if metric not in model_metrics:
-                        print(WARN, "metric {} is not in model.metrics_names, "
-                              "w/ `eval_fn_name='evaluate'` - will drop")
+                        print(WARN, f"metric {metric} is not in "
+                              "model.metrics_names, w/ `eval_fn_name='evaluate'`"
+                              " - will drop")
             cls.val_metrics = model_metrics.copy()
         else:
             _set_in_matching_order(model_metrics, val=True)
@@ -363,6 +366,14 @@ def _validate_traingen_configs(cls):
         else:
             cls.plot_configs = _make_plot_configs_from_metrics(cls)
 
+    def _validate_metric_printskip_configs():
+        for name, cfg in cls.metric_printskip_configs.items():
+            if not isinstance(cfg, list):
+                if isinstance(cfg, tuple):
+                    cls.metric_printskip_configs[name] = list(cfg)
+                else:
+                    cls.metric_printskip_configs[name] = [cfg]
+
     _validate_metrics()
     _validate_model_metrics_match()
     _validate_directories()
@@ -374,3 +385,4 @@ def _validate_traingen_configs(cls):
     _validate_best_subset_size()
     _validate_dynamic_predict_threshold_min_max()
     _validate_or_make_plot_configs()
+    _validate_metric_printskip_configs()

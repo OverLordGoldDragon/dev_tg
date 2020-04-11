@@ -90,17 +90,15 @@ def test_predict():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        eval_fn_name = C['traingen'].get('eval_fn_name', None)
-        key_metric = C['traingen'].get('key_metric', None)
-        C['traingen']['eval_fn_name'] = 'predict'
-        C['traingen']['key_metric'] = 'f1_score'
-
+        C['traingen'].update(dict(eval_fn_name='predict',
+                                  key_metric='f1_score',
+                                  val_metrics=('tnr', 'tpr'),
+                                  plot_first_pane_max_vals=1,
+                                  metric_printskip_configs={'val': 'f1_score'},
+                                  ))
         tg = _init_session(C)
         tg.train()
         _test_load(tg, C)
-
-        C['traingen']['eval_fn_name'] = eval_fn_name
-        C['traingen']['key_metric'] = key_metric
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('predict', tests_done)

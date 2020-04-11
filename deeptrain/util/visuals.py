@@ -113,16 +113,29 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
         return vhlines
 
     def _unpack_ticks_and_metrics(config):
-        def _get_mark_best_idx(mark_best_cfg, i, name, val):
+        # def _get_mark_best_idx(config, mark_best_cfg, i, name, val):
+        #     expects_val = bool('val' in mark_best_cfg)
+        #     expected_name = list(mark_best_cfg.values())[0]
+
+        #     if not val and expects_val:
+        #         return
+        #     elif val and expects_val and name == expected_name:
+        #         if 'train' not in config['metrics']:  # pane > 1
+        #             return i
+        #         else:
+        #             return i + len(config['metrics']['train'])
+        #     else:
+        #         return i
+        def _get_mark_best_idx(metrics, name, mark_best_cfg, val):
             expects_val = bool('val' in mark_best_cfg)
             expected_name = list(mark_best_cfg.values())[0]
 
-            if expects_val and not val:
+            if not val and expects_val:
                 return
-            elif expects_val and val and name == expected_name:
-                return len(cls.history) + i
-            else:
-                return i + 1
+            elif val and expects_val and name == expected_name:
+                return len(metrics) - 1
+            elif not val and not expects_val and name == expected_name:
+                return len(metrics) - 1
 
         x_ticks, metrics = [], []
         mark_best_cfg = config.get('mark_best_cfg', None)
@@ -133,15 +146,19 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
                 metrics.append(cls.history[name])
                 x_ticks.append(getattr(cls, config['x_ticks']['train'][i]))
                 if mark_best_cfg is not None:
-                    mark_best_idx = _get_mark_best_idx(mark_best_cfg, i,
-                                                       name, val=False)
+                    mark_best_idx = _get_mark_best_idx(metrics, name,
+                                                       mark_best_cfg, val=False)
+                    # mark_best_idx = _get_mark_best_idx(config, mark_best_cfg, i,
+                    #                                    name, val=False)
         if 'val' in config['metrics']:
             for i, name in enumerate(config['metrics']['val']):
                 metrics.append(cls.val_history[name])
                 x_ticks.append(getattr(cls, config['x_ticks']['val'][i]))
                 if mark_best_cfg is not None:
-                    mark_best_idx = _get_mark_best_idx(mark_best_cfg, i,
-                                                       name, val=True)
+                    mark_best_idx = _get_mark_best_idx(metrics, name,
+                                                       mark_best_cfg, val=False)
+                    # mark_best_idx = _get_mark_best_idx(config, mark_best_cfg, i,
+                    #                                    name, val=True)
         return x_ticks, metrics, mark_best_idx
 
     if plot_configs is None:

@@ -4,8 +4,6 @@
                                                          implemented)
     - replace metrics= w/ history=?
     - visualizations
-    - default history plotting: val loss w/ train loss, every other val metric
-      in second pane
     - metric aliases
     - unit tests:
         - save/load
@@ -489,13 +487,13 @@ class TrainGenerator():
 
     def _print_train_progress(self):
         train_metrics = self._get_train_history()
-        for name in self.metric_printskip_configs['train']:
+        for name in self.metric_printskip_configs.get('train', []):
             train_metrics.pop(name, None)
         self._print_progress(train_metrics, endchar='')
 
     def _print_val_progress(self):
         val_metrics = self._get_val_history(for_current_iter=True)
-        for name in self.metric_printskip_configs['val']:
+        for name in self.metric_printskip_configs.get('val', []):
             val_metrics.pop(name, None)
         self._print_progress(val_metrics)
 
@@ -671,7 +669,7 @@ class TrainGenerator():
 
     def _init_fit_and_pred_fns(self):
         self.fit_fn_name = self.fit_fn_name or 'train_on_batch'
-        self.eval_fn_name = self.eval_fn_name or 'evaluate'  #TODO eval_fn_name
+        self.eval_fn_name = self.eval_fn_name or 'evaluate'
 
         self.fit_fn = getattr(self.model, self.fit_fn_name)
         self.eval_fn = getattr(self.model, self.eval_fn_name)
