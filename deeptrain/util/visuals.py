@@ -222,7 +222,7 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
 def comparative_histogram(model, layer_name, data, keep_borders=True,
                           bins=100, xlims=(0, 1), fontsize=14, vline=None,
                           w=1, h=1):
-    def _get_layer_outs(model, layer_name, data):
+    def _get_layer_outs(model, layer_name, data):  # TODO: move to introspection
         def _make_outs_fn(model, layer_name):
             outs_tensors = [l.output for l in model.layers
                             if layer_name in l.name]
@@ -246,3 +246,44 @@ def comparative_histogram(model, layer_name, data, keep_borders=True,
             ax.axvline(vline, color='r', linewidth=2)
         ax.set_xlim(*xlims)
     plt.show()
+
+
+def viz_roc_auc(y_true, y_pred):
+    def _compute_roc_auc(y_true, y_pred):
+        i_x = [(i, x) for (i, x) in enumerate(y_pred)]
+        i_xs = list(sorted(i_x, key=lambda x: x[1], reverse=True))
+        idxs = [d[0] for d in i_xs]
+        xs = y_pred[idxs]
+        ys = y_true[idxs]
+
+        p_inv = 1 / ys.sum()
+        n_inv = 1 / (len(ys) - ys.sum())
+        pts = np.zeros((len(ys) + 1, 2))
+
+        for i, (x, y) in enumerate(zip(xs, ys)):
+            inc = p_inv if y == 1 else n_inv
+            if y == 1:
+                pts[i + 1] = [pts[i][0], pts[i][1] + inc]
+            else:
+                pts[i + 1] = [pts[i][0] + inc, pts[i][1]]
+
+        score = np.trapz(pts[:, 1], pts[:, 0])
+        return pts, score
+
+    def _plot(pts, score):
+        kw = dict(fontsize=12, weight='bold')
+        plt.scatter(pts[:, 0], pts[:, 1])
+
+        plt.title("Receiver Operating Characteristic (AUC = %.3f)" % score, **kw)
+        plt.xlabel("1 - specificity", **kw)
+        plt.ylabel("sensitivity", **kw)
+        plt.gcf().set_size_inches(6, 6)
+        plt.show()
+
+    # standardize
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    y_pred = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+    pts, score = _compute_roc_auc(y_true, y_pred)
+    _plot(pts, score)

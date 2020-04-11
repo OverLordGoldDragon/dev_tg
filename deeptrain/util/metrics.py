@@ -281,7 +281,7 @@ def binary_informedness_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
                   axis=-1) - 1
 
 
-def roc_auc_score(y_true, y_pred, visualize=False):
+def roc_auc_score(y_true, y_pred):
     y_true, y_pred = _standardize(y_true, y_pred)
 
     i_x = [(i, x) for (i, x) in enumerate(y_pred)]
@@ -302,11 +302,4 @@ def roc_auc_score(y_true, y_pred, visualize=False):
             pts[i + 1] = [pts[i][0] + inc, pts[i][1]]
 
     score = np.trapz(pts[:, 1], pts[:, 0])
-    if visualize:
-        kw = dict(fontsize=12, weight='bold')
-        plt.scatter(pts[:, 0], pts[:, 1])
-        plt.title("Receiver Operating Characteristic (AUC = %.3f)" % score, **kw)
-        plt.xlabel("1 - specificity", **kw)
-        plt.ylabel("sensitivity", **kw)
-        plt.gcf().set_size_inches(6, 6)
     return score

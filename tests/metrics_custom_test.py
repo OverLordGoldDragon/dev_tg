@@ -3,19 +3,15 @@ import pytest
 import numpy as np
 import sklearn.metrics
 
-from deeptrain.util import metrics
-
-
-to_test = ['f1_score', 'f1_score_multi_th',
-            'tnr',
-            'tpr',
-            'tnr_tpr',
-            'binary_informedness',
-            'roc_auc_score',
-            ]
-
-[f1_score, f1_score_multi_th, tnr, tpr, tnr_tpr, binary_informedness,
- roc_auc_score] = [getattr(metrics, name) for name in to_test]
+from deeptrain.util.metrics import (
+    f1_score,
+    f1_score_multi_th,
+    tnr,
+    tpr,
+    tnr_tpr,
+    binary_informedness,
+    roc_auc_score
+    )
 
 
 def test_f1_score():
@@ -94,7 +90,7 @@ def test_roc_auc():
     np.random.shuffle(y_true)
     y_pred = np.random.uniform(0, 1, 32)
 
-    test_score = roc_auc_score(y_true, y_pred, visualize=True)
+    test_score = roc_auc_score(y_true, y_pred)
     sklearn_score = sklearn.metrics.roc_auc_score(y_true, y_pred)
     adiff = abs(test_score - sklearn_score)
     assert (adiff < 1e-10), ("sklearn: {:.15f}\ntest:    {:.15f}"
