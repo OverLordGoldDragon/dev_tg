@@ -4,7 +4,8 @@
                                                          implemented)
     - replace metrics= w/ history=?
     - visualizations
-    - metric aliases
+    - metrics ('tnr', etc)
+    - test metrics w/ tranform_eval_data
     - unit tests:
         - save/load
         - report generator
@@ -430,7 +431,7 @@ class TrainGenerator():
 
         cw = self.val_class_weights if val else self.class_weights
         if cw is not None:
-            return np.asarray([cw[str(label)] for label in labels])
+            return np.asarray([cw[int(label)] for label in labels])
         return np.ones(labels.shape[0])
 
     ########################## LOG METHODS ################################

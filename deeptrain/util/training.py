@@ -294,7 +294,7 @@ def _unroll_samples(output_shape, *arrs):
         while x.shape[0] == 1:
             x = x.squeeze(axis=0)
         if x.shape != output_shape and x.shape[-out_ndim:] == output_shape:
-            x = x.reshape(-1, *output_shape)
+            x = x.reshape(-1, *output_shape[1:])
         ls.append(x)
     return ls
 
@@ -445,7 +445,6 @@ def _validate_data_shapes(cls, data, validate_n_slices=True):
     return data
 
 
-# TODO
 def _validate_sample_weight_shape(cls, sample_weight_all,
                                   validate_n_slices=False):
     def _validate_batch_size(x, outs_shape):

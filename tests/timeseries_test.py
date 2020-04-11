@@ -95,6 +95,7 @@ def test_predict():
                                   val_metrics=('tnr', 'tpr'),
                                   plot_first_pane_max_vals=1,
                                   metric_printskip_configs={'val': 'f1_score'},
+                                  class_weights={0: 1, 1: 5},
                                   ))
         tg = _init_session(C)
         tg.train()

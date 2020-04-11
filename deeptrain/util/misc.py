@@ -46,39 +46,53 @@ def nCk(n, k):  # n-Choose-k
 
 
 # TODO: improve case coverage
-def _train_on_batch_dummy(model, class_weights={'0':1,'1':6.5},
-                          input_as_labels=False):
+def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False):
     """Instantiates trainer & optimizer, but does NOT train (update weights)"""
     def _make_toy_inputs(batch_size, input_shape):
-        return np.random.randn(batch_size, *input_shape[1:])
+        return np.random.uniform(0, 1, (batch_size, *input_shape[1:]))
 
     def _make_toy_labels(batch_size, output_shape, loss):
+        n_classes = output_shape[-1]  # if appicable
+
         if loss == 'binary_crossentropy':
-            return np.random.randint(0, 1, output_shape)
+            return np.random.randint(0, 2, (batch_size, 1))
         elif loss == 'categorical_crossentropy':
-            n_classes = output_shape[-1]
             class_labels = np.random.randint(0, n_classes, batch_size)
             return np.eye(n_classes)[class_labels]
         elif loss == 'sparse_categorical_crossentropy':
-            return np.random.randint(0, output_shape[-1], batch_size)
-        elif loss == 'mse':
-            return np.random.randn(batch_size, *output_shape[1:])
+            return np.random.randint(0, n_classes, (batch_size, 1))
+        elif loss in ('mean_squared_error', 'mean_absolute_error',
+                      'mean_squared_logarithmic_error',
+                      'mean_absolute_percentage_error',
+                      'logcosh', 'kullback_leibler_divergence'):
+            return np.random.randn(batch_size, 10, 4)
+        elif loss in ('squared_hinge', 'hinge', 'categorical_hinge'):
+            return np.array([-1, 1])[np.random.randint(0, 2, (batch_size, 1))]
+        elif loss in ('poisson', 'cosine_proximity'):
+            return np.random.uniform(0, 10, batch_size)
         else:
-            raise ValueError("unsupported loss: '{}'".format(loss))
+            raise ValueError("unknown loss: '{}'".format(loss))
 
-    def _make_sample_weight(toy_labels, class_weights):
+    def _make_sample_weight(toy_labels, class_weights, loss):
+        if class_weights is None:
+            return np.ones(toy_labels.shape[0])
+        if loss == 'categorical_crossentropy':
+            return np.array([class_weights[int(np.argmax(l))]
+                             for l in toy_labels])
         if class_weights is not None:
-            return np.array([class_weights[str(l)] for l in toy_labels])
+            return np.array([class_weights[int(l)]
+                             for l in toy_labels])
         else:
             return np.ones(toy_labels.shape[0])
 
     batch_size = model.output_shape[0]
     if batch_size is None:
         batch_size = 32
+    loss = model.loss
 
     toy_inputs = _make_toy_inputs(batch_size, model.input_shape)
-    toy_labels = _make_toy_labels(batch_size, model.output_shape, model.loss)
-    toy_sample_weight = _make_sample_weight(toy_labels, class_weights)
+    toy_labels = _make_toy_labels(batch_size, model.output_shape, loss)
+    toy_sample_weight = _make_sample_weight(toy_labels, class_weights, loss)
     if input_as_labels:
         toy_labels = toy_inputs
 
@@ -331,6 +345,14 @@ def _validate_traingen_configs(cls):
                 assert ((0 in cw and 1 in cw) or cw.sum() > 1), (
                     "`{}` must contain classes 1 and 0, or greater "
                     "(got {})").format(name, cw)
+
+            if cls.model.loss in ('categorical_crossentropy',
+                                  'sparse_categorical_crossentropy'):
+                n_classes = cls.model.output_shape[-1]
+                for class_label in range(n_classes):
+                    if class_label not in cw:
+                        getattr(cls, name)[name][class_label] = 1
+
 
     def _validate_best_subset_size():
         if cls.best_subset_size is not None:

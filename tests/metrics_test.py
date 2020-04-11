@@ -256,11 +256,11 @@ def test_f1_score_multi_th():
 
 def test_binaries():
     y_true = [0, 0,  0,  0, 1, 1,  1 , 1]
-    y_pred = [0, 1, .1, .9, 1, 0, .8, .2]
+    y_pred = [0, .1, .1, .9, 1, 0, .8, .6]
 
-    assert tnr(y_true, y_pred) == .5
-    assert tpr(y_true, y_pred) == .5
-    assert tnr_tpr(y_true, y_pred) == [.5, .5]
+    assert tnr(y_true, y_pred) == .25
+    assert tpr(y_true, y_pred) == .75
+    assert tnr_tpr(y_true, y_pred) == [.25, .75]
     assert binary_informedness(y_true, y_pred) == 0.
 
 

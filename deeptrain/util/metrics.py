@@ -236,7 +236,7 @@ def tpr(y_true, y_pred, pred_threshold=0.5):
 def tnr(y_true, y_pred, pred_threshold=0.5):
     y_true, y_pred = _standardize(y_true, y_pred)
     zeros_preds = y_pred[np.where(y_true == 0)]
-    return np.mean(np.ceil(zeros_preds - pred_threshold) == 1)
+    return np.mean(np.ceil(zeros_preds - pred_threshold) == 0)
 
 
 def tnr_tpr(y_true, y_pred, pred_threshold=0.5):
