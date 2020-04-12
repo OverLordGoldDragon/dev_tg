@@ -44,7 +44,7 @@ from .util import metrics as metrics_fns
 from .util.configs  import _TRAINGEN_CFG
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
-from .util.training import _get_weighted_sample_weight
+from .util.training import _get_sample_weight
 from .util.logging import _get_unique_model_name
 from .util.visuals import get_history_fig, show_predictions_per_iteration
 from .util.visuals import show_predictions_distribution
@@ -417,22 +417,9 @@ class TrainGenerator():
 
         class_labels = datagen.labels
         slice_idx = getattr(datagen, 'slice_idx', None)
-        sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
+        sample_weight = _get_sample_weight(self, class_labels, val, slice_idx)
 
         return x, y, sample_weight
-
-    def get_sample_weight(self, labels, val=False, slice_idx=None):
-        loss_weighted = self.loss_weighted_slices_range
-        pred_weighted = self.pred_weighted_slices_range
-        either_weighted = loss_weighted or pred_weighted
-        if loss_weighted is not None or (val and either_weighted):
-            return _get_weighted_sample_weight(
-                self, labels, val, self.loss_weighted_slices_range, slice_idx)
-
-        cw = self.val_class_weights if val else self.class_weights
-        if cw is not None:
-            return np.asarray([cw[int(label)] for label in labels])
-        return np.ones(labels.shape[0])
 
     ########################## LOG METHODS ################################
     def _update_temp_history(self, metrics, val=False):
@@ -495,7 +482,10 @@ class TrainGenerator():
     def _print_val_progress(self):
         val_metrics = self._get_val_history(for_current_iter=True)
         for name in self.metric_printskip_configs.get('val', []):
-            val_metrics.pop(name, None)
+            try:
+                val_metrics.pop(name, None)
+            except:
+                1 == 1
         self._print_progress(val_metrics)
 
     def _print_progress(self, metrics, endchar='\n'):

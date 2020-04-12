@@ -340,7 +340,8 @@ def _load_optimizer_state(cls):
             setattr(opt, name, value)
 
     _train_on_batch_dummy(cls.model, cls.class_weights,
-                          input_as_labels=cls.input_as_labels)
+                          input_as_labels=cls.input_as_labels,
+                          alias_to_metric_name_fn=cls._alias_to_metric_name)
     if 'weights' in cls.optimizer_state:
         cls.model.optimizer.set_weights(cls.optimizer_state['weights'])
 

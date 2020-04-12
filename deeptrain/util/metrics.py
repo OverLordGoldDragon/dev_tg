@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+
 
 PREC = os.environ.get('PRECISION', 'float32')
 EPS = 1e-7  # epsilon (keras default, K.epsilon())

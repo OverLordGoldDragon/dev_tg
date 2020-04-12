@@ -46,7 +46,8 @@ def nCk(n, k):  # n-Choose-k
 
 
 # TODO: improve case coverage
-def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False):
+def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
+                          alias_to_metric_name_fn=None):
     """Instantiates trainer & optimizer, but does NOT train (update weights)"""
     def _make_toy_inputs(batch_size, input_shape):
         return np.random.uniform(0, 1, (batch_size, *input_shape[1:]))
@@ -89,6 +90,8 @@ def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False):
     if batch_size is None:
         batch_size = 32
     loss = model.loss
+    if alias_to_metric_name_fn is not None:
+        loss = alias_to_metric_name_fn(loss)
 
     toy_inputs = _make_toy_inputs(batch_size, model.input_shape)
     toy_labels = _make_toy_labels(batch_size, model.output_shape, loss)
@@ -157,7 +160,7 @@ def _make_plot_configs_from_metrics(cls):
         'linewidth': [1.5] * n_total_p1,
         'color'    : colors[:n_total_p1],
         }
-    if n_val_p1 < cls.plot_first_pane_max_vals:
+    if n_val_p1 <= cls.plot_first_pane_max_vals:
         return plot_configs
 
     # dedicate separate pane to remainder val_metrics
@@ -346,19 +349,16 @@ def _validate_traingen_configs(cls):
                     "`{}` must contain classes 1 and 0, or greater "
                     "(got {})").format(name, cw)
 
-            if cls.model.loss in ('categorical_crossentropy',
-                                  'sparse_categorical_crossentropy'):
-                n_classes = cls.model.output_shape[-1]
-                for class_label in range(n_classes):
-                    if class_label not in cw:
-                        getattr(cls, name)[name][class_label] = 1
+                if cls.model.loss in ('categorical_crossentropy',
+                                      'sparse_categorical_crossentropy'):
+                    n_classes = cls.model.output_shape[-1]
+                    for class_label in range(n_classes):
+                        if class_label not in cw:
+                            getattr(cls, name)[name][class_label] = 1
 
 
     def _validate_best_subset_size():
         if cls.best_subset_size is not None:
-            # if cls.batch_size is None:
-            #     raise ValueError("`batch_size` cannot be None to use "
-            #                      "`best_subset_size`")
             if cls.val_datagen.shuffle_group_samples:
                 raise ValueError("`val_datagen` cannot use `shuffle_group_"
                                  "samples` with `best_subset_size`")
@@ -367,7 +367,7 @@ def _validate_traingen_configs(cls):
         if cls.dynamic_predict_threshold_min_max is not None:
             if cls.key_metric_fn is None:
                 print(WARN, "`key_metric_fn=None` (likely per `eval_fn_name !="
-                      " 'predict'`); setting"
+                      " 'predict'`); setting "
                       "`dynamic_predict_threshold_min_max=None`")
                 cls.dynamic_predict_threshold_min_max = None
             elif 'pred_threshold' not in cls.key_metric_fn.__code__.co_varnames:
