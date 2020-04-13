@@ -13,6 +13,7 @@ from deeptrain.util.metrics import (
     binary_informedness,
     roc_auc_score
     )
+from deeptrain.util import metrics as metric_fns
 
 
 def test_f1_score():
@@ -134,10 +135,15 @@ class TraingenDummy():
         self.val_metrics = []
         self._sw_cache = []
 
-    def set_shapes(self, batch_size):
+    def set_shapes(self, batch_size, label_dim):
         self.batch_size = batch_size
         self._inferred_batch_size = batch_size
-        self.model.output_shape = (batch_size, 1)
+        self.model.output_shape = (batch_size, label_dim)
+
+    def set_cache(self, y_true, y_pred):
+        self._labels_cache = y_true.copy()
+        self._preds_cache = y_pred.copy()
+        self._sw_cache = np.ones(y_true.shape)
 
 
 def test_sample_unrolling():
@@ -154,79 +160,87 @@ def test_sample_unrolling():
     'Nonlinear' metrics == cannot be simple-averaged across samples, i.e.
     [fn(samples1) + fn(samples2)] / 2 != fn([samples1, samples2])
     """
-    def _test_binaries():
-        def _make_traingen(y_true, y_pred, batch_size):
-            tg = TraingenDummy()
-            tg._labels_cache = y_true.copy()
-            tg._preds_cache = y_pred.copy()
-            tg._sw_cache = np.ones(y_true.shape)
-            tg.val_metrics = ['f1_score', 'tnr', 'tpr', 'tnr_tpr',
-                              'binary_informedness', 'roc_auc_score']
-            tg.loss = 'binary_crossentropy'
-            tg.set_shapes(batch_size)
-            return tg
-
-        def _compare(m, yt, yp):
-            assert m['f1_score'] == f1_score(yt, yp)
-            assert m['tnr'] == tnr(yt, yp)
-            assert m['tpr'] == tpr(yt, yp)
-            assert m['tnr_tpr'] == tnr_tpr(yt, yp)
-            assert all([a == b for a, b in
-                        zip(m['tnr_tpr'], tnr_tpr(yt, yp))])
-            assert m['binary_informedness'] == binary_informedness(yt, yp)
-            assert m['roc_auc_score'] == roc_auc_score(yt, yp)
-
-        def _test_unrolling(y_true, y_pred, tg):
+    def _test_unrolling(fn):
+        def unrolling_test(label_dim, tg, compare_fn):
+            y_true, y_pred, tg, compare_fn = fn(label_dim, tg, compare_fn)
             m = _get_val_history(tg, for_current_iter=False)
             yt, yp = y_true.ravel(), y_pred.ravel()
-            _compare(m, yt, yp)
+            compare_fn(m, yt, yp, fn.__name__)
+        return unrolling_test
 
-        def _test_batch_unrolling():
-            y_true = np.random.randint(0, 2, (2, 8, 1))
-            y_pred = np.random.uniform(0, 1, (2, 8, 1))
+    @_test_unrolling
+    def _batches(label_dim, tg, compare_fn):
+        y_true = np.random.randint(0, 2, (2, 8, label_dim))
+        y_pred = np.random.uniform(0, 1, (2, 8, label_dim))
 
-            tg = _make_traingen(y_true, y_pred, y_true.shape[1])
-            _test_unrolling(y_true, y_pred, tg)
+        tg.set_cache(y_true, y_pred)
+        return y_true, y_pred, tg, compare_fn
 
-        def _test_unweighted_slice_unrolling():
-            # unfixed labels across samples also tests fixed case
-            y_true = np.random.randint(0, 2, (2, 8, 1))
-            y_pred = np.random.uniform(0, 1, (2, 8, 1))
+    @_test_unrolling
+    def _unweighted_slices(label_dim, tg, compare_fn):
+        # unfixed labels across samples also tests fixed case
+        y_true = np.random.randint(0, 2, (4, 8, label_dim))
+        y_pred = np.random.uniform(0, 1, (4, 8, label_dim))
 
-            tg = _make_traingen(y_true, y_pred, y_true.shape[1])
-            tg.val_datagen.slices_per_batch = y_true.shape[0]
-            _test_unrolling(y_true, y_pred, tg)
+        tg.set_cache(y_true, y_pred)
+        tg.val_datagen.slices_per_batch = y_true.shape[0]
+        return y_true, y_pred, tg, compare_fn
 
-        def _test_weighted_slice_unrolling():
-            # unfixed labels invalid for weighted slices since preds are normed
-            y_true = np.random.randint(0, 2, (1, 8, 1))
-            y_pred = np.random.uniform(0, 1, (2, 8, 1))
-            y_true = np.vstack([y_true, y_true])  # labels fixed along slices
+    @_test_unrolling
+    def _weighted_slices(label_dim, tg, compare_fn):
+        # unfixed labels invalid for weighted slices since preds are normed
+        y_true = np.random.randint(0, 2, (2, 8, label_dim))
+        y_pred = np.random.uniform(0, 1, (4, 8, label_dim))
+        y_true = np.vstack([y_true, y_true])  # labels fixed along slices
 
-            tg = _make_traingen(y_true, y_pred, y_true.shape[1])
-            tg.val_datagen.slices_per_batch = y_true.shape[0]
-            tg.loss_weighted_slices_range = (.2, 1.8)
-            tg.pred_weighted_slices_range = (.2, 1.8)
-            y_pred = np.expand_dims(y_pred, 0)
-            y_pred = _weighted_normalize_preds(tg, y_pred)
-            y_true = y_true[0]
+        tg.set_cache(y_true, y_pred)
+        tg.val_datagen.slices_per_batch = y_true.shape[0]
+        tg.loss_weighted_slices_range = (.2, 1.8)
+        tg.pred_weighted_slices_range = (.2, 1.8)
 
-            _test_unrolling(y_true, y_pred, tg)
+        y_pred = np.expand_dims(y_pred, 0)
+        y_pred = _weighted_normalize_preds(tg, y_pred)
+        y_true = y_true[0]
+        return y_true, y_pred, tg, compare_fn
 
-        def _test_sample_slice_unrolling():
-            y_true = np.random.randint(0, 2, (3, 2, 8, 1))
-            y_pred = np.random.uniform(0, 1, (3, 2, 8, 1))
+    @_test_unrolling
+    def _batches_slices(label_dim, tg, compare_fn):
+        y_true = np.random.randint(0, 2, (3, 4, 8, label_dim))
+        y_pred = np.random.uniform(0, 1, (3, 4, 8, label_dim))
 
-            tg = _make_traingen(y_true, y_pred, y_true.shape[2])
-            tg.val_datagen.slices_per_batch = y_true.shape[1]
-            _test_unrolling(y_true, y_pred, tg)
+        tg.set_cache(y_true, y_pred)
+        tg.val_datagen.slices_per_batch = y_true.shape[1]
+        return y_true, y_pred, tg, compare_fn
 
-        _test_batch_unrolling()
-        _test_unweighted_slice_unrolling()
-        _test_weighted_slice_unrolling()
-        _test_sample_slice_unrolling()
+    def _make_traingen(metric_names, loss, label_dim):
+        tg = TraingenDummy()
+        tg.val_metrics = metric_names
+        tg.loss = loss
+        tg.set_shapes(batch_size=8, label_dim=label_dim)
+        return tg
 
-    _test_binaries()
+    def _make_compare_fn(metric_names):
+        def compare_fn(m, yt, yp, test_name):
+            for metric_name in metric_names:
+                internal_score = m[metric_name]
+                explicit_score = getattr(metric_fns, metric_name)(yt, yp)
+                assert (internal_score == explicit_score), (
+                    test_name, metric_name, internal_score, explicit_score)
+        return compare_fn
+
+    def _test_binaries(test_fns):
+        metric_names = ['binary_accuracy', 'tnr', 'tpr',
+                        'f1_score', 'roc_auc_score']
+        loss = 'binary_crossentropy'
+        label_dim = 1
+        compare_fn = _make_compare_fn(metric_names)
+
+        for _test_fn in test_fns:
+            tg = _make_traingen(metric_names, loss, label_dim)  # reset
+            _test_fn(label_dim, tg, compare_fn)
+
+    test_fns = (_batches, _unweighted_slices, _weighted_slices, _batches_slices)
+    _test_binaries(test_fns)
 
 
 if __name__ == '__main__':

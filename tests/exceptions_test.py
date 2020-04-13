@@ -126,6 +126,12 @@ def test_util():
         util.training._update_temp_history(tg, metrics=(4,), val=True)
         tg.val_temp_history['loss'] = []
         util.training._update_temp_history(tg, metrics=(4,), val=True)
+        tg.temp_history['binary_accuracy'] = []
+        pass_on_error(util.training._update_temp_history,
+                      tg, metrics=dict(a=1, b=2), val=False)
+        tg.temp_history['f1_score'] = []
+        pass_on_error(util.training._update_temp_history,
+                      tg, metrics=[1, 2], val=False)
 
         # _get_sample_weight() [util.training]
         labels = np.random.randint(0, 2, (32, 3))
