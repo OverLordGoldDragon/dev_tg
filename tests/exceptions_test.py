@@ -114,44 +114,55 @@ def test_datagen():
 
 def test_util():
     t0 = time()
-    C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
-        # _validate_savelist() + _validate_metrics() [util.misc]
-        C['traingen']['savelist'] = ['{labels}']
-        C['traingen']['train_metrics'] = ('loss',)
-        tg = _init_session(C, _make_autoencoder)
 
-        # save_best_model() [util.saving]
+    def _util_make_autoencoder(C):
+        C['model'] = AE_CFG
+        C['traingen']['model_configs'] = AE_CFG
+        C['traingen']['input_as_labels'] = True
+        return _init_session(C, _make_autoencoder)
+
+    def _util_make_classifier(C):
+        C['model'] = CL_CFG
+        C['traingen']['model_configs'] = CL_CFG
+        C['traingen']['input_as_labels'] = False
+        return _init_session(C, _make_classifier)
+
+    def save_best_model(C):  # [util.saving]
+        tg = _util_make_autoencoder(C)
         tg.train()
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             util.saving.save_best_model(tg, del_previous_best=True)
 
-        # _get_sample_weight() [util.training]
+    def _get_sample_weight(C):  # [util.training]
+        tg = _util_make_autoencoder(C)
         labels = np.random.randint(0, 2, (32, 3))
         tg.class_weights = {0: 1, 1: 2, 2: 3}
         util.training._get_sample_weight(tg, labels)
 
-        # _get_api_metric_name() [util.training]
+    def _get_api_metric_name(C):  # [util.training]
         util.training._get_api_metric_name(
             'accuracy', 'categorical_crossentropy')
         util.training._get_api_metric_name(
             'acc', 'sparse_categorical_crossentropy')
         util.training._get_api_metric_name('acc', 'binary_crossentropy')
 
-        # _validate_weighted_slices_range() [util.misc]
+    def _validate_weighted_slices_range(C):  # [util.misc]
+        tg = _util_make_autoencoder(C)
         tg.datagen.slices_per_batch = None
         util.misc._validate_traingen_configs(tg)
 
-        # _get_best_subset_val_history() [util.training]
-        del tg
-        C = deepcopy(CONFIGS)
-        C['model'] = CL_CFG
-        C['traingen']['model_configs'] = CL_CFG
-        C['traingen']['input_as_labels'] = False
+        C['traingen']['max_is_best'] = True
+        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
+        C['traingen']['eval_fn_name'] = 'evaluate'
+        pass_on_error(_init_session, C, _make_classifier)
+        C['traingen']['eval_fn_name'] = 'predict'
+        pass_on_error(_init_session, C, _make_classifier)
+
+    def _get_best_subset_val_history(C):  # [util.training]
         C['traingen']['best_subset_size'] = 2
-        tg = _init_session(C, _make_classifier)
+        tg = _util_make_classifier(C)
+
         tg.val_datagen.slices_per_batch = 4
         tg._labels_cache = np.random.randint(0, 2, (3, 4, batch_size, 1))
         tg._preds_cache = np.random.uniform(0, 1, (3, 4, batch_size, 1))
@@ -163,65 +174,95 @@ def test_util():
         tg.key_metric_fn = util.metrics.f1_score
         tg.eval_fn_name = 'predict'
         tg.dynamic_predict_threshold_min_max = None
+
         util.training._get_best_subset_val_history(tg)
 
-        # _update_temp_history() [util.training]
+    def _update_val_temp_history(C):  # [util.training]
+        tg = _util_make_classifier(C)
+
         tg.val_temp_history['loss'] = (1, 2, 3)
         util.training._update_temp_history(tg, metrics=(4,), val=True)
         tg.val_temp_history['loss'] = []
         util.training._update_temp_history(tg, metrics=(4,), val=True)
+
         tg.datagen.slice_idx = 1
         tg.datagen.slices_per_batch = 2
         tg.temp_history = {'binary_accuracy': []}
         tg.train_metrics = ['binary_accuracy']
         pass_on_error(util.training._update_temp_history,
                       tg, metrics=[1], val=False)
+
         pass_on_error(util.training._update_temp_history,
                       tg, metrics=[dict(a=1, b=2)], val=False)
+
         tg.temp_history = {'f1_score': []}
         tg.train_metrics = ['f1_score']
         pass_on_error(util.training._update_temp_history,
                       tg, metrics=[[1, 2]], val=False)
 
-        # _validate_weighted_slices_range() [util.misc]
-        del tg
-        C['traingen']['max_is_best'] = True  # elsewhere
-        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
+    def _validate_metrics(C):  # [util.misc]
         C['traingen']['eval_fn_name'] = 'evaluate'
-        pass_on_error(_init_session, C, _make_classifier)  ##
-        C['traingen']['eval_fn_name'] = 'predict'
-        pass_on_error(_init_session, C, _make_classifier)  ##
+        C['traingen']['key_metric'] = 'hinge'
+        pass_on_error(_init_session, C, _make_autoencoder)
 
-        # _validate_directories() [util.misc]
+        C['traingen']['val_metrics'] = 'goblin'
+        pass_on_error(_init_session, C, _make_autoencoder)
+
+        C['traingen']['key_metric'] = 'swordfish'
+        pass_on_error(_init_session, C, _make_autoencoder)
+
         C = deepcopy(CONFIGS)
+        C['traingen']['train_metrics'] = None
+        C['traingen']['val_metrics'] = 'cosine_proximity'
+        _init_session(C, _make_autoencoder)
+
+    def _validate_directories(C):  # [util.misc]
         C['traingen']['best_models_dir'] = None
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
+
         C = deepcopy(CONFIGS)
         C['traingen']['logs_dir'] = None
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
+
         C = deepcopy(CONFIGS)
         C['traingen']['best_models_dir'] = None
         C['traingen']['logs_dir'] = None
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
 
-        # _validate_optimizer_saving_configs() [util.misc]
-        C = deepcopy(CONFIGS)
+    def _validate_optimizer_saving_configs(C):  # [util.misc]
         C['traingen']['optimizer_save_configs'] = {
             'include': 'weights', 'exclude': 'updates'}
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
 
-        # _validate_class_weights() [util.misc]
-        C = deepcopy(CONFIGS)
+    def _validate_class_weights(C):  # [util.misc]
         C['traingen']['class_weights'] = {'0': 1, 1: 2}
-        pass_on_error(_init_session, C, _make_classifier)
-        C['traingen']['class_weights'] = {0: 1}
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
 
-        # _validate_best_subset_size() [util.misc]
-        C = deepcopy(CONFIGS)
+        C['traingen']['class_weights'] = {0: 1}
+        pass_on_error(_util_make_classifier, C)
+
+    def _validate_best_subset_size(C):  # [util.misc]
         C['traingen']['best_subset_size'] = 5
         C['val_datagen']['shuffle_group_samples'] = True
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
+
+    def _validate_savelist_and_metrics(C):  # [util.misc]
+        C['traingen']['savelist'] = ['{labels}']
+        C['traingen']['train_metrics'] = ('loss',)
+        pass_on_error(_util_make_autoencoder, C)
+
+    tests_all = [save_best_model, _get_sample_weight, _get_api_metric_name,
+                 _validate_weighted_slices_range, _get_best_subset_val_history,
+                 _update_val_temp_history, _validate_metrics,
+                 _validate_directories, _validate_optimizer_saving_configs,
+                 _validate_class_weights, _validate_best_subset_size,
+                 _validate_savelist_and_metrics]
+    for _test in tests_all:
+        with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
+                CONFIGS['traingen']['best_models_dir']):
+            C = deepcopy(CONFIGS)  # reset dict
+            _test(C)
+            print("Passed", _test.__name__)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('util_exceptions', tests_done)

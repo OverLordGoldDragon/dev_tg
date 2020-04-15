@@ -192,7 +192,7 @@ def _validate_traingen_configs(cls):
         for name in ('train_metrics', 'val_metrics'):
             value = getattr(cls, name)
             if not isinstance(value, list):
-                if isinstance(value, str):
+                if isinstance(value, (str, type(None))):
                     setattr(cls, name, [value])
                 else:
                     setattr(cls, name, list(value))
@@ -248,18 +248,16 @@ def _validate_traingen_configs(cls):
             """Need metrics in matching order w/ model's to collect history
             """
             _metrics = model_metrics.copy()
-            target = cls.val_metrics if val else cls.train_metrics
-            if target is None:
-                target = model_metrics.copy()
+            target_name = 'val_metrics' if val else 'train_metrics'
+
+            if getattr(cls, target_name, None) is None:
+                setattr(cls, target_name, model_metrics.copy())
                 return
 
-            for metric in target:
+            for metric in getattr(cls, target_name, []):
                 if metric not in _metrics:
                     _metrics.append(metric)
-            if val:
-                cls.val_metrics = _metrics.copy()
-            else:
-                cls.train_metrics = _metrics.copy()
+            setattr(cls, target_name, _metrics.copy())
 
         model_metrics = cls.model.metrics_names.copy()
         # ensure api-compatibility, e.g. 'acc' -> 'accuracy'

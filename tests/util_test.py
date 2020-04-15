@@ -13,7 +13,8 @@ from deeptrain.util import misc
 from deeptrain.util import preprocessing
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
-from tests.backend import BASEDIR, tempdir
+from deeptrain.util.misc import pass_on_error
+from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs',
@@ -46,8 +47,31 @@ def test_misc():
         assert isinstance(x, np.ndarray)
         assert isinstance(dc, dict)
 
+    def _test_train_on_batch_dummy():
+        model = ModelDummy()
+        model.loss = 'sparse_categorical_crossentropy'
+        misc._train_on_batch_dummy(model)
+        model.loss = 'hinge'
+        misc._train_on_batch_dummy(model)
+        model.loss = 'poisson'
+        misc._train_on_batch_dummy(model)
+        model.loss = 'categorical_crossentropy'
+        misc._train_on_batch_dummy(model, class_weights={0: 1, 1: 5})
+        model.loss = 'goblin'
+        pass_on_error(misc._train_on_batch_dummy, model)
+
+    def _test_make_plot_configs_from_metrics():
+        tg = TraingenDummy()
+        tg.train_metrics = ['binary_crossentropy', 'hinge']
+        tg.val_metrics = ['loss', 'f1_score', 'tnr', 'tpr']
+        tg.plot_first_pane_max_vals = 1
+        misc._make_plot_configs_from_metrics(tg)
+
     _test_nCk()
     _test_ordered_shuffle()
+    _test_train_on_batch_dummy()
+    _test_make_plot_configs_from_metrics()
+
     _notify('misc')
 
 
@@ -62,7 +86,7 @@ def test_configs():
                    a=.5)
         assert name_fn('init_lr', 'lr', cfg) == '_lr2e-4x3_1e-4'
         assert name_fn('timesteps', '', cfg) == '_13.5k'
-        assert name_fn('name', 'name', cfg) == '_name'
+        assert name_fn('name', 'name',  cfg) == '_name'
         assert name_fn('best_key_metric', 'max', cfg) == '_max.910'
 
     names = ['PLOT_CFG', 'BINARY_CLASSIFICATION_PLOT_CFG',

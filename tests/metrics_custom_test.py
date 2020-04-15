@@ -14,6 +14,7 @@ from deeptrain.util.metrics import (
     roc_auc_score
     )
 from deeptrain.util import metrics as metric_fns
+from tests.backend import TraingenDummy
 
 
 def test_f1_score():
@@ -98,53 +99,6 @@ def test_roc_auc():
     assert (adiff < 1e-10), ("sklearn: {:.15f}\ntest:    {:.15f}"
                              "\nabsdiff: {}".format(
                                  sklearn_score, test_score, adiff))
-
-
-class TraingenDummy():
-    """Proxy class to test util.metrics methods via `cls`"""
-
-    class Datagen():
-        def __init__(self):
-            self.x = 0
-
-    class Model():
-        def __init__(self):
-            self.loss = 'mse'
-            self.output_shape = (8, 1)
-
-    def __init__(self):
-        self.model = TraingenDummy.Model()
-        self.datagen = TraingenDummy.Datagen()
-        self.val_datagen = TraingenDummy.Datagen()
-
-        self.eval_fn_name = 'predict'
-        self.key_metric = 'f1_score'
-        self.key_metric_fn = f1_score
-        self.class_weights = None
-        self.val_class_weights = None
-        self.batch_size = 8
-        self._inferred_batch_size = 8
-
-        self.best_subset_size = None
-        self.pred_weighted_slices_range = None
-        self.predict_threshold = .5
-        self.dynamic_predict_threshold_min_max = None
-        self.loss_weighted_slices_range = None
-        self.pred_weighted_slices_range = None
-
-        self.val_metrics = []
-        self._sw_cache = []
-
-    def set_shapes(self, batch_size, label_dim):
-        self.batch_size = batch_size
-        self._inferred_batch_size = batch_size
-        self.model.output_shape = (batch_size, label_dim)
-
-    def set_cache(self, y_true, y_pred):
-        self._labels_cache = y_true.copy()
-        self._preds_cache = y_pred.copy()
-        self._sw_cache = np.ones(y_true.shape)
-        self._class_labels_cache = y_true.copy()
 
 
 def test_sample_unrolling():
