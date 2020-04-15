@@ -148,16 +148,29 @@ def test_util():
         util.training._get_api_metric_name('acc', 'binary_crossentropy')
 
     def _validate_weighted_slices_range(C):  # [util.misc]
+        C['traingen']['pred_weighted_slices_range'] = (.5, 1.5)
+        C['traingen']['eval_fn_name'] = 'evaluate'
+        pass_on_error(_util_make_autoencoder, C)
+
+        C = deepcopy(CONFIGS)
         tg = _util_make_autoencoder(C)
+        tg.pred_weighted_slices_range = (.5, 1.5)
+        tg.eval_fn_name = 'predict'
         tg.datagen.slices_per_batch = None
-        util.misc._validate_traingen_configs(tg)
+        tg.val_datagen.slices_per_batch = None
+        pass_on_error(util.misc._validate_traingen_configs, tg)
 
         C['traingen']['max_is_best'] = True
-        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
         C['traingen']['eval_fn_name'] = 'evaluate'
-        pass_on_error(_init_session, C, _make_classifier)
+        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
+        pass_on_error(_util_make_classifier, C)
+
         C['traingen']['eval_fn_name'] = 'predict'
-        pass_on_error(_init_session, C, _make_classifier)
+        pass_on_error(_util_make_classifier, C)
+
+        C = deepcopy(CONFIGS)
+        C['datagen'].pop('slices_per_batch', None)
+        pass_on_error(_util_make_classifier, C)
 
     def _get_best_subset_val_history(C):  # [util.training]
         C['traingen']['best_subset_size'] = 2
@@ -203,18 +216,29 @@ def test_util():
     def _validate_metrics(C):  # [util.misc]
         C['traingen']['eval_fn_name'] = 'evaluate'
         C['traingen']['key_metric'] = 'hinge'
-        pass_on_error(_init_session, C, _make_autoencoder)
+        pass_on_error(_util_make_autoencoder, C)
 
         C['traingen']['val_metrics'] = 'goblin'
-        pass_on_error(_init_session, C, _make_autoencoder)
+        pass_on_error(_util_make_autoencoder, C)
 
         C['traingen']['key_metric'] = 'swordfish'
-        pass_on_error(_init_session, C, _make_autoencoder)
+        C['traingen']['key_metric_fn'] = None
+        pass_on_error(_util_make_autoencoder, C)
+
+        C['traingen']['key_metric'] = 'loss'
+        C['traingen']['max_is_best'] = True
+        _util_make_autoencoder(C)
 
         C = deepcopy(CONFIGS)
+        C['traingen']['eval_fn_name'] = 'predict'
         C['traingen']['train_metrics'] = None
         C['traingen']['val_metrics'] = 'cosine_proximity'
-        _init_session(C, _make_autoencoder)
+        pass_on_error(_util_make_autoencoder, C)
+
+        C = deepcopy(CONFIGS)
+        tg = _util_make_autoencoder(C)
+        tg.model.loss = 'hl2'
+        pass_on_error(util.misc._validate_traingen_configs(tg))
 
     def _validate_directories(C):  # [util.misc]
         C['traingen']['best_models_dir'] = None
@@ -241,22 +265,38 @@ def test_util():
         C['traingen']['class_weights'] = {0: 1}
         pass_on_error(_util_make_classifier, C)
 
+        C = deepcopy(CONFIGS)
+        C['model']['loss'] = 'categorical_crossentropy'
+        _util_make_classifier(C)
+
     def _validate_best_subset_size(C):  # [util.misc]
         C['traingen']['best_subset_size'] = 5
         C['val_datagen']['shuffle_group_samples'] = True
         pass_on_error(_util_make_classifier, C)
+
+    def _validate_metric_printskip_configs(C):
+        C['traingen']['metric_printskip_configs'] = {'val': ('loss',)}
+        _util_make_autoencoder(C)
 
     def _validate_savelist_and_metrics(C):  # [util.misc]
         C['traingen']['savelist'] = ['{labels}']
         C['traingen']['train_metrics'] = ('loss',)
         pass_on_error(_util_make_autoencoder, C)
 
-    tests_all = [save_best_model, _get_sample_weight, _get_api_metric_name,
-                 _validate_weighted_slices_range, _get_best_subset_val_history,
-                 _update_val_temp_history, _validate_metrics,
-                 _validate_directories, _validate_optimizer_saving_configs,
-                 _validate_class_weights, _validate_best_subset_size,
-                 _validate_savelist_and_metrics]
+    tests_all = [save_best_model,
+                 _get_sample_weight,
+                 _get_api_metric_name,
+                 _validate_weighted_slices_range,
+                 _get_best_subset_val_history,
+                 _update_val_temp_history,
+                 _validate_metrics,
+                 _validate_directories,
+                 _validate_optimizer_saving_configs,
+                 _validate_class_weights,
+                 _validate_best_subset_size,
+                 _validate_metric_printskip_configs,
+                 _validate_savelist_and_metrics,
+                 ]
     for _test in tests_all:
         with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
                 CONFIGS['traingen']['best_models_dir']):

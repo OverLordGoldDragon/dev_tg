@@ -57,14 +57,18 @@ def test_misc():
         misc._train_on_batch_dummy(model)
         model.loss = 'categorical_crossentropy'
         misc._train_on_batch_dummy(model, class_weights={0: 1, 1: 5})
+        misc._train_on_batch_dummy(model, class_weights=None)
         model.loss = 'goblin'
         pass_on_error(misc._train_on_batch_dummy, model)
 
     def _test_make_plot_configs_from_metrics():
         tg = TraingenDummy()
         tg.train_metrics = ['binary_crossentropy', 'hinge']
-        tg.val_metrics = ['loss', 'f1_score', 'tnr', 'tpr']
+        tg.val_metrics = ['loss', 'f1_score', 'tnr', 'tpr', 'kld']
         tg.plot_first_pane_max_vals = 1
+        tg.key_metric = 'loss'
+        misc._make_plot_configs_from_metrics(tg)
+        tg.key_metric = 'f1_score'
         misc._make_plot_configs_from_metrics(tg)
 
     _test_nCk()

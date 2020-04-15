@@ -160,7 +160,7 @@ def _make_plot_configs_from_metrics(cls):
         'linewidth': [1.5] * n_total_p1,
         'color'    : colors[:n_total_p1],
         }
-    if n_val_p1 <= cls.plot_first_pane_max_vals:
+    if len(cls.val_metrics) <= cls.plot_first_pane_max_vals:
         return plot_configs
 
     # dedicate separate pane to remainder val_metrics
@@ -250,10 +250,6 @@ def _validate_traingen_configs(cls):
             _metrics = model_metrics.copy()
             target_name = 'val_metrics' if val else 'train_metrics'
 
-            if getattr(cls, target_name, None) is None:
-                setattr(cls, target_name, model_metrics.copy())
-                return
-
             for metric in getattr(cls, target_name, []):
                 if metric not in _metrics:
                     _metrics.append(metric)
@@ -321,7 +317,8 @@ def _validate_traingen_configs(cls):
             cls.loss_weighted_slices_range is not None):
             if not (hasattr(cls.datagen, 'slices_per_batch') and
                     hasattr(cls.val_datagen, 'slices_per_batch')):
-                raise ValueError("to use `weighted_slices_range`, "
+                raise ValueError("to use `loss_weighted_slices_range`, and/or "
+                                 "`pred_weighted_slices_range`, "
                                  "`datagen` and `val_datagen` must have "
                                  "`slices_per_batch` attribute defined "
                                  "(via `preprocessor`).")
