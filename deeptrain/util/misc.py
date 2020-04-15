@@ -80,11 +80,9 @@ def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
         if loss == 'categorical_crossentropy':
             return np.array([class_weights[int(np.argmax(l))]
                              for l in toy_labels])
-        if class_weights is not None:
+        else:
             return np.array([class_weights[int(l)]
                              for l in toy_labels])
-        else:
-            return np.ones(toy_labels.shape[0])
 
     batch_size = model.output_shape[0]
     if batch_size is None:
@@ -201,7 +199,7 @@ def _validate_traingen_configs(cls):
                 getattr(cls, name)[i] = cls._alias_to_metric_name(maybe_alias)
         cls.key_metric = cls._alias_to_metric_name(cls.key_metric)
 
-        metrics = (*cls.train_metrics, *cls.val_metrics, cls.key_metric)
+        metrics = (*cls.train_metrics, *cls.val_metrics)
         supported = cls.BUILTIN_METRICS
         customs = cls.custom_metrics or [None]
 
@@ -217,13 +215,13 @@ def _validate_traingen_configs(cls):
 
         if cls.eval_fn_name == 'predict':
             for metric in metrics:
-                metric = metric if metric != 'loss' else cls.model.loss
+                if metric == 'loss':
+                    metric = cls.model.loss
                 if metric not in (*supported, *customs):
                     raise ValueError((
                         "'{0}' metric is not supported; add a function to "
                         "`custom_metrics` as '{0}': func. Supported "
                         "are: {1}").format(metric, ', '.join(supported)))
-
             if cls.model.loss not in (*supported, *customs):
                 raise ValueError((
                     "'{0}' loss is not supported w/ `eval_fn_name = "
@@ -340,7 +338,7 @@ def _validate_traingen_configs(cls):
                 assert all([isinstance(x, int) for x in cw.keys()]), (
                     "`{}` classes must be of type int (got {})"
                     ).format(name, cw)
-                assert ((0 in cw and 1 in cw) or cw.sum() > 1), (
+                assert ((0 in cw and 1 in cw) or sum(cw.values()) > 1), (
                     "`{}` must contain classes 1 and 0, or greater "
                     "(got {})").format(name, cw)
 

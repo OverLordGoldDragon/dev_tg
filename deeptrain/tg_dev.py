@@ -685,7 +685,8 @@ class TrainGenerator():
             if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
                 km_name = _get_api_metric_name(self.key_metric, self.model.loss,
                                                self._alias_to_metric_name)
-                self.key_metric_fn = getattr(metrics_fns, km_name)
+                # if None, will catch in `_validate_traingen_configs`
+                self.key_metric_fn = getattr(metrics_fns, km_name, None)
 
         _validate_kwarg_names(kwargs)
         _set_kwargs(kwargs)

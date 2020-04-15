@@ -221,8 +221,10 @@ def test_util():
         C['traingen']['val_metrics'] = 'goblin'
         pass_on_error(_util_make_autoencoder, C)
 
+        C = deepcopy(CONFIGS)
         C['traingen']['key_metric'] = 'swordfish'
         C['traingen']['key_metric_fn'] = None
+        C['traingen']['eval_fn_name'] = 'predict'
         pass_on_error(_util_make_autoencoder, C)
 
         C['traingen']['key_metric'] = 'loss'
@@ -236,9 +238,16 @@ def test_util():
         pass_on_error(_util_make_autoencoder, C)
 
         C = deepcopy(CONFIGS)
+        C['traingen']['eval_fn_name'] = 'predict'
         tg = _util_make_autoencoder(C)
         tg.model.loss = 'hl2'
-        pass_on_error(util.misc._validate_traingen_configs(tg))
+        pass_on_error(util.misc._validate_traingen_configs, tg)
+
+        tg.train_metrics = ['tnr', 'tpr']
+        tg.val_metrics = ['tnr', 'tpr']
+        tg.key_metric = 'tnr'
+        pass_on_error(util.misc._validate_traingen_configs, tg)
+
 
     def _validate_directories(C):  # [util.misc]
         C['traingen']['best_models_dir'] = None
