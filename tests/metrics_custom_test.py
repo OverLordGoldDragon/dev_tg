@@ -144,6 +144,7 @@ class TraingenDummy():
         self._labels_cache = y_true.copy()
         self._preds_cache = y_pred.copy()
         self._sw_cache = np.ones(y_true.shape)
+        self._class_labels_cache = y_true.copy()
 
 
 def test_sample_unrolling():

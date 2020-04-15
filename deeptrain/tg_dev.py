@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """TODO:
+    - regression
     - support all sklearn metrics directly via sklearn? (that aren't already
                                                          implemented)
     - replace metrics= w/ history=?
@@ -11,6 +12,8 @@
         - report generator
         - data generators
         - visualizations
+    - autoencoder w/ eval_fn_name = 'predict'
+    - caches into dict?
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer
@@ -44,7 +47,7 @@ from .util import metrics as metrics_fns
 from .util.configs  import _TRAINGEN_CFG
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
-from .util.training import _get_sample_weight
+from .util.training import _get_sample_weight, _get_api_metric_name
 from .util.logging import _get_unique_model_name
 from .util.visuals import get_history_fig, show_predictions_per_iteration
 from .util.visuals import show_predictions_distribution
@@ -64,6 +67,7 @@ class TrainGenerator():
     ## TODO move elsewhere?
     BUILTIN_METRICS = ('binary_crossentropy', 'categorical_crossentropy',
                        'sparse_categorical_crossentropy',
+                       'mse', 'mae', 'mape', 'msle', 'kld',
                        'mean_squared_error', 'mean_absolute_error',
                        'mean_absolute_percentage_error',
                        'mean_squared_logarithmic_error', 'squared_hinge',
@@ -187,8 +191,7 @@ class TrainGenerator():
         while not self._has_validated:
             kw = {}
             if self._val_has_postiter_processed:
-                x, y, self._val_sw = self.get_data(val=True)
-                self._y_true = y
+                x, self._y_true, self._val_sw = self.get_data(val=True)
                 if self.iter_verbosity:
                     self._print_iter_progress(val=True)
 
@@ -196,7 +199,7 @@ class TrainGenerator():
                     self._y_preds = self.model.predict(x, batch_size=len(x))
                 elif self.eval_fn_name == 'evaluate':
                     kw['metrics'] = self.model.evaluate(
-                        x, y, sample_weight=self._val_sw,
+                        x, self._y_true, sample_weight=self._val_sw,
                         batch_size=len(x), verbose=0)
                 kw['batch_size'] = len(x)
                 self._val_has_postiter_processed = False
@@ -210,7 +213,7 @@ class TrainGenerator():
     ######################### MAIN METHOD HELPERS ########################
     def _train_postiter_processing(self, metrics):
         def _on_iter_end(metrics):
-            self._update_temp_history(metrics)
+            _update_temp_history(self, metrics)
             self._fit_iters += 1
             self.datagen.update_state()
 
@@ -261,7 +264,7 @@ class TrainGenerator():
                                  batch_size=None):
         def _on_iter_end(metrics=None, batch_size=None):
             if metrics is not None:
-                self._update_temp_history(metrics, val=True)
+                _update_temp_history(self, metrics, val=True)
             self._val_iters += 1
             if self.eval_fn_name == 'predict':
                 self._update_val_iter_cache()
@@ -314,6 +317,7 @@ class TrainGenerator():
 
         def _clear_cache():
             attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',
+                              '_class_labels_cache',
                               '_set_name_cache', '_val_set_name_cache',
                               '_y_true', '_val_sw')
             [setattr(self, attr, []) for attr in attrs_to_clear]
@@ -403,8 +407,12 @@ class TrainGenerator():
 
     ########################## DATA_GET METHODS ##########################
     def get_data(self, val=False):
-        datagen = self.val_datagen if val else self.datagen
+        def _standardize_shape(class_labels):
+            while len(class_labels.shape) < len(self.model.output_shape):
+                class_labels = np.expand_dims(class_labels, -1)
+            return class_labels
 
+        datagen = self.val_datagen if val else self.datagen
         if datagen.batch_exhausted:
             datagen.advance_batch()
             setattr(self, '_val_labels' if val else '_labels',
@@ -415,35 +423,61 @@ class TrainGenerator():
         x = datagen.get()
         y = datagen.labels if not self.input_as_labels else x
 
-        class_labels = datagen.labels
+        class_labels = _standardize_shape(datagen.labels)
         slice_idx = getattr(datagen, 'slice_idx', None)
         sample_weight = _get_sample_weight(self, class_labels, val, slice_idx)
 
         return x, y, sample_weight
 
     ########################## LOG METHODS ################################
-    def _update_temp_history(self, metrics, val=False):
-        _update_temp_history(self, metrics, val=val)
-
     def _update_val_iter_cache(self):
+        # def _standardize_shapes(y, class_labels, sample_weight):
+        #     def _std_labels(l, outs_shape):
+        #         if len(l.shape) < len(outs_shape) and (
+        #                 outs_shape[-1] == 1 and l.shape[-1] != 1):
+        #             l = np.expand_dims(l, -1)
+        #         return l
+
+        #     def _std_sample_weight(sample_weight, outs_shape):
+        #         while len(sample_weight.shape) < len(outs_shape):
+        #             sample_weight = np.expand_dims(sample_weight, -1)
+        #         return sample_weight
+
+        #     outs_shape = self.model.output_shape
+        #     y = _std_labels(y, outs_shape)
+        #     class_labels = _std_labels(class_labels, outs_shape)
+        #     sample_weight = _std_sample_weight(sample_weight, outs_shape)
+        #     return y, class_labels, sample_weight
+        def _standardize_shapes(*data):
+            ls = []
+            for x in data:
+                while len(x.shape) < len(self.model.output_shape):
+                    x = np.expand_dims(x, -1)
+                ls.append(x)
+            return ls
+
+        y, class_labels, sample_weight = _standardize_shapes(
+            self._y_true, self.val_datagen.labels, self._val_sw)
+
         if getattr(self.val_datagen, 'slice_idx', None) is None:
-            self._sw_cache.append(self._val_sw)
-            self._preds_cache.append(np.squeeze(self._y_preds))
-            self._labels_cache.append(self.val_datagen.labels)
+            self._sw_cache.append(sample_weight)
+            self._preds_cache.append(self._y_preds)
+            self._labels_cache.append(y)
+            self._class_labels_cache.append(class_labels)
             return
 
         if getattr(self.val_datagen, 'slice_idx', None) == 0:
             self._labels_cache.append([])
+            self._class_labels_cache.append([])
             self._sw_cache.append([])
             if self.eval_fn_name == 'predict':
                 self._preds_cache.append([])
 
-        self._sw_cache[-1].append(self._val_sw)
+        self._sw_cache[-1].append(sample_weight)
+        self._labels_cache[-1].append(y)
+        self._class_labels_cache[-1].append(class_labels)
         if self.eval_fn_name == 'predict':
-            self._preds_cache[-1].append(np.squeeze(self._y_preds))
-            self._labels_cache[-1].append(self._y_true)
-        elif self.eval_fn_name == 'evaluate':
-            self._labels_cache[-1].append(self.val_datagen.labels)
+            self._preds_cache[-1].append(self._y_preds)
 
     def _get_val_history(self, for_current_iter=False):
         return _get_val_history(self, for_current_iter)
@@ -649,8 +683,8 @@ class TrainGenerator():
 
         def _maybe_set_key_metric_fn():
             if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
-                km_name = self.key_metric if self.key_metric != 'loss' else (
-                    self.model.loss)
+                km_name = _get_api_metric_name(self.key_metric, self.model.loss,
+                                               self._alias_to_metric_name)
                 self.key_metric_fn = getattr(metrics_fns, km_name)
 
         _validate_kwarg_names(kwargs)
@@ -692,6 +726,7 @@ class TrainGenerator():
             as_empty_list = [
                 'key_metric_history', 'best_subset_nums', '_labels',
                 '_preds_cache', '_labels_cache', '_sw_cache',
+                '_class_labels_cache',
                 '_set_name_cache', '_val_set_name_cache',
                 '_hist_vlines', '_val_hist_vlines',
                 '_train_x_ticks', '_train_val_x_ticks',

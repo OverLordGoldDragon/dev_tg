@@ -10,6 +10,8 @@ from time import time
 from copy import deepcopy
 
 from tests.backend import Input, Conv2D, UpSampling2D
+from tests.backend import Dense, LSTM
+from tests.backend import l2
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
 from deeptrain import util
@@ -22,7 +24,7 @@ width, height = 28, 28
 channels = 1
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
 
-MODEL_CFG = dict(
+AE_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
     loss='mse',
     metrics=None,#['mape'],
@@ -33,6 +35,12 @@ MODEL_CFG = dict(
     kernel_size=[(3, 3)]*5,
     strides=[(2, 2), (2, 2), 1, 1, 1],
     up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
+)
+CL_CFG = dict(
+    batch_shape=(batch_size, 25, 16),
+    units=16,
+    optimizer='adam',
+    loss='binary_crossentropy'
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
@@ -56,10 +64,10 @@ TRAINGEN_CFG = dict(
     input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    model_configs=MODEL_CFG,
+    model_configs=AE_CFG,
 )
 
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
+CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {f'{name}_exceptions': None for name in ('datagen', 'util')}
 
@@ -69,7 +77,7 @@ def test_datagen():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        tg = _init_session(C)
+        tg = _init_session(C, _make_autoencoder)
         tg.train()
 
         dg = tg.datagen
@@ -109,29 +117,16 @@ def test_util():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        configs_orig = deepcopy(C)
         # _validate_savelist() + _validate_metrics() [util.misc]
         C['traingen']['savelist'] = ['{labels}']
         C['traingen']['train_metrics'] = ('loss',)
-        tg = _init_session(C)
+        tg = _init_session(C, _make_autoencoder)
 
         # save_best_model() [util.saving]
         tg.train()
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             util.saving.save_best_model(tg, del_previous_best=True)
-
-        # _update_temp_history() [util.training]
-        tg.val_temp_history['loss'] = (1, 2, 3)
-        util.training._update_temp_history(tg, metrics=(4,), val=True)
-        tg.val_temp_history['loss'] = []
-        util.training._update_temp_history(tg, metrics=(4,), val=True)
-        tg.temp_history['binary_accuracy'] = []
-        pass_on_error(util.training._update_temp_history,
-                      tg, metrics=dict(a=1, b=2), val=False)
-        tg.temp_history['f1_score'] = []
-        pass_on_error(util.training._update_temp_history,
-                      tg, metrics=[1, 2], val=False)
 
         # _get_sample_weight() [util.training]
         labels = np.random.randint(0, 2, (32, 3))
@@ -147,51 +142,92 @@ def test_util():
 
         # _validate_weighted_slices_range() [util.misc]
         tg.datagen.slices_per_batch = None
-        util.misc._validate_traingen_configs(tg)  ##
+        util.misc._validate_traingen_configs(tg)
+
+        # _get_best_subset_val_history() [util.training]
+        del tg
+        C = deepcopy(CONFIGS)
+        C['model'] = CL_CFG
+        C['traingen']['model_configs'] = CL_CFG
+        C['traingen']['input_as_labels'] = False
+        C['traingen']['best_subset_size'] = 2
+        tg = _init_session(C, _make_classifier)
+        tg.val_datagen.slices_per_batch = 4
+        tg._labels_cache = np.random.randint(0, 2, (3, 4, batch_size, 1))
+        tg._preds_cache = np.random.uniform(0, 1, (3, 4, batch_size, 1))
+        tg._sw_cache = np.random.randint(0, 2, (3, 4, batch_size, 1))
+        tg._class_labels_cache = tg._labels_cache.copy()
+        tg._val_set_name_cache = ['1', '2', '3']
+        tg.key_metric = 'f1_score'
+        tg.val_temp_history = {'f1_score': []}
+        tg.key_metric_fn = util.metrics.f1_score
+        tg.eval_fn_name = 'predict'
+        tg.dynamic_predict_threshold_min_max = None
+        util.training._get_best_subset_val_history(tg)
+
+        # _update_temp_history() [util.training]
+        tg.val_temp_history['loss'] = (1, 2, 3)
+        util.training._update_temp_history(tg, metrics=(4,), val=True)
+        tg.val_temp_history['loss'] = []
+        util.training._update_temp_history(tg, metrics=(4,), val=True)
+        tg.datagen.slice_idx = 1
+        tg.datagen.slices_per_batch = 2
+        tg.temp_history = {'binary_accuracy': []}
+        tg.train_metrics = ['binary_accuracy']
+        pass_on_error(util.training._update_temp_history,
+                      tg, metrics=[1], val=False)
+        pass_on_error(util.training._update_temp_history,
+                      tg, metrics=[dict(a=1, b=2)], val=False)
+        tg.temp_history = {'f1_score': []}
+        tg.train_metrics = ['f1_score']
+        pass_on_error(util.training._update_temp_history,
+                      tg, metrics=[[1, 2]], val=False)
+
+        # _validate_weighted_slices_range() [util.misc]
         del tg
         C['traingen']['max_is_best'] = True  # elsewhere
         C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
         C['traingen']['eval_fn_name'] = 'evaluate'
-        pass_on_error(_init_session, C)  ##
+        pass_on_error(_init_session, C, _make_classifier)  ##
         C['traingen']['eval_fn_name'] = 'predict'
-        pass_on_error(_init_session, C)  ##
+        pass_on_error(_init_session, C, _make_classifier)  ##
 
         # _validate_directories() [util.misc]
-        C = deepcopy(configs_orig)
+        C = deepcopy(CONFIGS)
         C['traingen']['best_models_dir'] = None
-        pass_on_error(_init_session, C)
-        C = deepcopy(configs_orig)
+        pass_on_error(_init_session, C, _make_classifier)
+        C = deepcopy(CONFIGS)
         C['traingen']['logs_dir'] = None
-        pass_on_error(_init_session, C)
-        C = deepcopy(configs_orig)
+        pass_on_error(_init_session, C, _make_classifier)
+        C = deepcopy(CONFIGS)
         C['traingen']['best_models_dir'] = None
         C['traingen']['logs_dir'] = None
-        pass_on_error(_init_session, C)
+        pass_on_error(_init_session, C, _make_classifier)
 
         # _validate_optimizer_saving_configs() [util.misc]
-        C = deepcopy(configs_orig)
+        C = deepcopy(CONFIGS)
         C['traingen']['optimizer_save_configs'] = {
             'include': 'weights', 'exclude': 'updates'}
-        pass_on_error(_init_session, C)
+        pass_on_error(_init_session, C, _make_classifier)
 
         # _validate_class_weights() [util.misc]
-        C = deepcopy(configs_orig)
+        C = deepcopy(CONFIGS)
         C['traingen']['class_weights'] = {'0': 1, 1: 2}
-        pass_on_error(_init_session, C)
+        pass_on_error(_init_session, C, _make_classifier)
         C['traingen']['class_weights'] = {0: 1}
-        pass_on_error(_init_session, C)
+        pass_on_error(_init_session, C, _make_classifier)
 
         # _validate_best_subset_size() [util.misc]
-        C = deepcopy(configs_orig)
+        C = deepcopy(CONFIGS)
         C['traingen']['best_subset_size'] = 5
         C['val_datagen']['shuffle_group_samples'] = True
-        pass_on_error(_init_session, C)
+        pass_on_error(_init_session, C, _make_classifier)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('util_exceptions', tests_done)
 
 
-def _test_load(tg, C):
+def _test_load(tg, C, make_model_fn):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
         paths.sort(key=os.path.getmtime)
@@ -202,11 +238,11 @@ def _test_load(tg, C):
     _destroy_session(tg)
 
     weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(C, weights_path, loadpath)
+    tg = _init_session(C, make_model_fn, weights_path, loadpath)
     print("\n>LOAD TEST PASSED")
 
 
-def _make_model(weights_path=None, **kw):
+def _make_autoencoder(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
                        'activation', 'filters', 'kernel_size', 'strides',
@@ -234,8 +270,29 @@ def _make_model(weights_path=None, **kw):
     return model
 
 
-def _init_session(C, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **C['model'])
+def _make_classifier(weights_path=None, **kw):
+    def _unpack_configs(kw):
+        expected_kw = ('batch_shape', 'loss', 'units', 'optimizer')
+        return [kw[key] for key in expected_kw]
+
+    batch_shape, loss, units, optimizer = _unpack_configs(kw)
+
+    ipt = Input(batch_shape=batch_shape)
+    x   = LSTM(units, return_sequences=False, stateful=True,
+               kernel_regularizer=l2(1e-4), recurrent_regularizer=l2(1e-4),
+               bias_regularizer=l2(1e-4))(ipt)
+    out = Dense(1, activation='sigmoid')(x)
+
+    model = Model(ipt, out)
+    model.compile(optimizer, loss)
+
+    if weights_path is not None:
+        model.load_weights(weights_path)
+    return model
+
+
+def _init_session(C, make_model_fn, weights_path=None, loadpath=None):
+    model = make_model_fn(weights_path, **C['model'])
     dg  = SimpleBatchgen(**C['datagen'])
     vdg = SimpleBatchgen(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
