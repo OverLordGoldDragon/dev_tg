@@ -179,12 +179,17 @@ def test_sample_unrolling():
             for metric_name in metric_names:
                 internal_score = m[metric_name]
                 explicit_score = getattr(metric_fns, metric_name)(yt, yp)
+                if isinstance(internal_score, (list, tuple)):
+                    assert all(_is == _es for _is, _es in
+                               zip(internal_score, explicit_score)), (
+                                   test_name, metric_name,
+                                   internal_score, explicit_score)
                 assert (internal_score == explicit_score), (
                     test_name, metric_name, internal_score, explicit_score)
         return compare_fn
 
     def _test_binaries(test_fns):
-        metric_names = ['binary_accuracy', 'tnr', 'tpr',
+        metric_names = ['binary_accuracy', 'tnr', 'tpr', 'tnr_tpr',
                         'f1_score', 'roc_auc_score']
         loss = 'binary_crossentropy'
         label_dim = 1

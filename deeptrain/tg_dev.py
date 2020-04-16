@@ -14,6 +14,7 @@
         - visualizations
     - autoencoder w/ eval_fn_name = 'predict'
     - caches into dict?
+    - hdf5_dataset wrapper/magic method getter, if closed -> open
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer

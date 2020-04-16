@@ -79,7 +79,7 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
                                   ).format(extensions[0], ', '.join(supported)))
 
         def _validate_savepath(savepath):
-            if savepath.split('.')[-1] != '.h5':
+            if Path(savepath).suffix != '.h5':
                 print(WARN, "`savepath` extension must be '.h5'; will append")
                 savepath += '.h5'
             if Path(savepath).is_file():

@@ -5,6 +5,7 @@ import types
 import h5py
 import tensorflow as tf
 
+from pathlib import Path
 from . import K, WARN, NOTE
 from .misc import pass_on_error, _train_on_batch_dummy
 from .logging import generate_report
@@ -80,7 +81,6 @@ def checkpoint_model_IF(cls, forced=False):
         # (model weights, traingen state, report, history img)
         # TODO infer actual number, do not hard-code
         paths_per_checkpoint = 4
-
         while len(_paths) / paths_per_checkpoint > cls.max_checkpoint_saves:
             [os.remove(_paths.pop(0)) for _ in range(paths_per_checkpoint)]
 
@@ -112,14 +112,23 @@ def save(cls, savepath=None):
 
             if cfg is None:
                 return all_attrs
+
             if 'exclude' in cfg:
                 if 'updates' not in cfg['exclude']:
                     print(NOTE, "saving 'updates' is unsupported; will skip")
                 return [a for a in all_attrs if a not in cfg['exclude']]
+
             if 'include' in cfg:
                 if 'updates' in cfg['include']:
                     print(WARN, "saving 'updates' is unsupported; skipping")
-                return [a for a in all_attrs if a in cfg['include']]
+                attrs = []
+                for attr in cfg['include']:
+                    if attr in all_attrs:
+                        attrs.append(attr)
+                    else:
+                        print(WARN, ("'{}' attribute not found in optimizer; "
+                                     "skipping").format(attr))
+                return attrs
 
         def _get_tensor_value(tensor):
             try:
@@ -136,11 +145,7 @@ def save(cls, savepath=None):
         state = {}
         to_save = _get_attrs_to_save(opt)
         for name in to_save:
-            if name not in vars(opt):
-                print(WARN, ("'{}' attribute not found in optimizer; "
-                             "skipping").format(name))
-                continue
-            elif name == 'weights':
+            if name == 'weights':
                 weights = _get_optimizer_weights(opt)
                 if weights != []:
                     state['weights'] = weights
@@ -215,6 +220,28 @@ def save(cls, savepath=None):
 
 
 def load(cls, filepath=None):
+    def _get_filepath(filepath):
+        filepath = filepath or cls.loadpath
+        if filepath is not None:
+            return filepath
+
+        basetxt = ("`loadpath` and passed in `filepath` are None")
+        txt = None
+        if cls.logdir is None:
+            txt = basetxt + ", and `logdir` is None"
+        elif not Path(cls.logdir).is_dir():
+            txt = basetxt + f", and `logdir` is not a folder ({cls.logdir})"
+        if txt is not None:
+            raise ValueError(txt)
+
+        tempname = '_temp_model__state.h5'
+        if tempname not in os.listdir(cls.logdir):
+            raise ValueError(basetxt + f" and tempfile default {tempname} not "
+                             f"found in `logdir` ({cls.logdir})")
+
+        filepath = os.path.join(cls.logdir, '_temp_model__state.h5')
+        return filepath
+
     def _cache_datagen_attrs():
         def _cache_preprocessor_attrs(pp):
             pp_cache = {}
@@ -255,19 +282,19 @@ def load(cls, filepath=None):
 
         for dg_name in ('datagen', 'val_datagen'):
             dg = getattr(cls, dg_name)
-            _check_and_fix_set_nums(dg)
             pp_cache = caches[dg_name].pop('preprocessor')
             _restore_preprocessor_attrs(dg.preprocessor, pp_cache)
 
             for attr, value in caches[dg_name].items():
                 setattr(dg, attr, value)
+            _check_and_fix_set_nums(dg)
 
     def _unpack_passed_dirs(caches, dgs):
         for dg_type, dg in zip(caches, dgs):
             for attr in dg._path_attrs:
                 setattr(dg, attr, caches[dg_type][attr])
 
-    filepath = filepath or cls.loadpath
+    filepath = _get_filepath(filepath)
     with open(filepath, "rb") as loadfile:
         loadfile_parsed = pickle.load(loadfile)
         caches = _cache_datagen_attrs()

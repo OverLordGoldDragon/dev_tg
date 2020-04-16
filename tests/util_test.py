@@ -11,6 +11,7 @@ from deeptrain.util import metrics
 from deeptrain.util import searching
 from deeptrain.util import misc
 from deeptrain.util import logging
+from deeptrain.util import training
 from deeptrain.util import preprocessing
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
@@ -19,7 +20,7 @@ from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs',
-                                      'preprocessing', 'logging')}
+                                      'training', 'preprocessing', 'logging')}
 
 
 def test_searching():
@@ -94,6 +95,46 @@ def test_logging():
         _test_get_unique_model_name()
 
     _notify('logging')
+
+
+def test_training():
+    def _test_unroll_into_samples():
+        outs_ndim = (16, 100)
+        arrs = [np.random.randn(16, 100)] * 2
+        training._unroll_into_samples(outs_ndim, *arrs)
+
+    def _test_weighted_normalize_preds():
+        tg = TraingenDummy()
+        tg.val_datagen.slices_per_batch = 1
+        preds_all = np.random.uniform(0, 1, (3, 1, 16, 100))
+        training._weighted_normalize_preds(tg, preds_all)
+
+    def _test_validate_data_shapes():
+        tg = TraingenDummy()
+        tg.model.batch_size = None
+        tg.batch_size = 16
+        tg.model.output_shape = (None, 100)
+        data = {'preds_all': np.random.uniform(0, 1, (3, 16, 100))}
+        training._validate_data_shapes(tg, data)
+
+        data = {'preds_all': np.random.uniform(0, 1, (3, 1, 16, 100))}
+        pass_on_error(training._validate_data_shapes, tg, data)
+
+    def _test_validate_class_data_shapes():
+        tg = TraingenDummy()
+        tg.model.batch_size = None
+        tg.batch_size = 16
+        tg.model.output_shape = (None, 100)
+        data = {'class_labels_all': np.random.uniform(0, 1, (3, 16, 100))}
+        training._validate_class_data_shapes(tg, data, validate_n_slices=True)
+
+
+    _test_unroll_into_samples()
+    _test_weighted_normalize_preds()
+    _test_validate_data_shapes()
+    _test_validate_class_data_shapes()
+
+    _notify('searching')
 
 
 def test_configs():

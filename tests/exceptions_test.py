@@ -15,6 +15,7 @@ from tests.backend import l2
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
 from deeptrain import util
+from deeptrain.util import preprocessing
 from deeptrain.util.misc import pass_on_error
 from deeptrain import TrainGenerator, SimpleBatchgen
 
@@ -110,7 +111,7 @@ def test_datagen():
         dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('datagen_exceptions', tests_done)
+    _notify('datagen_exceptions')
 
 def test_util():
     t0 = time()
@@ -133,6 +134,48 @@ def test_util():
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             util.saving.save_best_model(tg, del_previous_best=True)
+        with patch('deeptrain.util.saving.generate_report') as mock_report:
+            mock_report.side_effect = Exception()
+            util.saving.save_best_model(tg)
+
+    def _checkpoint_model_IF(C):  # [util.saving]
+        tg = _util_make_autoencoder(C)
+        tg.train()
+        tg.max_checkpoint_saves = -1
+        with patch('os.remove') as mock_remove:
+            mock_remove.side_effect = OSError('Permission Denied')
+            util.saving.checkpoint_model_IF(tg)
+
+        tg.logdir = None
+        pass_on_error(util.saving.checkpoint_model_IF, tg, forced=True)
+
+    def save(C):  # [util.saving]
+        tg = _util_make_autoencoder(C)
+        tg.model.loss = 'mean_squared_error'
+        tg.train()
+        tg.datagen.set_nums_to_process = [9001]
+        tg.final_fig_dir = tg.logdir
+
+        pass_on_error(tg.load)
+        tg.save()
+        tg._save_history()
+        tg._save_history()
+        tg.load()
+
+        with patch('tests.backend.K.get_value') as mock_get_value:
+            mock_get_value.side_effect = Exception()
+            tg.save()
+
+        tg.optimizer_save_configs = {'include': ['leaking_rate']}
+        tg.datagen.group_batch = []
+        with patch('pickle.dump') as mock_dump:
+            mock_dump.side_effect = Exception()
+            tg.save()
+
+        tg.logdir = 'abc'
+        pass_on_error(tg.load)
+        tg.logdir = None
+        pass_on_error(tg.load)
 
     def _get_sample_weight(C):  # [util.training]
         tg = _util_make_autoencoder(C)
@@ -190,7 +233,10 @@ def test_util():
 
         util.training._get_best_subset_val_history(tg)
 
-    def _update_val_temp_history(C):  # [util.training]
+        tg.eval_fn_name = 'superfit'
+        pass_on_error(util.training._get_best_subset_val_history, tg)
+
+    def _update_temp_history(C):  # [util.training]
         tg = _util_make_classifier(C)
 
         tg.val_temp_history['loss'] = (1, 2, 3)
@@ -207,6 +253,8 @@ def test_util():
 
         pass_on_error(util.training._update_temp_history,
                       tg, metrics=[dict(a=1, b=2)], val=False)
+
+        util.training._update_temp_history(tg, [[1]], val=False)
 
         tg.temp_history = {'f1_score': []}
         tg.train_metrics = ['f1_score']
@@ -285,7 +333,7 @@ def test_util():
         C['val_datagen']['shuffle_group_samples'] = True
         pass_on_error(_util_make_classifier, C)
 
-    def _validate_metric_printskip_configs(C):
+    def _validate_metric_printskip_configs(C):  # [util.misc]
         C['traingen']['metric_printskip_configs'] = {'val': ('loss',)}
         _util_make_autoencoder(C)
 
@@ -295,19 +343,21 @@ def test_util():
         pass_on_error(_util_make_autoencoder, C)
 
     tests_all = [save_best_model,
-                 _get_sample_weight,
-                 _get_api_metric_name,
-                 _validate_weighted_slices_range,
-                 _get_best_subset_val_history,
-                 _update_val_temp_history,
-                 _validate_metrics,
-                 _validate_directories,
-                 _validate_optimizer_saving_configs,
-                 _validate_class_weights,
-                 _validate_best_subset_size,
-                 _validate_metric_printskip_configs,
-                 _validate_savelist_and_metrics,
-                 ]
+                  _checkpoint_model_IF,
+                  save,
+                  _get_sample_weight,
+                  _get_api_metric_name,
+                  _validate_weighted_slices_range,
+                  _get_best_subset_val_history,
+                  _update_temp_history,
+                  _validate_metrics,
+                  _validate_directories,
+                  _validate_optimizer_saving_configs,
+                  _validate_class_weights,
+                  _validate_best_subset_size,
+                  _validate_metric_printskip_configs,
+                  _validate_savelist_and_metrics,
+                  ]
     for _test in tests_all:
         with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
                 CONFIGS['traingen']['best_models_dir']):
@@ -316,7 +366,52 @@ def test_util():
             print("Passed", _test.__name__)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('util_exceptions', tests_done)
+    _notify('util_exceptions')
+
+
+def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
+    """Dedicated test since it uses monkeypatch"""
+    C = deepcopy(CONFIGS)
+    # set preemptively in case data.h5 somehow found in dir
+    monkeypatch.setattr('builtins.input', lambda x: 'y')
+
+    with tempdir(C['traingen']['logs_dir']) as loaddir:
+        with open(os.path.join(loaddir, "data.txt"), 'w') as txt:
+            txt.write("etc")
+        data = np.random.randn(1, 32, 100)
+        kw = dict(savepath=os.path.join(loaddir, "data.h5"),
+                  data=data, batch_size=32)
+        pass_on_error(preprocessing.data_to_hdf5, **kw)
+
+        np.save(os.path.join(loaddir, "data.npy"), data)
+        pass_on_error(preprocessing.data_to_hdf5, **kw)
+
+        os.remove(os.path.join(loaddir, "data.txt"))
+        preprocessing.data_to_hdf5(**kw)
+
+        monkeypatch.setattr('builtins.input', lambda x: 'y')
+        preprocessing.data_to_hdf5(**kw)
+
+        monkeypatch.setattr('builtins.input', lambda x: 'n')
+        pass_on_error(preprocessing.data_to_hdf5, **kw)
+
+        preprocessing.data_to_hdf5(overwrite=True, **kw)
+
+        pass_on_error(preprocessing.data_to_hdf5, overwrite=False, **kw)
+
+        pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
+                      kw['batch_size'], loaddir=None, data=None)
+
+        pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
+                      kw['batch_size'], loaddir=loaddir, data=data)
+
+        _data = [data[0], data[0, :31]]
+        pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
+                      kw['batch_size'], data=_data, overwrite=True)
+
+        _data = [np.vstack([data[0], data[0]])]
+        pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
+                      kw['batch_size'], data=_data, overwrite=True)
 
 
 def _test_load(tg, C, make_model_fn):
@@ -411,7 +506,7 @@ def _pass_on_fail(fn, *args, **kwargs):
         print("Errmsg", e)
 
 
-def _notify(name, tests_done):
+def _notify(name):
     tests_done[name] = True
     print("\n>%s TEST PASSED" % name.upper())
 

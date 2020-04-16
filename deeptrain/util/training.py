@@ -445,15 +445,6 @@ def _validate_data_shapes(cls, data, validate_n_slices=True, val=True):
                 f"{x.shape}")
         return batch_size
 
-    def _validate_last_dim(data, outs_shape):
-        for name, x in data.items():
-            if x.shape[-1] != outs_shape[-1]:
-                assert (outs_shape[-1] == 1), (
-                    f"`{name}` shapes must contain model.output_shape "
-                    "[%s != %s]" % (x.shape, outs_shape))
-                data[name] = np.expand_dims(x, -1)
-        return data
-
     def _validate_iter_ndim(data, slices_per_batch, ndim):
         if slices_per_batch is not None:
             expected_iter_ndim = ndim + 2  # +(batches, slices)
@@ -495,7 +486,6 @@ def _validate_data_shapes(cls, data, validate_n_slices=True, val=True):
     ndim = len(outs_shape)
     slices_per_batch = getattr(cls.val_datagen if val else cls.datagen,
                                'slices_per_batch', None)
-    data = _validate_last_dim(data, outs_shape)
     data = _validate_iter_ndim(data, slices_per_batch, ndim)
 
     _validate_last_dims_match_outs_shape(data, outs_shape, ndim)
