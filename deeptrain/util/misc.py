@@ -209,7 +209,6 @@ def _validate_traingen_configs(cls):
             raise ValueError("`key_metric` must be in one of metrics returned "
                              "by model, when using `eval_fn_name='evaluate'` "
                              "(model returns: %s)" % ', '.join(model_metrics))
-        print(cls.val_metrics, '\n'*3)
         if cls.key_metric not in cls.val_metrics:
             cls.val_metrics.append(cls.key_metric)
 

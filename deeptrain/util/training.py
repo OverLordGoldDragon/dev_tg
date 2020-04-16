@@ -552,15 +552,3 @@ def _validate_class_data_shapes(cls, data, validate_n_slices=False, val=True):
         _validate_n_slices(data, slices_per_batch)
 
     return data if len(data) > 1 else list(data.values())[0]
-
-
-# def _unroll_samples(output_shape, *arrs):
-#     out_ndim = len(output_shape)
-#     ls = []
-#     for x in arrs:
-#         while x.shape[0] == 1:
-#             x = x.squeeze(axis=0)
-#         if x.shape != output_shape and x.shape[-out_ndim:] == output_shape:
-#             x = x.reshape(-1, *output_shape[1:])
-#         ls.append(x)
-#     return ls if len(ls) > 1 else ls[0]

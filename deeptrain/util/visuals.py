@@ -132,16 +132,16 @@ def get_history_fig(cls, plot_configs=None, w=1, h=1):
             for i, name in enumerate(config['metrics']['train']):
                 metrics.append(cls.history[name])
                 x_ticks.append(getattr(cls, config['x_ticks']['train'][i]))
-                if mark_best_cfg is not None:
+                if mark_best_cfg is not None and mark_best_idx is None:
                     mark_best_idx = _get_mark_best_idx(metrics, name,
                                                        mark_best_cfg, val=False)
         if 'val' in config['metrics']:
             for i, name in enumerate(config['metrics']['val']):
                 metrics.append(cls.val_history[name])
                 x_ticks.append(getattr(cls, config['x_ticks']['val'][i]))
-                if mark_best_cfg is not None:
+                if mark_best_cfg is not None and mark_best_idx is None:
                     mark_best_idx = _get_mark_best_idx(metrics, name,
-                                                       mark_best_cfg, val=False)
+                                                       mark_best_cfg, val=True)
         return x_ticks, metrics, mark_best_idx
 
     if plot_configs is None:

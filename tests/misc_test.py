@@ -49,6 +49,7 @@ TRAINGEN_CFG = dict(
     epochs=1,
     val_freq={'epoch': 1},
     dynamic_predict_threshold_min_max=(.35, .95),
+    logs_use_full_model_name=False,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     model_configs=MODEL_CFG,
