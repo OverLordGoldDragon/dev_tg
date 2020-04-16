@@ -229,7 +229,7 @@ def _get_unique_model_name(cls):
                       cls.logs_dir + "; starting model_num from '0'")
 
         if not cls.model_num_continue_from_max or len(filenames) == 0:
-            model_num=0; _name='M0'
+            model_num = 0; _name='M0'
             while any([(_name in filename) for filename in
                        os.listdir(cls.logs_dir)]):
                 model_num += 1
@@ -238,14 +238,15 @@ def _get_unique_model_name(cls):
 
     model_name = "M{}__{}".format(_get_model_num(), cls.model_base_name)
 
-    if cls.model_configs:
-        configs = cls.model_configs.copy()
-        configs.update(cls.__dict__)
+    if cls.model_name_configs:
+        configs = cls.__dict__.copy()
+        if cls.model_configs:
+            configs.update(cls.model_configs.copy())
 
         for key, alias in cls.model_name_configs.items():
             if '.' in key:
                 key = key.split('.')
-                dict_config = configs[key[0]]
+                dict_config = vars(configs[key[0]])
                 if key[1] in dict_config:
                     model_name += cls.name_process_key_fn(
                         key[1], alias, dict_config)

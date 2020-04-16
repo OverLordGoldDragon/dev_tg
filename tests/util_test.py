@@ -10,6 +10,7 @@ from termcolor import cprint
 from deeptrain.util import metrics
 from deeptrain.util import searching
 from deeptrain.util import misc
+from deeptrain.util import logging
 from deeptrain.util import preprocessing
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
@@ -18,7 +19,7 @@ from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs',
-                                      'preprocessing')}
+                                      'preprocessing', 'logging')}
 
 
 def test_searching():
@@ -77,6 +78,22 @@ def test_misc():
     _test_make_plot_configs_from_metrics()
 
     _notify('misc')
+
+
+def test_logging():
+    def _test_get_unique_model_name():
+        tg = TraingenDummy()
+        tg.model_name_configs = {'datagen.shuffle': ''}
+        os.mkdir(os.path.join(tg.logs_dir, 'M0'))
+        logging._get_unique_model_name(tg)
+
+    logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
+    best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_models')
+
+    with tempdir(logs_dir), tempdir(best_models_dir):
+        _test_get_unique_model_name()
+
+    _notify('logging')
 
 
 def test_configs():

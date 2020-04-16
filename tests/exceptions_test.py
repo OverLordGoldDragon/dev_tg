@@ -275,8 +275,10 @@ def test_util():
         pass_on_error(_util_make_classifier, C)
 
         C = deepcopy(CONFIGS)
-        C['model']['loss'] = 'categorical_crossentropy'
-        _util_make_classifier(C)
+        tg = _util_make_classifier(C)
+        tg.model.loss = 'categorical_crossentropy'
+        tg.class_weights = {0: 1, 2: 5, 3: 6}
+        util.misc._validate_traingen_configs(tg)
 
     def _validate_best_subset_size(C):  # [util.misc]
         C['traingen']['best_subset_size'] = 5

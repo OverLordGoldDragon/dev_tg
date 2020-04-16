@@ -2,7 +2,7 @@ import os
 import contextlib
 import shutil
 import numpy as np
-from deeptrain.util.metrics import f1_score
+from deeptrain import util
 
 
 if os.path.isdir(r"C:\Desktop\School\Deep Learning\DL_code\dev_tg"):
@@ -60,7 +60,7 @@ class TraingenDummy():
 
     class Datagen():
         def __init__(self):
-            self.x = 0
+            self.shuffle = False
 
     def __init__(self):
         self.model = ModelDummy()
@@ -69,7 +69,7 @@ class TraingenDummy():
 
         self.eval_fn_name = 'predict'
         self.key_metric = 'f1_score'
-        self.key_metric_fn = f1_score
+        self.key_metric_fn = util.metrics.f1_score
         self.class_weights = None
         self.val_class_weights = None
         self.batch_size = 8
@@ -84,6 +84,15 @@ class TraingenDummy():
 
         self.val_metrics = []
         self._sw_cache = []
+
+        self.logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
+        self.best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs',
+                                            '_models')
+        self.model_configs = None
+        self.model_name_configs = None
+        self.model_num_continue_from_max = False
+        self.model_base_name = 'M'
+        self.name_process_key_fn = util.configs._NAME_PROCESS_KEY_FN
 
     def set_shapes(self, batch_size, label_dim):
         self.batch_size = batch_size
