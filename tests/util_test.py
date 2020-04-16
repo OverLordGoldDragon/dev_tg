@@ -197,11 +197,11 @@ def test_preprocessing(monkeypatch):
         kw = dict(savepath=os.path.join(datadir, "data.h5"), batch_size=32,
                   shuffle=True, compression='lzf', overwrite=None)
 
+        monkeypatch.setattr('builtins.input', lambda x: "y")
         preprocessing.data_to_hdf5(loaddir=datadir, **kw)
         preprocessing.data_to_hdf5(data=X, **kw)
 
-        monkeypatch.setattr('builtins.input', lambda: "y")
-        kw.update(dict(overwrite=True, load_fn=lambda x: x))
+        kw.update(**dict(overwrite=True, load_fn=lambda x: x))
         preprocessing.data_to_hdf5(data=X, **kw)
 
         shutil.rmtree(datadir)
