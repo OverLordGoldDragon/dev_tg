@@ -289,7 +289,8 @@ def load(cls, filepath=None):
                 setattr(dg, attr, value)
             _check_and_fix_set_nums(dg)
 
-    def _unpack_passed_dirs(caches, dgs):
+    def _unpack_passed_dirs(caches):
+        dgs = (cls.datagen, cls.val_datagen)
         for dg_type, dg in zip(caches, dgs):
             for attr in dg._path_attrs:
                 setattr(dg, attr, caches[dg_type][attr])
@@ -309,7 +310,7 @@ def load(cls, filepath=None):
 
         if cls.use_passed_dirs_over_loaded:
             _unpack_passed_dirs(caches)
-        if hasattr(cls, 'optimizer_state'):
+        if hasattr(cls, 'optimizer_state') and cls.optimizer_state:
             _load_optimizer_state(cls)
         else:
             print(WARN, "'optimizer_state' not found in loadfile; skipping")
@@ -354,9 +355,6 @@ def _load_optimizer_state(cls):
 
     for name, value in cls.optimizer_state.items():
         if name not in to_load:
-            continue
-        if name not in vars(opt):
-            print(WARN, "optimizer lacks attribute '{}'; will not load" % name)
             continue
         elif name == 'weights':
             continue  # set later

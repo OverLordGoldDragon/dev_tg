@@ -160,7 +160,14 @@ def test_util():
         tg.save()
         tg._save_history()
         tg._save_history()
+        tg.optimizer_load_configs = {'exclude': ['weights']}
         tg.load()
+
+        tg.use_passed_dirs_over_loaded = True
+        tg.load()
+
+        tg.optimizer_save_configs = {'include': []}
+        tg.save()
 
         with patch('tests.backend.K.get_value') as mock_get_value:
             mock_get_value.side_effect = Exception()
@@ -378,12 +385,16 @@ def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
     with tempdir(C['traingen']['logs_dir']) as loaddir:
         with open(os.path.join(loaddir, "data.txt"), 'w') as txt:
             txt.write("etc")
-        data = np.random.randn(1, 32, 100)
-        kw = dict(savepath=os.path.join(loaddir, "data.h5"),
-                  data=data, batch_size=32)
-        pass_on_error(preprocessing.data_to_hdf5, **kw)
+        savepath = os.path.join(loaddir, "data.h5")
+        pass_on_error(preprocessing.data_to_hdf5, savepath.replace('.h5', ''),
+                      batch_size=32, loaddir=loaddir)
 
+        data = np.random.randn(1, 32, 100)
         np.save(os.path.join(loaddir, "data.npy"), data)
+        pass_on_error(preprocessing.data_to_hdf5, savepath=savepath,
+                      batch_size=32, loaddir=loaddir)
+
+        kw = dict(savepath=savepath, data=data, batch_size=32)
         pass_on_error(preprocessing.data_to_hdf5, **kw)
 
         os.remove(os.path.join(loaddir, "data.txt"))
