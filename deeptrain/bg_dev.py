@@ -60,7 +60,11 @@ class BatchGenerator():
         self.shuffle=shuffle
         self.dtype=dtype
         self.data_ext=data_ext
-        self.superbatch_dir=superbatch_dir
+
+        if superbatch_set_nums == 'all':
+            self.superbatch_dir = data_dir
+        else:
+            self.superbatch_dir = superbatch_dir
 
         info = self._infer_and_get_data_info(data_dir, data_ext, data_format)
         name_and_alias = [
@@ -272,7 +276,7 @@ class BatchGenerator():
                                 "in set_nums found from `data_dir` filenames")
 
         def _set_or_validate_superbatch_set_nums(superbatch_set_nums):
-            if self.superbatch_dir is None:
+            if self.superbatch_dir is None and superbatch_set_nums != 'all':
                 if superbatch_set_nums is not None:
                     print(WARN, "`superbatch_set_nums` will be ignored, "
                           "since `superbatch_dir` is None")
@@ -281,7 +285,7 @@ class BatchGenerator():
 
             nums_to_load = _get_set_nums_to_load()
 
-            if superbatch_set_nums is None:
+            if superbatch_set_nums is None or superbatch_set_nums == 'all':
                 self.superbatch_set_nums = nums_to_load.copy()
             elif any([num not in nums_to_load for num in superbatch_set_nums]):
                 raise Exception("a `set_num` in `superbatch_set_nums` "

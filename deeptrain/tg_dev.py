@@ -432,23 +432,6 @@ class TrainGenerator():
 
     ########################## LOG METHODS ################################
     def _update_val_iter_cache(self):
-        # def _standardize_shapes(y, class_labels, sample_weight):
-        #     def _std_labels(l, outs_shape):
-        #         if len(l.shape) < len(outs_shape) and (
-        #                 outs_shape[-1] == 1 and l.shape[-1] != 1):
-        #             l = np.expand_dims(l, -1)
-        #         return l
-
-        #     def _std_sample_weight(sample_weight, outs_shape):
-        #         while len(sample_weight.shape) < len(outs_shape):
-        #             sample_weight = np.expand_dims(sample_weight, -1)
-        #         return sample_weight
-
-        #     outs_shape = self.model.output_shape
-        #     y = _std_labels(y, outs_shape)
-        #     class_labels = _std_labels(class_labels, outs_shape)
-        #     sample_weight = _std_sample_weight(sample_weight, outs_shape)
-        #     return y, class_labels, sample_weight
         def _standardize_shapes(*data):
             ls = []
             for x in data:
@@ -517,10 +500,7 @@ class TrainGenerator():
     def _print_val_progress(self):
         val_metrics = self._get_val_history(for_current_iter=True)
         for name in self.metric_printskip_configs.get('val', []):
-            try:
-                val_metrics.pop(name, None)
-            except:
-                1 == 1
+            val_metrics.pop(name, None)
         self._print_progress(val_metrics)
 
     def _print_progress(self, metrics, endchar='\n'):

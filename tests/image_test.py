@@ -39,7 +39,7 @@ DATAGEN_CFG = dict(
 )
 VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
-    superbatch_dir=os.path.join(datadir, 'val'),
+    superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
     data_category='image',
