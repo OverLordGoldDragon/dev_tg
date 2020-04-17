@@ -3,6 +3,9 @@ import pytest
 import numpy as np
 import sklearn.metrics
 
+from pathlib import Path
+from termcolor import cprint
+
 from deeptrain.util.training import _get_val_history, _weighted_normalize_preds
 from deeptrain.util.metrics import (
     f1_score,
@@ -15,6 +18,11 @@ from deeptrain.util.metrics import (
     )
 from deeptrain.util import metrics as metric_fns
 from tests.backend import TraingenDummy
+
+
+tests_done = {name: None for name in ('f1_score', 'f1_score_multi_th',
+                                      'binaries', 'binaries_multi_th',
+                                      'sample_unrolling')}
 
 
 def test_f1_score():
@@ -48,6 +56,8 @@ def test_f1_score():
     _test_no_positive_labels()
     _test_no_positive_predictions()
     _test_vs_sklearn()
+
+    _notify('f1_score')
 
 
 def test_f1_score_multi_th():
@@ -86,6 +96,30 @@ def test_binaries():
     assert tpr(y_true, y_pred) == .75
     assert tnr_tpr(y_true, y_pred) == [.25, .75]
     assert binary_informedness(y_true, y_pred) == 0.
+
+
+def test_binaries_multi_th():
+    def _compare_against_single_th(metric_name):
+        y_true = np.random.randint(0, 2, (64,))
+        y_pred = np.random.uniform(0, 1, (64,))
+        pred_thresholds = [.01, .05, .1, .2, .4, .5, .6, .8, .95, .99]
+
+        metric_fn = getattr(metric_fns, metric_name)
+        metric_multi_th_fn = getattr(metric_fns, metric_name + '_multi_th')
+
+        looped_scores = np.array([metric_fn(y_true, y_pred, th)
+                                  for th in pred_thresholds])
+        parallel_scores = metric_multi_th_fn(y_true, y_pred, pred_thresholds)
+        if looped_scores.ndim > 1:  # tnr_tpr
+            looped_scores = looped_scores.T
+
+        assert np.allclose(looped_scores, parallel_scores), (
+            f"'{metric_name}'\n"
+            f"{np.vstack([looped_scores, parallel_scores]).T}")
+
+    to_test = ['binary_accuracy', 'tnr', 'tpr', 'tnr_tpr', 'binary_informedness']
+    for metric_name in to_test:
+        _compare_against_single_th(metric_name)
 
 
 def test_roc_auc():
@@ -201,6 +235,17 @@ def test_sample_unrolling():
 
     test_fns = (_batches, _unweighted_slices, _weighted_slices, _batches_slices)
     _test_binaries(test_fns)
+
+    _notify('sample_unrolling')
+
+
+def _notify(name):
+    tests_done[name] = True
+    print("\n>%s TEST PASSED" % name.upper())
+
+    if all(tests_done.values()):
+        test_name = Path(__file__).stem.replace('_', ' ').upper()
+        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

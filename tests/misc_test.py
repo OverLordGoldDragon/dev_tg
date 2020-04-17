@@ -84,7 +84,7 @@ def test_main():
         _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('main', tests_done)
+    _notify('main')
 
 
 def _test_main(C):
@@ -105,7 +105,7 @@ def _test_load(tg, C):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(C, weights_path, loadpath)
-    _notify('load', tests_done)
+    _notify('load')
 
 
 def _make_model(weights_path=None, **kw):
@@ -160,13 +160,13 @@ def _destroy_session(tg):
     del tg
 
 
-def _notify(name, tests_done):
+def _notify(name):
     tests_done[name] = True
     print("\n>%s TEST PASSED" % name.upper())
 
     if all(tests_done.values()):
-        cprint("<< IMAGE TEST PASSED >>\n", 'green')
-
+        test_name = Path(__file__).stem.replace('_', ' ').upper()
+        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

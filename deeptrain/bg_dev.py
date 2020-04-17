@@ -7,6 +7,7 @@
     - deprecate full_batch_shape?
     - profile batch.extend speed
     - batch_size > loaded batch_size
+    - superbatch_set_nums = 'all' -> no need to specify superbatch_dir
 """
 import os
 import h5py
@@ -61,7 +62,7 @@ class BatchGenerator():
         self.data_ext=data_ext
         self.superbatch_dir=superbatch_dir
 
-        info = self._infer_and_get_data_info(data_dir, data_ext)
+        info = self._infer_and_get_data_info(data_dir, data_ext, data_format)
         name_and_alias = [
             ('data_format', 'data_format'), ('base_name', 'base_name'),
             ('filenames', '_filenames',), ('filepaths', '_filepaths'),
@@ -140,7 +141,13 @@ class BatchGenerator():
             batch = self._batch_from_group_batch()
             self._update_group_batch_state()
         elif self.set_num in self.superbatch_set_nums:
-            batch = self.superbatch[self.set_num]
+            if self.superbatch:
+                batch = self.superbatch[self.set_num]
+            else:
+                print(WARN, f"`set_num` ({self.set_num}) found in `superbatch_"
+                      "set_nums` but `superbatch` is empty; call "
+                      "`preload_superbatch()`")
+                batch = self.load_data(self.set_num)
         else:
             batch = self.load_data(self.set_num)
         return batch
@@ -371,9 +378,8 @@ class BatchGenerator():
                       "(all data in one file, one group key per batch)")
                 data_format = 'hdf5-dataset'
             elif data_format == 'hdf5':
-                print(NOTE, "inferred data format: 'hdf5'.")
-                print(NOTE, "for SimpleBatchgen, .h5 files should only "
-                      "have one group key")
+                print(NOTE, "inferred data format: 'hdf5'. For SimpleBatchgen, "
+                      ".h5 files should only have one group key")
             return data_format
 
         def _get_base_name(extension, filenames):

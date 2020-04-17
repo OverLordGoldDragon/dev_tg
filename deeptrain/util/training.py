@@ -177,9 +177,6 @@ def _get_val_history(cls, for_current_iter=False):
                                     return_as_dict=False)
 
     # `class_labels_all` currently unused; may be useful in the future
-    # (labels_all, preds_all, sample_weight_all, class_labels_all,
-    #  preds_all_norm, labels_all_norm
-    #  ) = _unpack_and_transform_data(for_current_iter)
     (labels_all_norm, preds_all_norm, sample_weight_all, class_labels_all
      ) = _unpack_and_transform_data(for_current_iter)
 
@@ -208,10 +205,7 @@ def _get_best_subset_val_history(cls):
                                     *x.shape[3:]))
             return ls
 
-        # TODO rid of? key_metric_fn exists
-        metric_fn = getattr(
-            metric_fns, _get_api_metric_name(cls.key_metric, cls.model.loss))
-        if 'pred_threshold' not in metric_fn.__code__.co_varnames:
+        if 'pred_threshold' not in cls.key_metric_fn.__code__.co_varnames:
             search_min_max = None
         elif cls.dynamic_predict_threshold_min_max is None:
             search_min_max = (cls.predict_threshold, cls.predict_threshold)
@@ -224,7 +218,7 @@ def _get_best_subset_val_history(cls):
             la_norm, pa_norm,
             search_interval=.01,
             search_min_max=search_min_max,
-            metric_fn=metric_fn,
+            metric_fn=cls.key_metric_fn,
             subset_size=cls.best_subset_size)
         return best_subset_idxs, pred_threshold
 
@@ -357,16 +351,16 @@ def _transform_eval_data(cls, labels_all, preds_all, sample_weight_all,
                                         'preds_all': preds_all})
         labels_all, preds_all = d['labels_all'], d['preds_all']
 
-        # TODO not pred_weighted but loss_weighted?
+        # if `loss_weighted_slices_range` but not `pred_weighted_slices_range`,
+        # will apply weighted sample weights on non weight-normalized preds
         if cls.pred_weighted_slices_range is not None:
             preds_all_norm = _weighted_normalize_preds(cls, preds_all)
-            labels_all_norm = labels_all[:, :1]  #  collapse but keep slices dim
+            labels_all_norm = labels_all[:, :1]  # collapse but keep slices dim
             assert (preds_all_norm.max() <= 1) and (preds_all_norm.min() >= 0)
         else:
             preds_all_norm = preds_all
             labels_all_norm = labels_all
 
-        # TODO check shapes w/ pred_weighted_slices_range
         d = _validate_class_data_shapes(cls,
                                         {'sample_weight_all': sample_weight_all,
                                          'class_labels_all': class_labels_all})
@@ -422,11 +416,6 @@ def _weighted_normalize_preds(cls, preds_all):
     weight_norm = np.sum(slice_weights)
     preds_norm = np.sum(np.array(weighted_preds), axis=1) / weight_norm + .5
 
-    # fix possible float imprecision
-    if np.min(preds_norm) < 0:
-        preds_norm -= np.min(preds_norm)
-    if np.max(preds_norm) > 1:
-        preds_norm -= np.max(preds_norm)
     return preds_norm
 
 

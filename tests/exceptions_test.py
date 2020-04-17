@@ -163,6 +163,9 @@ def test_util():
         tg.optimizer_load_configs = {'exclude': ['weights']}
         tg.load()
 
+        tg._history_fig = 1
+        tg._save_history()
+
         tg.use_passed_dirs_over_loaded = True
         tg.load()
 
@@ -522,7 +525,8 @@ def _notify(name):
     print("\n>%s TEST PASSED" % name.upper())
 
     if all(tests_done.values()):
-        cprint("<< EXCEPTIONS TEST PASSED >>\n", 'green')
+        test_name = Path(__file__).stem.replace('_', ' ').upper()
+        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

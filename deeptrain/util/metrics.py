@@ -253,14 +253,14 @@ def binary_accuracy_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
         y_true, y_pred, pred_thresholds=pred_thresholds)
     y_true, y_pred = y_true.reshape(-1, 1), y_pred.reshape(-1, 1)
 
-    return np.equal(y_true, y_pred > pred_thresholds).mean(axis=-1)
+    return np.equal(y_true, y_pred > pred_thresholds).mean(axis=0)
 
 def tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
     y_true, y_pred, pred_thresholds = _standardize(
         y_true, y_pred, pred_thresholds=pred_thresholds)
 
     ones_preds = y_pred[np.where(y_true == 1)].reshape(-1, 1)
-    return np.mean(np.ceil(ones_preds - pred_thresholds)  == 1, axis=-1)
+    return np.mean(np.ceil(ones_preds - pred_thresholds) == 1, axis=0)
 
 
 def tnr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
@@ -268,7 +268,7 @@ def tnr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
         y_true, y_pred, pred_thresholds=pred_thresholds)
 
     zeros_preds = y_pred[np.where(y_true == 0)].reshape(-1, 1)
-    return np.mean(np.ceil(zeros_preds - pred_thresholds)  == 1, axis=-1)
+    return np.mean(np.ceil(zeros_preds - pred_thresholds) == 0, axis=0)
 
 
 def tnr_tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
@@ -278,7 +278,7 @@ def tnr_tpr_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
 
 def binary_informedness_multi_th(y_true, y_pred, pred_thresholds=[.4, .6]):
     return np.sum(tnr_tpr_multi_th(y_true, y_pred, pred_thresholds),
-                  axis=-1) - 1
+                  axis=0) - 1
 
 
 def roc_auc_score(y_true, y_pred):

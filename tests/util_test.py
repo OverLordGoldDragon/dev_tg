@@ -144,12 +144,15 @@ def test_configs():
                    eta_t=(.9, 1.1, 2),
                    timesteps=13500,
                    name='leaf',
+                   a=.5,
                    best_key_metric=0.91,
-                   a=.5)
-        assert name_fn('init_lr', 'lr', cfg) == '_lr2e-4x3_1e-4'
-        assert name_fn('timesteps', '', cfg) == '_13.5k'
-        assert name_fn('name', 'name',  cfg) == '_name'
-        assert name_fn('best_key_metric', 'max', cfg) == '_max.910'
+                   )
+        assert name_fn('init_lr',   'lr',   cfg) == '_lr2e-4x3_1e-4'
+        assert name_fn('eta_t',     'et',   cfg) == '_et.9_1.1_2'
+        assert name_fn('timesteps', '',     cfg) == '_13.5k'
+        assert name_fn('name',      'name', cfg) == '_name'
+        assert name_fn('a',         'a',    cfg) == '_a.5'
+        assert name_fn('best_key_metric', 'max',  cfg) == '_max.910'
 
     names = ['PLOT_CFG', 'BINARY_CLASSIFICATION_PLOT_CFG',
              'MODEL_NAME_CFG', 'REPORT_CFG', 'TRAINGEN_SAVE_LIST',
@@ -218,7 +221,8 @@ def _notify(name):
     print("\n>%s TEST PASSED" % name.upper())
 
     if all(tests_done.values()):
-        cprint("<< UTIL TEST PASSED >>\n", 'green')
+        test_name = Path(__file__).stem.replace('_', ' ').upper()
+        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

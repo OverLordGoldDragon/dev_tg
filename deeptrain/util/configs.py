@@ -187,9 +187,9 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
         if abs(val) < small_th:
             return _format_small_float(val)
         elif small_th < abs(val) < 1:
-            return ("%.3f" % val).lstrip('0')
+            return ("%.3f" % val).lstrip('0').rstrip('0')
         else:
-            return "%.3f" % val
+            return ("%.3f" % val).rstrip('0')
 
     def _squash_list(ls):
         def _max_reps_from_beginning(ls, reps=1):

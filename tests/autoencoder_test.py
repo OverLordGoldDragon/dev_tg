@@ -59,15 +59,15 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in ('main', 'load', 'predict')}
 
-# def test_main():
-#     t0 = time()
-#     C = deepcopy(CONFIGS)
-#     with tempdir(C['traingen']['logs_dir']), tempdir(
-#             C['traingen']['best_models_dir']):
-#         _test_main(C)
+def test_main():
+    t0 = time()
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        _test_main(C)
 
-#     print("\nTime elapsed: {:.3f}".format(time() - t0))
-#     _notify('main', tests_done)
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('main')
 
 
 def _test_main(C):
@@ -88,7 +88,7 @@ def _test_load(tg, C):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(C, weights_path, loadpath)
-    _notify('load', tests_done)
+    _notify('load')
 
 
 def test_predict():
@@ -100,7 +100,7 @@ def test_predict():
         _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('predict', tests_done)
+    _notify('predict')
 
 
 def _make_model(weights_path=None, **kw):
@@ -151,12 +151,13 @@ def _destroy_session(tg):
     del tg
 
 
-def _notify(name, tests_done):
+def _notify(name):
     tests_done[name] = True
     print("\n>%s TEST PASSED" % name.upper())
 
     if all(tests_done.values()):
-        cprint("<< AUTOENCODER TEST PASSED >>\n", 'green')
+        test_name = Path(__file__).stem.replace('_', ' ').upper()
+        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':
