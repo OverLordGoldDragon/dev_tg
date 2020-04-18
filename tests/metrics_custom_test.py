@@ -239,6 +239,13 @@ def test_sample_unrolling():
     _notify('sample_unrolling')
 
 
+def test_sklearn():
+    y_true = np.random.randint(0, 2, (32,))
+    y_pred = np.random.uniform(0, 1, (32,))
+    assert (metric_fns.r2_score(y_true, y_pred) ==
+            sklearn.metrics.r2_score(y_true, y_pred))
+
+
 def _notify(name):
     tests_done[name] = True
     print("\n>%s TEST PASSED" % name.upper())

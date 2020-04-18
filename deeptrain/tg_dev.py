@@ -1,19 +1,7 @@
 # -*- coding: utf-8 -*-
 """TODO:
-    - regression
-    - support all sklearn metrics directly via sklearn? (that aren't already
-                                                         implemented)
     - replace metrics= w/ history=?
     - visualizations
-    - metrics ('tnr', etc)
-    - test metrics w/ tranform_eval_data
-    - unit tests:
-        - save/load
-        - report generator
-        - data generators
-        - visualizations
-    - autoencoder w/ eval_fn_name = 'predict'
-    - caches into dict?
     - hdf5_dataset wrapper/magic method getter, if closed -> open
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)

@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
 import numpy as np
+import sklearn.metrics
+
+
+def __getattr__(name):
+    """If not implemented, get from sklearn.metrics"""
+    return getattr(sklearn.metrics, name)
 
 
 PREC = os.environ.get('PRECISION', 'float32')
@@ -25,6 +31,17 @@ def _standardize(y_true, y_pred, sample_weight=None, clip_pred=False,
         pred_thresholds = np.asarray(pred_thresholds).reshape(1, -1).astype(PREC)
         return y_true, y_pred, pred_thresholds
     return y_true, y_pred
+
+
+def _weighted_loss(losses, sample_weight):
+    losses = np.asarray(losses)
+    if isinstance(sample_weight, np.ndarray) and (
+            sample_weight.ndim != losses.ndim):
+        if losses.ndim < sample_weight.ndim:
+            losses = np.expand_dims(losses, -1)
+        assert (sample_weight.ndim == losses.ndim), (
+            "[%s vs %s]" % (sample_weight.shape, losses.shape))
+    return np.mean(losses * sample_weight)
 
 
 def f1_score(y_true, y_pred, pred_threshold=0.5, beta=1):
@@ -77,17 +94,6 @@ def f1_score_multi_th(y_true, y_pred, pred_thresholds=[.4, .6], beta=1):
         elif y_true.sum() == 0:
             f1score[idx] = specificity[idx]
     return f1score
-
-
-def _weighted_loss(losses, sample_weight):
-    losses = np.asarray(losses)
-    if isinstance(sample_weight, np.ndarray) and (
-            sample_weight.ndim != losses.ndim):
-        if losses.ndim < sample_weight.ndim:
-            losses = np.expand_dims(losses, -1)
-        assert (sample_weight.ndim == losses.ndim), (
-            "[%s vs %s]" % (sample_weight.shape, losses.shape))
-    return np.mean(losses * sample_weight)
 
 
 def binary_crossentropy(y_true, y_pred, sample_weight=1):
