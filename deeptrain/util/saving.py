@@ -7,6 +7,7 @@ import tensorflow as tf
 
 from pathlib import Path
 from . import K, WARN, NOTE
+from .visuals import _get_history_fig
 from .misc import pass_on_error, _train_on_batch_dummy
 from .logging import generate_report
 
@@ -38,7 +39,7 @@ def save_best_model(cls, del_previous_best=False):
 
     savepath = os.path.join(cls.best_models_dir, cls.model_name)
     cls.model.save_weights(savepath + '.h5')
-    cls._history_fig = cls._get_history_fig()
+    cls._history_fig = _get_history_fig(cls)
     cls._history_fig.savefig(savepath + '.png')
 
     cls.save(savepath + '__state.h5')

@@ -20,9 +20,9 @@ from deeptrain.util import metrics as metric_fns
 from tests.backend import TraingenDummy
 
 
-tests_done = {name: None for name in ('f1_score', 'f1_score_multi_th',
-                                      'binaries', 'binaries_multi_th',
-                                      'sample_unrolling')}
+tests_done = {name: None for name in (
+    'f1_score', 'f1_score_multi_th', 'binaries', 'binaries_multi_th',
+    'roc_auc_score', 'sample_unrolling', 'sklearn')}
 
 
 def test_f1_score():
@@ -87,6 +87,8 @@ def test_f1_score_multi_th():
     _test_nan_handling()
     _compare_against_f1_score()
 
+    _notify('f1_score_multi_th')
+
 
 def test_binaries():
     y_true = [0,  0,  0,  0,  1,  1,  1,  1]
@@ -96,6 +98,8 @@ def test_binaries():
     assert tpr(y_true, y_pred) == .75
     assert tnr_tpr(y_true, y_pred) == [.25, .75]
     assert binary_informedness(y_true, y_pred) == 0.
+
+    _notify('binaries')
 
 
 def test_binaries_multi_th():
@@ -121,8 +125,10 @@ def test_binaries_multi_th():
     for metric_name in to_test:
         _compare_against_single_th(metric_name)
 
+    _notify('binaries_multi_th')
 
-def test_roc_auc():
+
+def test_roc_auc_score():
     y_true = np.array([1] * 5 + [0] * 27)  # imbalanced
     np.random.shuffle(y_true)
     y_pred = np.random.uniform(0, 1, 32)
@@ -133,6 +139,7 @@ def test_roc_auc():
     assert (adiff < 1e-10), ("sklearn: {:.15f}\ntest:    {:.15f}"
                              "\nabsdiff: {}".format(
                                  sklearn_score, test_score, adiff))
+    _notify('roc_auc_score')
 
 
 def test_sample_unrolling():
@@ -244,6 +251,7 @@ def test_sklearn():
     y_pred = np.random.uniform(0, 1, (32,))
     assert (metric_fns.r2_score(y_true, y_pred) ==
             sklearn.metrics.r2_score(y_true, y_pred))
+    _notify('sklearn')
 
 
 def _notify(name):

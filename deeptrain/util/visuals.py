@@ -58,7 +58,7 @@ def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
     _plot(preds_flat, pred_th, alignment_arr, colors)
 
 
-def get_history_fig(cls, plot_configs=None, w=1, h=1):
+def _get_history_fig(cls, plot_configs=None, w=1, h=1):
     def _unpack_plot_kws(config):
         reserved_keys = ('metrics', 'x_ticks', 'vhlines',
                          'mark_best_cfg', 'ylims')

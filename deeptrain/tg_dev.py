@@ -2,6 +2,8 @@
 """TODO:
     - replace metrics= w/ history=?
     - visualizations
+        - histograms (move to see_rnn?)
+        - heatmaps (get from see_rnn?)
     - hdf5_dataset wrapper/magic method getter, if closed -> open
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
@@ -38,7 +40,7 @@ from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
 from .util.training import _get_sample_weight, _get_api_metric_name
 from .util.logging import _get_unique_model_name
-from .util.visuals import get_history_fig, show_predictions_per_iteration
+from .util.visuals import _get_history_fig, show_predictions_per_iteration
 from .util.visuals import show_predictions_distribution
 from .util.visuals import comparative_histogram
 from .util.saving  import save, load, _save_history
@@ -218,8 +220,6 @@ class TrainGenerator():
                           fail_msg=(
                               WARN + " could not update and print progress - "
                               "OK if right after load; skipping..."))
-
-
             if self.reset_statefuls:
                 self.model.reset_states()
                 if self.iter_verbosity >= 1:
@@ -547,13 +547,10 @@ class TrainGenerator():
             fig.set_canvas(manager.canvas)
             plt.show()
 
-        fig = self._get_history_fig(self.plot_configs, w, h)
+        fig = _get_history_fig(self, self.plot_configs, w, h)
         if update_fig:
             self._history_fig = fig
         _show_closed_fig(fig)
-
-    def _get_history_fig(self, plot_configs=None, w=1, h=1):
-        return get_history_fig(self, plot_configs, w, h)
 
     def show_layer_outputs(self, layer_names=None):
         raise NotImplementedError()  #TODO
