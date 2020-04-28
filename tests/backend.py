@@ -4,14 +4,13 @@ import shutil
 import tempfile
 import numpy as np
 
+from pathlib import Path
+
 from deeptrain import util
 from deeptrain import metrics
 
 
-if os.path.isdir(r"C:\Desktop\School\Deep Learning\DL_code\dev_tg"):
-    BASEDIR = r"C:\Desktop\School\Deep Learning\DL_code\dev_tg"
-else:
-    BASEDIR = ''
+BASEDIR = str(Path(__file__).parents[1])
 TF_KERAS = bool(os.environ.get('TF_KERAS', '0') == '1')
 
 

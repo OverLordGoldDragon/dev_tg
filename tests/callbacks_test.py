@@ -18,6 +18,7 @@ batch_size = 128
 width, height = 28, 28
 channels = 1
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
+logger_savedir = os.path.join(BASEDIR, 'tests', '_outputs', '_logger_outs')
 
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
@@ -68,10 +69,8 @@ def _make_logger_cb():
         'outputs-kw': dict(learning_phase=0),
         'gradients-kw': dict(learning_phase=0),
     }
-    savedir = (r"C:\Desktop\School\Deep Learning\DL_code\train_dummy\_outputs\\"
-               "_logger_outs")
     callbacks_init = {
-        'logger': lambda cls: TraingenLogger(cls, savedir, log_configs)
+        'logger': lambda cls: TraingenLogger(cls, logger_savedir, log_configs)
         }
     save_fn = lambda cls: TraingenLogger.save(cls, _id=cls.tg.epoch)
     callbacks = {
@@ -109,7 +108,7 @@ def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+            C['traingen']['best_models_dir']), tempdir(logger_savedir):
         cb_makers = [_make_logger_cb, _make_2Dviz_cb]
         callbacks, callbacks_init = make_callbacks(cb_makers)
         C['traingen'].update({'callbacks': callbacks,
