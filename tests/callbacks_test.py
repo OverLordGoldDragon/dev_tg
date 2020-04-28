@@ -7,10 +7,11 @@ from termcolor import cprint
 from time import time
 from copy import deepcopy
 
-from tests.backend import Input, Conv2D, UpSampling2D
+from tests.backend import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tests.backend import Model
-from tests.backend import BASEDIR, tempdir
+from tests.backend import BASEDIR, tempdir, features_2D
 from deeptrain import TrainGenerator, SimpleBatchgen
+from deeptrain.callbacks import TraingenLogger, make_callbacks
 
 
 batch_size = 128
@@ -20,15 +21,22 @@ datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
 
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
-    loss='mse',
-    metrics=None,
+    loss='categorical_crossentropy',
+    metrics=['accuracy'],
     optimizer='adam',
     num_classes=10,
-    activation=['relu'] * 4 + ['sigmoid'],
-    filters=[2, 2, 1, 2, 1],
-    kernel_size=[(3, 3)]*5,
-    strides=[(2, 2), (2, 2), 1, 1, 1],
-    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
+    filters=[32, 64],
+    kernel_size=[(3, 3), (3, 3)],
+    dropout=[.25, .5],
+    dense_units=128,
+)
+TRAINGEN_CFG = dict(
+    epochs=1,
+    val_freq={'epoch': 1},
+    dynamic_predict_threshold_min_max=(.35, .95),
+    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
+    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
+    model_configs=MODEL_CFG,
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
@@ -40,40 +48,78 @@ DATAGEN_CFG = dict(
 )
 VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
-    superbatch_dir=os.path.join(datadir, 'val'),
+    superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
     data_category='image',
     shuffle=False,
 )
-TRAINGEN_CFG = dict(
-    epochs=2,
-    val_freq={'epoch': 1},
-    input_as_labels=True,
-    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
-    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    model_configs=MODEL_CFG,
-)
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'predict')}
+tests_done = {name: None for name in ('main', 'load')}
+
+
+def _make_logger_cb():
+    log_configs = {
+        'weights': ['conv2d'],
+        'outputs': ['conv2d'],
+        'gradients': ['conv2d'],
+        'outputs-kw': dict(learning_phase=0),
+        'gradients-kw': dict(learning_phase=0),
+    }
+    savedir = (r"C:\Desktop\School\Deep Learning\DL_code\train_dummy\_outputs\\"
+               "_logger_outs")
+    callbacks_init = {
+        'logger': lambda cls: TraingenLogger(cls, savedir, log_configs)
+        }
+    save_fn = lambda cls: TraingenLogger.save(cls, _id=cls.tg.epoch)
+    callbacks = {
+        'logger':
+            {'save': (save_fn, TraingenLogger.clear),
+             'load': (TraingenLogger.clear, TraingenLogger.load),
+             'train:epoch': TraingenLogger.log,
+            }
+    }
+    return callbacks, callbacks_init
+
+
+def _make_2Dviz_cb():
+    class Viz2D():
+        def __init__(self, traingen):
+            self.tg=traingen
+
+        def viz(self):
+            data = self._get_data()
+            features_2D(data, tight=True, title_mode=False, cmap='hot',
+                        norm=None, show_xy_ticks=[0,0], w=1.1, h=.55, n_rows=4)
+
+        def _get_data(self):
+            lg = self.tg._callback_objs['logger']
+            last_key = list(lg.outputs.keys())[-1]
+            outs = list(lg.outputs[last_key][0].values())[0]
+            return outs[0].T
+
+    callbacks_init = {'viz_2d': lambda cls: Viz2D(cls)}
+    callbacks = {'viz_2d': {('on_val_end', 'train:epoch'): Viz2D.viz}}
+    return callbacks, callbacks_init
+
 
 def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        _test_main(C)
+        cb_makers = [_make_logger_cb, _make_2Dviz_cb]
+        callbacks, callbacks_init = make_callbacks(cb_makers)
+        C['traingen'].update({'callbacks': callbacks,
+                              'callbacks_init': callbacks_init})
+        tg = _init_session(C)
+        tg.train()
+        _test_load(tg, C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('main')
-
-
-def _test_main(C):
-    tg = _init_session(C)
-    tg.train()
-    _test_load(tg, C)
 
 
 def _test_load(tg, C):
@@ -91,37 +137,29 @@ def _test_load(tg, C):
     _notify('load')
 
 
-def test_predict():
-    t0 = time()
-    C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
-        C['traingen']['eval_fn_name'] = 'predict'
-        _test_main(C)
-
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('predict')
-
-
 def _make_model(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'activation', 'filters', 'kernel_size', 'strides',
-                       'up_sampling_2d')
+                       'num_classes', 'filters', 'kernel_size',
+                       'dropout', 'dense_units')
         return [kw[key] for key in expected_kw]
 
-    (batch_shape, loss, metrics, optimizer, activation, filters, kernel_size,
-     strides, up_sampling_2d) = _unpack_configs(kw)
+    (batch_shape, loss, metrics, optimizer, num_classes, filters,
+     kernel_size, dropout, dense_units) = _unpack_configs(kw)
 
     ipt = Input(batch_shape=batch_shape)
     x   = ipt
 
-    configs = (activation, filters, kernel_size, strides, up_sampling_2d)
-    for act, f, ks, s, ups in zip(*configs):
-        if ups is not None:
-            x = UpSampling2D(ups)(x)
-        x = Conv2D(f, ks, strides=s, activation=act, padding='same')(x)
-    out = x
+    for f, ks in zip(filters, kernel_size):
+        x = Conv2D(f, ks, activation='relu', padding='same')(x)
+
+    x   = MaxPooling2D(pool_size=(2, 2))(x)
+    x   = Dropout(dropout[0])(x)
+    x   = Flatten()(x)
+    x   = Dense(dense_units, activation='relu')(x)
+
+    x   = Dropout(dropout[1])(x)
+    out = Dense(num_classes, activation='softmax')(x)
 
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)

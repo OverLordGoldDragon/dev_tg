@@ -6,8 +6,8 @@ import h5py
 import tensorflow as tf
 
 from pathlib import Path
-from . import K, WARN, NOTE
-from .visuals import _get_history_fig
+from ._backend import K, WARN, NOTE
+from ..visuals import _get_history_fig
 from .misc import pass_on_error, _train_on_batch_dummy
 from .logging import generate_report
 
@@ -77,8 +77,7 @@ def checkpoint_model_IF(cls, forced=False):
                                                 cls._times_validated)
 
     def _clear_logs_IF():
-        _paths = [os.path.join(cls.logdir, name) for name
-                  in os.listdir(cls.logdir)]
+        _paths = [str(x) for x in Path(cls.logdir).iterdir() if x.is_file()]
         # (model weights, traingen state, report, history img)
         # TODO infer actual number, do not hard-code
         paths_per_checkpoint = 4
@@ -202,6 +201,7 @@ def save(cls, savepath=None):
     savepath = savepath or os.path.join(cls.logdir, '_temp_model__state.h5')
     cached_attrs = _cache_datagen_attributes()
 
+    cls._apply_callbacks(stage='save')
     savedict = {k:v for k,v in vars(cls).items() if k in cls.savelist}
     savedict['optimizer_state'] = _get_optimizer_state(cls.model.optimizer)
 
@@ -336,6 +336,7 @@ def load(cls, filepath=None):
     cls._set_num     = cls.datagen.set_num
     cls._val_set_num = cls.val_datagen.set_num
 
+    cls._apply_callbacks(stage='load')
     print("... finished--")
 
 

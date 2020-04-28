@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import pytest
 import numpy as np
 import sklearn.metrics
@@ -7,7 +8,7 @@ from pathlib import Path
 from termcolor import cprint
 
 from deeptrain.util.training import _get_val_history, _weighted_normalize_preds
-from deeptrain.util.metrics import (
+from deeptrain.metrics import (
     f1_score,
     f1_score_multi_th,
     tnr,
@@ -16,7 +17,7 @@ from deeptrain.util.metrics import (
     binary_informedness,
     roc_auc_score
     )
-from deeptrain.util import metrics as metric_fns
+from deeptrain import metrics as metric_fns
 from tests.backend import TraingenDummy
 
 
@@ -264,4 +265,5 @@ def _notify(name):
 
 
 if __name__ == '__main__':
+    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])

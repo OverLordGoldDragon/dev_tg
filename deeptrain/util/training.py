@@ -3,9 +3,9 @@ import numpy as np
 
 from .searching import find_best_predict_threshold, find_best_subset
 from .searching import find_best_subset_from_history
-from .introspection import l1l2_weight_loss
-from . import metrics as metric_fns
-from . import NOTE, WARN
+from ..introspection import l1l2_weight_loss
+from ._backend import NOTE, WARN
+from .. import metrics as metric_fns
 
 
 def _update_temp_history(cls, metrics, val=False):

@@ -67,4 +67,5 @@ def _notify(name):
 
 
 if __name__ == '__main__':
+    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])

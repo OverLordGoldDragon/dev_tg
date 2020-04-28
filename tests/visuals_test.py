@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+import os
 import pytest
 import numpy as np
 
 from pathlib import Path
 from termcolor import cprint
 
-from deeptrain.util.visuals import (
+from deeptrain.visuals import (
     viz_roc_auc,
     )
 
@@ -31,4 +32,5 @@ def _notify(name):
 
 
 if __name__ == '__main__':
+    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])

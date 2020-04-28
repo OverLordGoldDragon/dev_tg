@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from . import K
+from .util._backend import K
 
 
 def show_predictions_per_iteration(_labels_cache, _preds_cache):
@@ -108,8 +108,8 @@ def _get_history_fig(cls, plot_configs=None, w=1, h=1):
             elif   'hist_vlines' in vhline:
                 vhlines[vh] = cls._hist_vlines     or None
             else:
-                raise ValueError("unsupported `vhlines` in `plot_configs`: "
-                                 + vhline)
+                raise ValueError("unsupported `vhlines` in `plot_configs`:",
+                                 vhline)
         return vhlines
 
     def _unpack_ticks_and_metrics(config):

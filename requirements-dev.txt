@@ -1,5 +1,6 @@
 setuptools>=41.0.0
 twine>=1.15.0
+Keras
 coverage
 pytest
 pytest-cov
@@ -7,3 +8,4 @@ pycode
 pandas
 pillow
 sklearn
+see-rnn

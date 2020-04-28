@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+import os
 import pytest
 import numpy as np
 
 from tests.backend import K
 from tests.backend import keras_losses, keras_metrics
-from deeptrain.util import metrics
+from deeptrain import metrics
 
 
 to_test = ['binary_crossentropy',
@@ -180,4 +181,5 @@ def _notify(name):
 
 
 if __name__ == '__main__':
+    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])

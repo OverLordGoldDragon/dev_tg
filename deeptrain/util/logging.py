@@ -9,7 +9,7 @@
 import os
 import numpy as np
 import textwrap
-from . import NOTE, WARN
+from ._backend import NOTE, WARN
 from .misc import _dict_filter_keys
 
 try:

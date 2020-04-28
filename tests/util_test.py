@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
 import pytest
-import numpy as np
 import shutil
+import numpy as np
 
 from pathlib import Path
 from termcolor import cprint
 
-from deeptrain.util import metrics
 from deeptrain.util import searching
 from deeptrain.util import misc
 from deeptrain.util import logging
 from deeptrain.util import training
-from deeptrain.util import preprocessing
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
 from deeptrain.util.misc import pass_on_error
+from deeptrain import metrics
+from deeptrain import preprocessing
 from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
 
 
@@ -226,4 +226,5 @@ def _notify(name):
 
 
 if __name__ == '__main__':
+    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])

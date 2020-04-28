@@ -15,7 +15,8 @@ from tests.backend import l2
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
 from deeptrain import util
-from deeptrain.util import preprocessing
+from deeptrain import metrics
+from deeptrain import preprocessing
 from deeptrain.util.misc import pass_on_error
 from deeptrain import TrainGenerator, SimpleBatchgen
 
@@ -28,7 +29,7 @@ datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
 AE_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
     loss='mse',
-    metrics=None,#['mape'],
+    metrics=None,
     optimizer='adam',
     num_classes=10,
     activation=['relu']*4 + ['sigmoid'],
@@ -237,7 +238,7 @@ def test_util():
         tg._val_set_name_cache = ['1', '2', '3']
         tg.key_metric = 'f1_score'
         tg.val_temp_history = {'f1_score': []}
-        tg.key_metric_fn = util.metrics.f1_score
+        tg.key_metric_fn = metrics.f1_score
         tg.eval_fn_name = 'predict'
         tg.dynamic_predict_threshold_min_max = None
 
@@ -530,4 +531,5 @@ def _notify(name):
 
 
 if __name__ == '__main__':
+    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])

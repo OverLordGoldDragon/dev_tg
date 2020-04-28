@@ -1,8 +1,11 @@
 import os
 import contextlib
 import shutil
+import tempfile
 import numpy as np
+
 from deeptrain import util
+from deeptrain import metrics
 
 
 if os.path.isdir(r"C:\Desktop\School\Deep Learning\DL_code\dev_tg"):
@@ -30,11 +33,18 @@ else:
     from keras.models import Model
 
 
+from see_rnn import features_2D
+
+
 @contextlib.contextmanager
-def tempdir(dirpath):
-    if os.path.isdir(dirpath):
+def tempdir(dirpath=None):
+    if dirpath is not None and os.path.isdir(dirpath):
         shutil.rmtree(dirpath)
-    os.mkdir(dirpath)
+        os.mkdir(dirpath)
+    elif dirpath is None:
+        dirpath = tempfile.mkdtemp()
+    else:
+        os.mkdir(dirpath)
     try:
         yield dirpath
     finally:
@@ -69,7 +79,7 @@ class TraingenDummy():
 
         self.eval_fn_name = 'predict'
         self.key_metric = 'f1_score'
-        self.key_metric_fn = util.metrics.f1_score
+        self.key_metric_fn = metrics.f1_score
         self.class_weights = None
         self.val_class_weights = None
         self.batch_size = 8

@@ -4,7 +4,6 @@
     - visualizations
         - histograms (move to see_rnn?)
         - heatmaps (get from see_rnn?)
-    - hdf5_dataset wrapper/magic method getter, if closed -> open
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer
@@ -34,21 +33,21 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from types import LambdaType
 
-from .util import metrics as metrics_fns
-from .util.configs  import _TRAINGEN_CFG
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
+from .util.configs  import _TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
 from .util.training import _get_sample_weight, _get_api_metric_name
-from .util.logging import _get_unique_model_name
-from .util.visuals import _get_history_fig, show_predictions_per_iteration
-from .util.visuals import show_predictions_distribution
-from .util.visuals import comparative_histogram
-from .util.saving  import save, load, _save_history
-from .util.saving  import save_best_model, checkpoint_model_IF
-from .util.misc    import pass_on_error, _validate_traingen_configs
-from .util.introspection import print_dead_weights, print_nan_weights
-from .util.introspection import compute_gradient_l2norm
-from .util import Unbuffered, NOTE, WARN
+from .util.logging  import _get_unique_model_name
+from .util.saving   import save, load, _save_history
+from .util.saving   import save_best_model, checkpoint_model_IF
+from .util.misc     import pass_on_error, _validate_traingen_configs
+from .introspection import print_dead_weights, print_nan_weights
+from .introspection import compute_gradient_l2norm
+from .visuals import _get_history_fig, show_predictions_per_iteration
+from .visuals import show_predictions_distribution
+from .visuals import comparative_histogram
+from . import metrics as metrics_fns
+from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 
 
 sys.stdout = Unbuffered(sys.stdout)
@@ -56,6 +55,7 @@ sys.stdout = Unbuffered(sys.stdout)
 
 class TrainGenerator():
     ## TODO move elsewhere?
+    ## TODO incomplete list; all sklearn metrics also supported
     BUILTIN_METRICS = ('binary_crossentropy', 'categorical_crossentropy',
                        'sparse_categorical_crossentropy',
                        'mse', 'mae', 'mape', 'msle', 'kld',
@@ -74,6 +74,8 @@ class TrainGenerator():
                  logs_dir=None,
                  best_models_dir=None,
                  loadpath=None,
+                 callbacks=None,
+                 callbacks_init=None,
 
                  fit_fn_name='train_on_batch',
                  eval_fn_name='evaluate',
@@ -109,6 +111,8 @@ class TrainGenerator():
         self.logs_dir=logs_dir
         self.best_models_dir=best_models_dir
         self.loadpath=loadpath
+        self.callbacks=callbacks or {}
+        self.callbacks_init=callbacks_init or {}
 
         self.fit_fn_name=fit_fn_name
         self.eval_fn_name=eval_fn_name
@@ -145,6 +149,8 @@ class TrainGenerator():
 
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
+        self._init_fit_and_pred_fns()
+        self._init_callbacks()
         if self.loadpath:
             self.load()  # overwrites model_num, model_name, & others
         else:
@@ -154,8 +160,6 @@ class TrainGenerator():
         else:
             print(NOTE + "logging OFF")
             self.logdir = None
-        self._init_fit_and_pred_fns()
-
 
     ########################## MAIN METHODS ##########################
     def train(self):
@@ -207,6 +211,7 @@ class TrainGenerator():
             _update_temp_history(self, metrics)
             self._fit_iters += 1
             self.datagen.update_state()
+            self._apply_callbacks(stage='train:iter')
 
         def _on_batch_end():
             self._train_has_notified_of_new_batch = False
@@ -224,6 +229,7 @@ class TrainGenerator():
                 self.model.reset_states()
                 if self.iter_verbosity >= 1:
                     print('RNNs reset ', end='')
+            self._apply_callbacks(stage='train:batch')
 
         def _on_epoch_end(val=False):
             self.temp_history = deepcopy(self._temp_history_empty)
@@ -233,6 +239,7 @@ class TrainGenerator():
 
             self._hist_vlines     += [self._batches_fit]
             self._val_hist_vlines += [self._times_validated]
+            self._apply_callbacks(stage='train:epoch')
 
         def _should_validate():
             return self._should_do(self.val_freq)
@@ -264,6 +271,7 @@ class TrainGenerator():
                     self._inferred_batch_size = batch_size
                 elif self._inferred_batch_size != batch_size:
                     self._inferred_batch_size = 'varies'
+            self._apply_callbacks(stage='val:iter')
 
         def _on_batch_end():
             self._batches_validated += 1
@@ -278,9 +286,11 @@ class TrainGenerator():
                 self.model.reset_states()
                 if self.iter_verbosity >= 1:
                     print('RNNs reset', end=' ')
+            self._apply_callbacks(stage='val:batch')
 
         def _on_epoch_end():
             self._has_validated = True
+            self._apply_callbacks(stage='val:epoch')
 
         _on_iter_end(metrics, batch_size)
         if self.val_datagen.batch_exhausted:
@@ -332,7 +342,6 @@ class TrainGenerator():
         _validate_batch_size()
         if self.best_subset_size:
             _print_best_subset()
-
         if record_progress:
             _record_progress()
 
@@ -340,9 +349,13 @@ class TrainGenerator():
         if plot_history or do_visualization:
             self.do_plotting(plot_history, do_visualization)
 
+        if self.datagen.all_data_exhausted:
+            self._apply_callbacks(stage=('on_val_end', 'train:epoch'))
+        else:
+            self._apply_callbacks(stage='on_val_end')
+
         if clear_cache:
             _clear_cache()
-
         if self.check_model_health:
             self.check_health()
 
@@ -578,6 +591,55 @@ class TrainGenerator():
                 slide_size=None, **kwargs):
         raise NotImplementedError()  #TODO
 
+    ########################## CALLBACK METHODS ######################
+    def _apply_callbacks(self, stage):
+        def _get_matching_stage(cb, stage):
+            """Examples:
+                1. cb.keys() == ('train:epoch', 'val:batch')
+                   stage == ('on_val_end', 'train:epoch')
+                   -> 'train:epoch'
+                2. cb.keys() == ('train:epoch', 'val:batch')
+                   stage == 'on_val_end'
+                   -> None
+                3. cb.keys() == (('on_val_end', 'train:epoch'), 'train:batch')
+                   stage == 'on_val_end'
+                   -> None
+                4. cb.keys() == (('on_val_end', 'train:epoch'), 'train:batch')
+                   stage == 'train:batch'
+                   -> 'train:batch'
+                5. cb.keys() == (('on_val_end', 'train:epoch'), 'train:batch')
+                   stage == ('on_val_end', 'train:epoch')
+                   -> ('train:epoch', 'on_val_end')
+            """
+            def _pack_stages(cb, stage):
+                cb_stages = []
+                for cb_stage in cb:
+                    if not isinstance(cb_stage, tuple):
+                        cb_stage = (cb_stage,)
+                    cb_stages.append(cb_stage)
+                stages = stage if isinstance(stage, tuple) else (stage,)
+                return tuple(cb_stages), stages
+
+            cb_stages, stages = _pack_stages(cb, stage)
+            for cbs in cb_stages:
+                if all(x in stages for x in cbs):
+                    return cbs if len(cbs) > 1 else cbs[0]
+
+        for name, cb in self.callbacks.items():
+            _stage = _get_matching_stage(cb, stage)
+            if _stage is None:
+                continue
+            for fn in cb[_stage]:
+                if name in self._callback_objs:
+                    fn(self._callback_objs[name])
+                else:
+                    fn()
+
+    def _init_callbacks(self):
+        self._callback_objs = {}
+        for name, init in self.callbacks_init.items():
+            self._callback_objs[name] = init(self)
+
     ########################## MISC METHODS ##########################
     # very fast, inexpensive
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
@@ -723,14 +785,8 @@ class TrainGenerator():
             else:
                 self._val_max_set_name_chars = 2  # guess
 
-        def _try_import_pil():
-            try:
-                from PIL import Image, ImageDraw, ImageFont
-                self._pil_imported = True
-            except:
-                self._pil_imported = False  # will skip `generate_report`
-
         _init_misc()
         _init_histories()
         _init_max_set_name_chars()
-        _try_import_pil()
+
+        self._pil_imported = IMPORTS['PIL']

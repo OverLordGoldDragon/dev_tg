@@ -3,32 +3,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gc
 
-from .introspection import get_grads_fn, compute_gradient_l2norm
-from . import NOTE, WARN
+from ..introspection import get_grads_fn, compute_gradient_l2norm
+from ._backend import NOTE, WARN
 
 
 def _compute_gradient_l2norm(self, val=True, learning_phase=0, w=1, h=1):
     raise NotImplementedError()  # TODO
 
     datagen_type = "val" if val else "train"
-    print(NOTE, datagen_type + " datagen states will be reset")   
+    print(NOTE, datagen_type + " datagen states will be reset")
     print("'.' = window processed, '|' = batch processed")
     mode = "train" if learning_phase==1 else "inference"
     print("Computing gradient l2-norm over " + datagen_type + " batches, in "
           + mode + " mode")
     datagen = self.val_datagen if val else self.datagen
     datagen.reset_datagen_states()
-    
+
     grads_fn = get_grads_fn(self.model)
     grad_l2norm = []
     batches_processed = 0
     while not datagen.all_data_exhausted:
         data, labels, sample_weight = self.get_data(val=val)
-        
+
         grad_l2norm += [compute_gradient_l2norm(
             data, labels, sample_weight, learning_phase, grads_fn)]
         datagen.update_datagen_states()
-        
+
         # PROGBAR
         if datagen.batch_exhausted:
             prog_mark = '|'
@@ -44,23 +44,23 @@ def _compute_gradient_l2norm(self, val=True, learning_phase=0, w=1, h=1):
            "batches, {} updates").format(
                grad_l2norm.mean(), grad_l2norm.max(), datagen.num_batches,
                datagen_type, len(grad_l2norm)))
-        
+
     bins = len(grad_l2norm) if len(grad_l2norm) < 600 else 600
     plt.hist(grad_l2norm, bins=bins)
     plt.gcf().set_size_inches(9*w, 4*h)
-    
+
     datagen.reset_datagen_states()
     gc.collect()
-    
+
     return grad_l2norm
 
 
 #TODO: revamp
 def visualize_gradients(cls, on_current_train_batch=True, batch=None,
-            labels=None, sample_weight=None, learning_phase=0, 
+            labels=None, sample_weight=None, learning_phase=0,
             slide_size=None, **kwargs):
     raise NotImplementedError()  ## TODO
-    
+
     def _histogram_grid(data, num_cols=4, h=1, w=1, bins=200):
         for idx, entry in enumerate(data):
             if not idx%num_cols:
@@ -69,8 +69,8 @@ def visualize_gradients(cls, on_current_train_batch=True, batch=None,
             plt.subplot(1,num_cols,idx%num_cols+1)
             _ = plt.hist(np.ndarray.flatten(entry),bins=bins)
         plt.show()
-    
-    slide_size = slide_size or cls.timesteps      
+
+    slide_size = slide_size or cls.timesteps
     if on_current_train_batch:
         if batch or labels or sample_weight:
             print(WARN, "batch', 'labels', and 'sample_weight' args"
@@ -88,7 +88,7 @@ def visualize_gradients(cls, on_current_train_batch=True, batch=None,
     mode = "train" if learning_phase==1 else "inference"
     print( "Visualizing gradients in " + mode + " mode")
     grads_fn = get_grads_fn(cls.model)
-    
+
     window = 0
     total_grad = []
     while window < (batch.shape[1] / cls.timesteps - 1):
@@ -97,10 +97,10 @@ def visualize_gradients(cls, on_current_train_batch=True, batch=None,
         data  = batch[:, start:end, :]
         grad  = np.asarray(grads_fn([data, sample_weight,
                                      labels, learning_phase]))
-        
+
         total_grad = (total_grad + grad) if len(total_grad) else grad
         window += 1
-    _histogram_grid(total_grad, **kwargs)  
-    
+    _histogram_grid(total_grad, **kwargs)
+
     gc.collect()
     return total_grad

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from . import metrics
+from .. import metrics
 import numpy as np
 
 

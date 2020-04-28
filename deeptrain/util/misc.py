@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from types import LambdaType
 from functools import reduce
-from . import WARN, NOTE
+from ._backend import WARN, NOTE
 
 
 def pass_on_error(fn, *args, **kwargs):
@@ -388,6 +388,35 @@ def _validate_traingen_configs(cls):
                 else:
                     cls.metric_printskip_configs[name] = [cfg]
 
+    def _validate_callbacks():
+        def _validate_types(cb, stage):
+            errmsg = ("`callbacks` stage values types must be callable, "
+                      "or list or tuple of callables")
+            if not isinstance(cb[stage], (list, tuple)):
+                if not isinstance(cb[stage], LambdaType):
+                    raise ValueError(errmsg)
+                cb[stage] = (cb[stage],)
+            else:
+                for fn in cb[stage]:
+                    if not isinstance(fn, LambdaType):
+                        raise ValueError(errmsg)
+
+        supported = ('save', 'load', 'on_val_end',
+                     'train:iter', 'train:batch', 'train:epoch',
+                     'val:iter', 'val:batch', 'val:epoch')
+        assert isinstance(cls.callbacks, dict), ("`callbacks` must be "
+                                                 "of type dict")
+        for cb in cls.callbacks.values():
+            assert isinstance(cb, dict), ("`callbacks` values must be "
+                                          "of type dict")
+            for stage in cb:
+                stages = stage if isinstance(stage, tuple) else (stage,)
+                if not all(s in supported for s in stages):
+                    raise ValueError(f"stage '{stage}' in `callbacks` is not "
+                                     "supported; supported are: "
+                                     + ', '.join(supported))
+                _validate_types(cb, stage)
+
     _validate_metrics()
     _validate_model_metrics_match()
     _validate_directories()
@@ -400,3 +429,4 @@ def _validate_traingen_configs(cls):
     _validate_dynamic_predict_threshold_min_max()
     _validate_or_make_plot_configs()
     _validate_metric_printskip_configs()
+    _validate_callbacks()

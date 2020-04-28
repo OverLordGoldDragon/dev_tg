@@ -1,8 +1,4 @@
-from termcolor import colored
 from .bg_dev import BatchGenerator
-
-WARN = colored('WARNING: ', 'red')
-NOTE = colored('NOTE: ',    'blue')
 
 
 class SimpleBatchgen(BatchGenerator):

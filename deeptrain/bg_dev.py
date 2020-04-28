@@ -20,16 +20,9 @@ from copy import deepcopy
 
 from .pp_dev import GenericPreprocessor, TimeseriesPreprocessor
 from deeptrain.util.misc import ordered_shuffle
-from deeptrain.util import WARN, NOTE
 from deeptrain.util.configs import _DATAGEN_CFG
+from .util._backend import WARN, NOTE, IMPORTS, lz4f
 from deeptrain.util._default_configs import _DEFAULT_DATAGEN_CFG
-
-
-try:
-    import lz4framed as lz4f
-    LZ4F_IMPORTED = True
-except:
-    LZ4F_IMPORTED = False
 
 
 ###############################################################################
@@ -314,14 +307,13 @@ class BatchGenerator():
                 return hdf5_file[a_key][:]
 
         def hdf5_dataset_loader(set_num):
-            with h5py.File(self._hdf5_path, 'r') as hdf5_file:
-                return hdf5_file[set_num][:]
-            # return self._hdf5_dataset[str(set_num)][:]  TODO
+            with h5py.File(self._hdf5_path, 'r') as hdf5_dataset:
+                return hdf5_dataset[str(set_num)][:]
 
         if data_format == 'numpy':
             load_data = numpy_loader
         elif data_format == 'numpy-lz4f':
-            if not LZ4F_IMPORTED:
+            if not IMPORTS['LZ4F']:
                 raise ImportError("`lz4framed` must be imported for "
                                   "`data_format = 'numpy-lz4f'`")
             load_data = numpy_lz4f_loader

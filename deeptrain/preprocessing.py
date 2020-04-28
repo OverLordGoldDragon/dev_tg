@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 
 from pathlib import Path
-from . import WARN, NOTE
+from .util._backend import WARN, NOTE
 
 
 def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
