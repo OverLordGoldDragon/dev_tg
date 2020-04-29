@@ -2,9 +2,7 @@
 """TODO:
     - replace metrics= w/ history=?
     - visualizations
-        - histograms (move to see_rnn?)
-        - heatmaps (get from see_rnn?)
-    - deprecate `visualizers`?
+        - layer outs/grads hists w/ 'all' option
     - logging.py ideas:
        - save each class's source code
        - create "init_configs" to log, then also
@@ -37,7 +35,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from copy import deepcopy
-from types import LambdaType
 
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.configs  import _TRAINGEN_CFG
@@ -49,9 +46,7 @@ from .util.saving   import save_best_model, checkpoint_model_IF
 from .util.misc     import pass_on_error, _validate_traingen_configs
 from .introspection import print_dead_weights, print_nan_weights
 from .introspection import compute_gradient_l2norm
-from .visuals import _get_history_fig, show_predictions_per_iteration
-from .visuals import show_predictions_distribution
-from .visuals import comparative_histogram
+from .visuals import _get_history_fig
 from . import metrics as metrics_fns
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 

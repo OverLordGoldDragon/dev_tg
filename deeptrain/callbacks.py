@@ -4,6 +4,7 @@ import pickle
 from pathlib import Path
 from .visuals import show_predictions_per_iteration
 from .visuals import show_predictions_distribution
+from .visuals import comparative_histogram
 from .util._backend import NOTE, get_weights, get_outputs, get_gradients
 
 
@@ -49,13 +50,21 @@ def make_callbacks(cb_makers):
     return callbacks, callbacks_init
 
 
-def predictions_per_iteration(cls):
+def predictions_per_iteration_cb(cls):
     show_predictions_per_iteration(cls._labels_cache, cls._preds_cache)
 
 
-def predictions_distribution(cls):
+def predictions_distribution_cb(cls):
     show_predictions_distribution(cls._labels_cache, cls._preds_cache,
                                   cls.predict_threshold)
+
+def comparative_histogram_cb(cls):
+    """Suited for binary classification sigmoid outputs"""
+    comparative_histogram(cls.model,
+                          layer_name=cls.model.layers[-1].name,
+                          data=cls.val_datagen.get(skip_validation=True),
+                          vline=cls.predict_threshold,
+                          xlims=(0, 1))
 
 
 class TraingenLogger():

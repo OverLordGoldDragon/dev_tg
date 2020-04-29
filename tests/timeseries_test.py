@@ -11,8 +11,9 @@ from tests.backend import Input, Dense, LSTM
 from tests.backend import l2
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
-from deeptrain.callbacks import predictions_per_iteration
-from deeptrain.callbacks import predictions_distribution
+from deeptrain.callbacks import predictions_per_iteration_cb
+from deeptrain.callbacks import predictions_distribution_cb
+from deeptrain.callbacks import comparative_histogram_cb
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
@@ -51,8 +52,9 @@ TRAINGEN_CFG = dict(
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,
     model_configs=MODEL_CFG,
-    callbacks={'ppi': {'on_val_end': predictions_per_iteration},
-               'pd': {'on_val_end': predictions_distribution}},
+    callbacks={'ch': {'on_val_end': comparative_histogram_cb},
+               'ppi': {'on_val_end': predictions_per_iteration_cb},
+               'pd': {'on_val_end': predictions_distribution_cb}},
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
@@ -61,31 +63,31 @@ tests_done = {name: None for name in ('main', 'load', 'weighted_slices',
                                       'predict')}
 
 
-# def test_main():
-#     t0 = time()
-#     C = deepcopy(CONFIGS)
-#     with tempdir(C['traingen']['logs_dir']), tempdir(
-#             C['traingen']['best_models_dir']):
-#         tg = _init_session(C)
-#         tg.train()
-#         _test_load(tg, C)
-#     print("\nTime elapsed: {:.3f}".format(time() - t0))
-#     _notify('main')
+def test_main():
+    t0 = time()
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        tg = _init_session(C)
+        tg.train()
+        _test_load(tg, C)
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('main')
 
 
-# def test_weighted_slices():
-#     t0 = time()
-#     C = deepcopy(CONFIGS)
-#     C['traingen'].update(dict(eval_fn_name='predict',
-#                               loss_weighted_slices_range=(.5, 1.5),
-#                               pred_weighted_slices_range=(.5, 1.5)))
-#     with tempdir(C['traingen']['logs_dir']), tempdir(
-#             C['traingen']['best_models_dir']):
-#         tg = _init_session(C)
-#         tg.train()
-#         _destroy_session(tg)
-#     print("\nTime elapsed: {:.3f}".format(time() - t0))
-#     _notify('weighted_slices')
+def test_weighted_slices():
+    t0 = time()
+    C = deepcopy(CONFIGS)
+    C['traingen'].update(dict(eval_fn_name='predict',
+                              loss_weighted_slices_range=(.5, 1.5),
+                              pred_weighted_slices_range=(.5, 1.5)))
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        tg = _init_session(C)
+        tg.train()
+        _destroy_session(tg)
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    _notify('weighted_slices')
 
 
 def test_predict():
