@@ -12,7 +12,9 @@ def _update_temp_history(cls, metrics, val=False):
     def _get_metric_names(metrics, val):
         metric_names = cls.val_metrics if val else cls.train_metrics
         if not val or (val and cls.eval_fn_name == 'evaluate'):
-            assert len(metric_names) == len(metrics)
+            assert len(metric_names) == len(metrics), (
+                f"{len(metric_names)} != {len(metrics)}, \n"
+                f"{metric_names}\n{metrics}")
         return metric_names
 
     def _get_temp_history(val):

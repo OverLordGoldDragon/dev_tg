@@ -54,21 +54,6 @@ sys.stdout = Unbuffered(sys.stdout)
 
 
 class TrainGenerator():
-    ## TODO move elsewhere?
-    ## TODO incomplete list; all sklearn metrics also supported
-    BUILTIN_METRICS = ('binary_crossentropy', 'categorical_crossentropy',
-                       'sparse_categorical_crossentropy',
-                       'mse', 'mae', 'mape', 'msle', 'kld',
-                       'mean_squared_error', 'mean_absolute_error',
-                       'mean_absolute_percentage_error',
-                       'mean_squared_logarithmic_error', 'squared_hinge',
-                       'hinge', 'categorical_hinge', 'logcosh',
-                       'kullback_leibler_divergence', 'poisson',
-                       'cosine_proximity', 'accuracy', 'binary_accuracy',
-                       'categorical_accuracy', 'sparse_categorical_accuracy',
-                       'f1_score', 'tnr', 'tpr', 'tnr_tpr',
-                       'binary_informedness')
-
     def __init__(self, model, datagen, val_datagen,
                  epochs=1,
                  logs_dir=None,
@@ -81,7 +66,6 @@ class TrainGenerator():
                  eval_fn_name='evaluate',
                  key_metric='loss',
                  key_metric_fn=None,
-                 train_metrics='loss',
                  val_metrics='loss',
                  custom_metrics=None,
                  input_as_labels=False,
@@ -118,7 +102,7 @@ class TrainGenerator():
         self.eval_fn_name=eval_fn_name
         self.key_metric=key_metric
         self.key_metric_fn=key_metric_fn
-        self.train_metrics=train_metrics
+        self.train_metrics = model.metrics_names.copy()
         self.val_metrics=val_metrics
         self.custom_metrics=custom_metrics
         self.input_as_labels=input_as_labels

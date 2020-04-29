@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib.pyplot as plt
+import deeptrain.metrics
 
 from types import LambdaType
 from functools import reduce
@@ -187,6 +188,13 @@ def _make_plot_configs_from_metrics(cls):
 
 def _validate_traingen_configs(cls):
     def _validate_metrics():
+        def _validate(metric, failmsg):
+            try:
+                # check against alias since converted internally when computing
+                getattr(deeptrain.metrics, cls._alias_to_metric_name(metric))
+            except:
+                raise ValueError(failmsg)
+
         for name in ('train_metrics', 'val_metrics'):
             value = getattr(cls, name)
             if not isinstance(value, list):
@@ -199,42 +207,37 @@ def _validate_traingen_configs(cls):
                 getattr(cls, name)[i] = cls._alias_to_metric_name(maybe_alias)
         cls.key_metric = cls._alias_to_metric_name(cls.key_metric)
 
-        metrics = (*cls.train_metrics, *cls.val_metrics)
-        supported = cls.BUILTIN_METRICS
-        customs = cls.custom_metrics or [None]
-
         model_metrics = cls.model.metrics_names
-        if cls.eval_fn_name == 'evaluate' and (
-                cls.key_metric not in model_metrics):
-            raise ValueError("`key_metric` must be in one of metrics returned "
-                             "by model, when using `eval_fn_name='evaluate'` "
-                             "(model returns: %s)" % ', '.join(model_metrics))
+
+        if cls.eval_fn_name == 'evaluate':
+            basemsg = ("must be in one of metrics returned by model, "
+                       "when using `eval_fn_name='evaluate'`. "
+                       "(model returns: %s)" % ', '.join(model_metrics))
+            for metric in cls.val_metrics:
+                if metric not in model_metrics:
+                    raise ValueError(f"val metric {metric} " + basemsg)
+            if cls.key_metric not in model_metrics:
+                raise ValueError(f"key_metric {cls.key_metric} " + basemsg)
+
         if cls.key_metric not in cls.val_metrics:
             cls.val_metrics.append(cls.key_metric)
 
         if cls.eval_fn_name == 'predict':
-            for metric in metrics:
+            for metric in cls.val_metrics:
                 if metric == 'loss':
                     metric = cls.model.loss
-                if metric not in (*supported, *customs):
-                    raise ValueError((
-                        "'{0}' metric is not supported; add a function to "
-                        "`custom_metrics` as '{0}': func. Supported "
-                        "are: {1}").format(metric, ', '.join(supported)))
-            if cls.model.loss not in (*supported, *customs):
-                raise ValueError((
-                    "'{0}' loss is not supported w/ `eval_fn_name = "
-                    "'predict'`; add a function to `custom_metrics` "
-                    "as '{0}': func, or set `eval_fn_name = 'evaluate'`."
-                    " Supported are: {1}").format(
-                        cls.model.loss, ', '.join(supported)))
+                _validate(metric, failmsg=("'{0}' metric is not supported; add "
+                                           "a function to `custom_metrics` as "
+                                           "'{0}': func.").format(metric))
+            _validate(cls.model.loss, failmsg=(
+                "'{0}' loss is not supported w/ `eval_fn_name = 'predict'`; "
+                "add a function to `custom_metrics` as '{0}': func, or set "
+                "`eval_fn_name = 'evaluate'`.").format(cls.model.loss))
 
-            km = (cls.key_metric if cls.key_metric != 'loss'
-                  else cls.model.loss)
-            if km not in supported and cls.key_metric_fn is None:
-                raise ValueError(("`key_metric = '{}'` is unsupported; set "
-                                  "`key_metric_fn = func`. Supported are: {}"
-                                  ).format(km, ', '.join(supported)))
+            km = cls.key_metric if cls.key_metric != 'loss' else cls.model.loss
+            if cls.key_metric_fn is None:
+                _validate(km, failmsg=(f"`key_metric = '{km}'` is not supported; "
+                                       "set `key_metric_fn = func`."))
 
         if cls.max_is_best and cls.key_metric == 'loss':
             print(NOTE + "`max_is_best = True` and `key_metric = 'loss'`"
@@ -263,9 +266,9 @@ def _validate_traingen_configs(cls):
             if cls.val_metrics is not None:
                 for metric in cls.val_metrics:
                     if metric not in model_metrics:
-                        print(WARN, f"metric {metric} is not in "
-                              "model.metrics_names, w/ `eval_fn_name='evaluate'`"
-                              " - will drop")
+                        raise ValueError(
+                            f"metric '{metric}' is not in model.metrics_names, "
+                            "with `eval_fn_name='evaluate'`")
             cls.val_metrics = model_metrics.copy()
         else:
             _set_in_matching_order(model_metrics, val=True)

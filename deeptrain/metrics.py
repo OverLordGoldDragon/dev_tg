@@ -6,8 +6,11 @@ import sklearn.metrics
 
 def __getattr__(name):
     """If not implemented, get from sklearn.metrics"""
-    return getattr(sklearn.metrics, name)
-
+    try:
+        return getattr(sklearn.metrics, name)
+    except:
+        raise ValueError(f"metric '{name}' is unsupported by deeptrain.metrics "
+                         "and/or sklearn.metrics")
 
 PREC = os.environ.get('PRECISION', 'float32')
 EPS = 1e-7  # epsilon (keras default, K.epsilon())
