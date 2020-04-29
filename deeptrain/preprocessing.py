@@ -171,4 +171,5 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
         last_set_num = _make_hdf5(hdf5_file, source, batch_size, dtype,
                                   load_fn, verbose)
     if verbose:
-        print(last_set_num, "batches converted & saved as .hdf5 to", savepath)
+        print(last_set_num + 1, "batches converted & saved as .hdf5 to",
+              savepath)

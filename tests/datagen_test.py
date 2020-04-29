@@ -11,23 +11,23 @@ from deeptrain.util.misc import pass_on_error
 from deeptrain import SimpleBatchgen
 
 
-datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
+datadir = os.path.join(BASEDIR, 'tests', 'data')
 
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
-    superbatch_dir=os.path.join(datadir, 'train'),
-    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
+    data_dir=os.path.join(datadir, 'image', 'train'),
+    labels_path=os.path.join(datadir, 'image', 'train', 'labels.h5'),
     batch_size=128,
     data_category='image',
     shuffle=True,
 )
 
-tests_done = {name: None for name in ('advance_batch', 'shuffle',)}
+tests_done = {name: None for name in ('advance_batch', 'shuffle',
+                                      'data_loaders',)}
 
 
 def test_advance_batch():
     C = deepcopy(DATAGEN_CFG)
-    C['superbatch_dir'] = os.path.join(datadir, 'train')
+    C['superbatch_dir'] = os.path.join(datadir, 'image', 'train')
     dg = SimpleBatchgen(**C)
     dg.advance_batch()
 
@@ -49,12 +49,26 @@ def test_advance_batch():
 def test_shuffle():
     C = deepcopy(DATAGEN_CFG)
     C['shuffle_group_batches'] = True
+    C['superbatch_dir'] = os.path.join(datadir, 'image', 'train')
     C['batch_size'] = 64
     dg = SimpleBatchgen(**C)
     dg.preload_superbatch()
     dg.advance_batch()
 
     _notify('shuffle')
+
+
+def test_data_loaders():
+    C = deepcopy(DATAGEN_CFG)
+    C['data_dir'] = os.path.join(datadir, 'timeseries_split', 'train')
+    C['labels_path'] = os.path.join(datadir, 'timeseries_split', 'train',
+                                    'labels.h5')
+    C['batch_size'] = 128
+    C['base_name'] = 'batch128_'
+    dg = SimpleBatchgen(**C)
+    dg.advance_batch()
+
+    _notify('data_loaders')
 
 
 def _notify(name):

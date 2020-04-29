@@ -1,21 +1,9 @@
 # -*- coding: utf-8 -*-
-"""IDEAS:
-   - save each class's source code
-   - create "init_configs" to log, then also
-   getattr(...) for x in init_configs at save time
-   - dedicate 'long column'
-"""
-
 import os
 import numpy as np
 import textwrap
-from ._backend import NOTE, WARN
+from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
 from .misc import _dict_filter_keys
-
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except:
-    print(NOTE, "could not import PIL, will not generate reports")
 
 
 def generate_report(cls, savepath):

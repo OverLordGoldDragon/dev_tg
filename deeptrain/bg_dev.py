@@ -59,7 +59,8 @@ class BatchGenerator():
         else:
             self.superbatch_dir = superbatch_dir
 
-        info = self._infer_and_get_data_info(data_dir, data_ext, data_format)
+        info = self._infer_and_get_data_info(data_dir, data_ext, data_format,
+                                             base_name)
         name_and_alias = [
             ('data_format', 'data_format'), ('base_name', 'base_name'),
             ('filenames', '_filenames',), ('filepaths', '_filepaths'),
@@ -239,7 +240,7 @@ class BatchGenerator():
                 for filename in os.listdir(_dir):
                     if Path(filename).suffix == self.data_ext and (
                             self.base_name in filename):
-                        num = ''.join(x for x in filename.replace(
+                        num = ''.join(x for x in Path(filename).stem.replace(
                             self.base_name, '') if x.isdigit())
                         nums_from_dir.append(num)
                 return _sort_ascending(nums_from_dir)
@@ -360,7 +361,8 @@ class BatchGenerator():
     def _synch_to_preprocessor(self, attrs):
         [setattr(self.preprocessor, x, getattr(self, x)) for x in attrs]
 
-    def _infer_and_get_data_info(self, data_dir, data_ext=None, data_format=None):
+    def _infer_and_get_data_info(self, data_dir, data_ext=None,
+                                 data_format=None, base_name=None):
         def _get_data_format(extension, filenames):
             data_format = {'.npy': 'numpy',
                            '.h5': 'hdf5'}[extension]
@@ -438,7 +440,7 @@ class BatchGenerator():
                     data_format, ', '.join(supported))
             raise ValueError(msg)
 
-        base_name = _get_base_name(data_ext, filenames)
+        base_name = base_name or _get_base_name(data_ext, filenames)
         filepaths = _get_filepaths(data_dir, filenames)
 
         return dict(data_format=data_format, base_name=base_name,

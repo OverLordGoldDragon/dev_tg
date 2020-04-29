@@ -4,6 +4,11 @@
     - visualizations
         - histograms (move to see_rnn?)
         - heatmaps (get from see_rnn?)
+    - logging.py ideas:
+       - save each class's source code
+       - create "init_configs" to log, then also
+       getattr(...) for x in init_configs at save time
+       - dedicate 'long column'
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer
