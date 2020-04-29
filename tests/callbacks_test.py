@@ -94,7 +94,7 @@ def _make_2Dviz_cb():
                         norm=None, show_xy_ticks=[0,0], w=1.1, h=.55, n_rows=4)
 
         def _get_data(self):
-            lg = self.tg._callback_objs['logger']
+            lg = self.tg.callback_objs['logger']
             last_key = list(lg.outputs.keys())[-1]
             outs = list(lg.outputs[last_key][0].values())[0]
             return outs[0].T

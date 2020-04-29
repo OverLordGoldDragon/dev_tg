@@ -185,8 +185,8 @@ def _get_val_history(cls, for_current_iter=False):
     if cls.dynamic_predict_threshold_min_max is not None:
         _find_and_set_predict_threshold()
 
-    return _compute_metrics(cls, sample_weight_all,
-                            labels_all_norm, preds_all_norm)
+    return _compute_metrics(cls, labels_all_norm, preds_all_norm,
+                            sample_weight_all)
 
 
 def _get_best_subset_val_history(cls):
@@ -242,10 +242,10 @@ def _get_best_subset_val_history(cls):
 
         ALL = _filter_by_indices(best_subset_idxs, d['labels_all_norm'],
                                  d['preds_all_norm'], d['sample_weight_all'])
-        (sample_weight_all, preds_all_norm, labels_all_norm
+        (preds_all_norm, labels_all_norm, sample_weight_all
          ) = _unroll_into_samples(len(cls.model.output_shape), *ALL)
-        return _compute_metrics(cls, sample_weight_all, labels_all_norm,
-                                preds_all_norm)
+        return _compute_metrics(cls, labels_all_norm, preds_all_norm,
+                                sample_weight_all)
 
     if cls.eval_fn_name == 'evaluate':
         best_subset_idxs = _find_best_subset_from_history()
@@ -293,7 +293,7 @@ def _compute_metric(data, metric_name=None, metric_fn=None):
     return metric_fn(**data)
 
 
-def _compute_metrics(cls, sample_weight_all, labels_all_norm, preds_all_norm):
+def _compute_metrics(cls, labels_all_norm, preds_all_norm, sample_weight_all):
     def _ensure_scalar_metrics(metrics):
         def _ensure_is_scalar(metric):
             if np.ndim(metric) != 0:

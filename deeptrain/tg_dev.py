@@ -4,6 +4,7 @@
     - visualizations
         - histograms (move to see_rnn?)
         - heatmaps (get from see_rnn?)
+    - deprecate `visualizers`?
     - logging.py ideas:
        - save each class's source code
        - create "init_configs" to log, then also
@@ -311,10 +312,6 @@ class TrainGenerator():
             [setattr(self, attr, []) for attr in attrs_to_clear]
             self.val_temp_history = deepcopy(self._val_temp_history_empty)
 
-        def _should_plot():
-            return (self._should_do(self.plot_history_freq),
-                    self._should_do(self.viz_freq))
-
         def _print_best_subset():
             best_nums = ", ".join([str(x) for x in self.best_subset_nums])
             best_size = self.best_subset_size
@@ -334,9 +331,10 @@ class TrainGenerator():
         if record_progress:
             _record_progress()
 
-        plot_history, do_visualization = _should_plot()
-        if plot_history or do_visualization:
-            self.do_plotting(plot_history, do_visualization)
+        if self._should_do(self.plot_history_freq):
+            pass_on_error(self.plot_history, update_fig=record_progress,
+                          fail_msg=(WARN + " model history could not be "
+                                    "plotted; skipping..."))
 
         if self.datagen.all_data_exhausted:
             self._apply_callbacks(stage=('on_val_end', 'train:epoch'))
@@ -352,31 +350,27 @@ class TrainGenerator():
         self._has_validated = False
         self._has_trained = False
 
-    def do_plotting(self, plot_history=True, do_visualization=True,
-                    record_progress=False):
-        if plot_history:
-            pass_on_error(self.plot_history, update_fig=record_progress,
-                          fail_msg=(WARN + " model history could not be "
-                                    "plotted; skipping..."))
-        if do_visualization:
-            # self.show_layer_outputs() # TODO
-            # self.show_layer_weights()
-            if self.eval_fn_name == 'predict':
-                self.show_model_outputs()
+        # TODO
+    # def do_plotting():
+        # if do_visualization:
+        #     # self.show_layer_outputs()
+        #     # self.show_layer_weights()
+        #     if self.eval_fn_name == 'predict':
+        #         self.show_model_outputs()
 
-            can_viz = self.visualizers is not None and (
-                self.eval_fn_name == 'predict' or
-                any([isinstance(x, LambdaType) for x in self.visualizers]))
-            if can_viz:
-                lc, pc = self._labels_cache, self._preds_cache
-                for viz in self.visualizers:
-                    if viz == 'predictions_per_iteration':
-                        show_predictions_per_iteration(lc, pc)
-                    elif viz == 'predictions_distribution':
-                        show_predictions_distribution(lc, pc,
-                                                      self.predict_threshold)
-                    elif isinstance(viz, LambdaType):
-                        viz(self)
+        #     can_viz = self.visualizers is not None and (
+        #         self.eval_fn_name == 'predict' or
+        #         any([isinstance(x, LambdaType) for x in self.visualizers]))
+        #     if can_viz:
+        #         lc, pc = self._labels_cache, self._preds_cache
+        #         for viz in self.visualizers:
+        #             if viz == 'predictions_per_iteration':
+        #                 show_predictions_per_iteration(lc, pc)
+        #             elif viz == 'predictions_distribution':
+        #                 show_predictions_distribution(lc, pc,
+        #                                               self.predict_threshold)
+        #             elif isinstance(viz, LambdaType):
+        #                 viz(self)
 
     def _should_do(self, config, forced=False):
         if forced:
@@ -554,31 +548,33 @@ class TrainGenerator():
             self._history_fig = fig
         _show_closed_fig(fig)
 
-    def show_layer_outputs(self, layer_names=None):
-        raise NotImplementedError()  #TODO
+    # TODO
+    # def show_layer_outputs(self, layer_names=None):
+    #     raise NotImplementedError()
 
-    def show_layer_weights(self, layer_names=None):
-        raise NotImplementedError()  #TODO
+    # def show_layer_weights(self, layer_names=None):
+    #     raise NotImplementedError()
 
-    def show_model_outputs(self):
-        if self.outputs_visualizer == 'comparative_histogram':
-            comparative_histogram(
-                self.model,
-                layer_name=self.model.layers[-1].name,
-                data=self.val_datagen.get(skip_validation=True),
-                vline=self.predict_threshold,
-                xlims=(0, 1))
-        elif isinstance(self.outputs_visualizer, LambdaType):
-            self.outputs_visualizer(self)
+    # def show_model_outputs(self):
+    #     if self.outputs_visualizer == 'comparative_histogram':
+    #         comparative_histogram(
+    #             self.model,
+    #             layer_name=self.model.layers[-1].name,
+    #             data=self.val_datagen.get(skip_validation=True),
+    #             vline=self.predict_threshold,
+    #             xlims=(0, 1))
+    #     elif isinstance(self.outputs_visualizer, LambdaType):
+    #         self.outputs_visualizer(self)
+
+    # def visualize_gradients(self, on_current_train_batch=True, batch=None,
+    #             labels=None, sample_weight=None, learning_phase=0,
+    #             slide_size=None, **kwargs):
+    #     raise NotImplementedError()
 
     def compute_gradient_l2norm(self, val=True, learning_phase=0,
                                 return_values=False, w=1, h=1):
         return compute_gradient_l2norm(self, val, learning_phase, w, h)
 
-    def visualize_gradients(self, on_current_train_batch=True, batch=None,
-                labels=None, sample_weight=None, learning_phase=0,
-                slide_size=None, **kwargs):
-        raise NotImplementedError()  #TODO
 
     ########################## CALLBACK METHODS ######################
     def _apply_callbacks(self, stage):
@@ -619,15 +615,15 @@ class TrainGenerator():
             if _stage is None:
                 continue
             for fn in cb[_stage]:
-                if name in self._callback_objs:
-                    fn(self._callback_objs[name])
+                if name in self.callback_objs:
+                    fn(self.callback_objs[name])
                 else:
-                    fn()
+                    fn(self)
 
     def _init_callbacks(self):
-        self._callback_objs = {}
+        self.callback_objs = {}
         for name, init in self.callbacks_init.items():
-            self._callback_objs[name] = init(self)
+            self.callback_objs[name] = init(self)
 
     ########################## MISC METHODS ##########################
     # very fast, inexpensive

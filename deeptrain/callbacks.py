@@ -2,6 +2,8 @@ import os
 import pickle
 
 from pathlib import Path
+from .visuals import show_predictions_per_iteration
+from .visuals import show_predictions_distribution
 from .util._backend import NOTE, get_weights, get_outputs, get_gradients
 
 
@@ -14,7 +16,7 @@ def make_callbacks(cb_makers):
                 class methods; if latter uses a class instance not defined in
                 TrainGenerator, must instantiate it.
         callbacks_init: dict. Instantiate class instances used in `callbacks`,
-                which will be packed in `TrainGenerator._callback_objs`.
+                which will be packed in `TrainGenerator.callback_objs`.
           keys: callback object names. See `callbacks`.
           values: objects / class instances to be instantiated. TrainGenerator's
                 `self` will be passed to the constructor (__init__(self)).
@@ -45,6 +47,15 @@ def make_callbacks(cb_makers):
         if isinstance(cbi, dict):
             callbacks_init.update(cbi)
     return callbacks, callbacks_init
+
+
+def predictions_per_iteration(cls):
+    show_predictions_per_iteration(cls._labels_cache, cls._preds_cache)
+
+
+def predictions_distribution(cls):
+    show_predictions_distribution(cls._labels_cache, cls._preds_cache,
+                                  cls.predict_threshold)
 
 
 class TraingenLogger():
