@@ -2,9 +2,10 @@ import os
 import pickle
 
 from pathlib import Path
+
 from .visuals import show_predictions_per_iteration
 from .visuals import show_predictions_distribution
-from .visuals import comparative_histogram
+from .visuals import comparative_histogram, layer_hists
 from .util._backend import NOTE, get_weights, get_outputs, get_gradients
 
 
@@ -65,6 +66,16 @@ def comparative_histogram_cb(cls):
                           data=cls.val_datagen.get(skip_validation=True),
                           vline=cls.predict_threshold,
                           xlims=(0, 1))
+
+
+def make_layer_hists_cb(_id='*', mode='weights', x=None, y=None,
+                        omit_names='bias', configs=None, **kw):
+    def layer_hists_cb(cls):
+        _x = x or cls.val_datagen.batch
+        _y = y or (cls.val_datagen.labels if not cls.input_as_labels else x)
+        layer_hists(cls.model, _id, mode, _x, _y, omit_names, configs, **kw)
+
+    return layer_hists_cb
 
 
 class TraingenLogger():

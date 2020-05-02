@@ -332,9 +332,9 @@ class TrainGenerator():
                                     "plotted; skipping..."))
 
         if self.datagen.all_data_exhausted:
-            self._apply_callbacks(stage=('on_val_end', 'train:epoch'))
+            self._apply_callbacks(stage=('val_end', 'train:epoch'))
         else:
-            self._apply_callbacks(stage='on_val_end')
+            self._apply_callbacks(stage='val_end')
 
         if clear_cache:
             _clear_cache()
@@ -344,28 +344,6 @@ class TrainGenerator():
         self._inferred_batch_size = None  # reset
         self._has_validated = False
         self._has_trained = False
-
-        # TODO
-    # def do_plotting():
-        # if do_visualization:
-        #     # self.show_layer_outputs()
-        #     # self.show_layer_weights()
-        #     if self.eval_fn_name == 'predict':
-        #         self.show_model_outputs()
-
-        #     can_viz = self.visualizers is not None and (
-        #         self.eval_fn_name == 'predict' or
-        #         any([isinstance(x, LambdaType) for x in self.visualizers]))
-        #     if can_viz:
-        #         lc, pc = self._labels_cache, self._preds_cache
-        #         for viz in self.visualizers:
-        #             if viz == 'predictions_per_iteration':
-        #                 show_predictions_per_iteration(lc, pc)
-        #             elif viz == 'predictions_distribution':
-        #                 show_predictions_distribution(lc, pc,
-        #                                               self.predict_threshold)
-        #             elif isinstance(viz, LambdaType):
-        #                 viz(self)
 
     def _should_do(self, config, forced=False):
         if forced:
@@ -550,17 +528,6 @@ class TrainGenerator():
     # def show_layer_weights(self, layer_names=None):
     #     raise NotImplementedError()
 
-    # def show_model_outputs(self):
-    #     if self.outputs_visualizer == 'comparative_histogram':
-    #         comparative_histogram(
-    #             self.model,
-    #             layer_name=self.model.layers[-1].name,
-    #             data=self.val_datagen.get(skip_validation=True),
-    #             vline=self.predict_threshold,
-    #             xlims=(0, 1))
-    #     elif isinstance(self.outputs_visualizer, LambdaType):
-    #         self.outputs_visualizer(self)
-
     # def visualize_gradients(self, on_current_train_batch=True, batch=None,
     #             labels=None, sample_weight=None, learning_phase=0,
     #             slide_size=None, **kwargs):
@@ -576,20 +543,20 @@ class TrainGenerator():
         def _get_matching_stage(cb, stage):
             """Examples:
                 1. cb.keys() == ('train:epoch', 'val:batch')
-                   stage == ('on_val_end', 'train:epoch')
+                   stage == ('val_end', 'train:epoch')
                    -> 'train:epoch'
                 2. cb.keys() == ('train:epoch', 'val:batch')
-                   stage == 'on_val_end'
+                   stage == 'val_end'
                    -> None
-                3. cb.keys() == (('on_val_end', 'train:epoch'), 'train:batch')
-                   stage == 'on_val_end'
+                3. cb.keys() == (('val_end', 'train:epoch'), 'train:batch')
+                   stage == 'val_end'
                    -> None
-                4. cb.keys() == (('on_val_end', 'train:epoch'), 'train:batch')
+                4. cb.keys() == (('val_end', 'train:epoch'), 'train:batch')
                    stage == 'train:batch'
                    -> 'train:batch'
-                5. cb.keys() == (('on_val_end', 'train:epoch'), 'train:batch')
-                   stage == ('on_val_end', 'train:epoch')
-                   -> ('train:epoch', 'on_val_end')
+                5. cb.keys() == (('val_end', 'train:epoch'), 'train:batch')
+                   stage == ('val_end', 'train:epoch')
+                   -> ('train:epoch', 'val_end')
             """
             def _pack_stages(cb, stage):
                 cb_stages = []

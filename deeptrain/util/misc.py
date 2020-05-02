@@ -404,7 +404,7 @@ def _validate_traingen_configs(cls):
                     if not isinstance(fn, LambdaType):
                         raise ValueError(errmsg)
 
-        supported = ('save', 'load', 'on_val_end',
+        supported = ('save', 'load', 'val_end',
                      'train:iter', 'train:batch', 'train:epoch',
                      'val:iter', 'val:batch', 'val:epoch')
         assert isinstance(cls.callbacks, dict), ("`callbacks` must be "

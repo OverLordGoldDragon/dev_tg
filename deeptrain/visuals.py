@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .util._backend import K
+from .util._backend import get_weights, get_outputs, get_gradients
+from .util._backend import features_hist
 
 
 def show_predictions_per_iteration(_labels_cache, _preds_cache):
@@ -246,6 +248,58 @@ def comparative_histogram(model, layer_name, data, keep_borders=True,
             ax.axvline(vline, color='r', linewidth=2)
         ax.set_xlim(*xlims)
     plt.show()
+
+
+def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
+                omit_names='bias', configs=None, **kw):
+    def _process_configs(configs, mode):
+        defaults = {'subplot': dict(sharey=False)}
+        if 'gradients' in mode or mode == 'outputs':
+            defaults.update({'plot': dict(peaks_to_clip=2, annot_kw=None),
+                             'subplot': dict(sharex=False, sharey=False)})
+        if not configs:
+            return defaults
+        for k, v in defaults.items():
+            if k not in configs:
+                configs[k] = v
+        return configs
+
+    def _prevalidate(mode, input_data, labels):
+        if features_hist is None:
+            raise Exception("`weights_hists_cb` requires `see-rnn` "
+                            "(!pip install see-rnn)")
+
+        supported = ('weights', 'outputs', 'gradients',
+                     'gradients:outputs', 'gradients:weights')
+        if mode not in supported:
+            raise ValueError(("unsupported `mode`: '{}'; supported are: {}"
+                             ).format(mode, ', '.join(supported)))
+        if 'gradients' in mode and (input_data is None or labels is None):
+            raise ValueError("`input_data` or `labels` cannot be None for "
+                             "'gradients'-based `mode`")
+        if mode == 'outputs' and input_data is None:
+            raise ValueError("`input_data` cannot be None for `mode='outputs'`")
+
+    def _get_data(model, _id, mode, input_data, labels, omit_names, kw):
+        if mode == 'weights':
+            data = get_weights(model, _id, omit_names, as_dict=True)
+        elif 'gradients' in mode:
+            if mode in ('gradients', 'gradients:outputs'):
+                data = get_gradients(model, _id, input_data, labels,
+                                     mode='outputs', as_dict=True)
+            else:
+                data = get_gradients(model, _id, input_data, labels,
+                                     mode='weights', as_dict=True)
+        elif mode == 'outputs':
+            data = get_outputs(model, _id, input_data, as_dict=True)
+
+        data_flat = [x.ravel() for x in data.values()]
+        return data_flat, list(data)
+
+    configs = _process_configs(configs, mode)
+    data_flat, data_names = _get_data(model, _id, mode, input_data, labels,
+                                      omit_names, kw)
+    features_hist(data_flat, annotations=data_names, configs=configs, **kw)
 
 
 def viz_roc_auc(y_true, y_pred):

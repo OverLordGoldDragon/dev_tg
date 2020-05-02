@@ -12,6 +12,7 @@ from tests.backend import Model
 from tests.backend import BASEDIR, tempdir, features_2D
 from deeptrain import TrainGenerator, SimpleBatchgen
 from deeptrain.callbacks import TraingenLogger, make_callbacks
+from deeptrain.callbacks import make_layer_hists_cb
 
 
 batch_size = 128
@@ -100,7 +101,7 @@ def _make_2Dviz_cb():
             return outs[0].T
 
     callbacks_init = {'viz_2d': lambda cls: Viz2D(cls)}
-    callbacks = {'viz_2d': {('on_val_end', 'train:epoch'): Viz2D.viz}}
+    callbacks = {'viz_2d': {('val_end', 'train:epoch'): Viz2D.viz}}
     return callbacks, callbacks_init
 
 
@@ -111,6 +112,7 @@ def test_main():
             C['traingen']['best_models_dir']), tempdir(logger_savedir):
         cb_makers = [_make_logger_cb, _make_2Dviz_cb]
         callbacks, callbacks_init = make_callbacks(cb_makers)
+        callbacks.update({'lh': {'val_end': make_layer_hists_cb()}})
         C['traingen'].update({'callbacks': callbacks,
                               'callbacks_init': callbacks_init})
         tg = _init_session(C)
