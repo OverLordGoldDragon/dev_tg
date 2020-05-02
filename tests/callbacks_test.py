@@ -105,6 +105,14 @@ def _make_2Dviz_cb():
     return callbacks, callbacks_init
 
 
+layer_hists_cbs = {
+    'lhgw': {'val_end': make_layer_hists_cb(mode='gradients:weights')},
+    'lhgo': {'val_end': make_layer_hists_cb(mode='gradients:outputs')},
+    'lho':  {'val_end': make_layer_hists_cb(mode='outputs')},
+    'lhw':  {'val_end': make_layer_hists_cb(mode='weights')},
+}
+
+
 def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
@@ -112,7 +120,7 @@ def test_main():
             C['traingen']['best_models_dir']), tempdir(logger_savedir):
         cb_makers = [_make_logger_cb, _make_2Dviz_cb]
         callbacks, callbacks_init = make_callbacks(cb_makers)
-        callbacks.update({'lh': {'val_end': make_layer_hists_cb()}})
+        callbacks.update(layer_hists_cbs)
         C['traingen'].update({'callbacks': callbacks,
                               'callbacks_init': callbacks_init})
         tg = _init_session(C)

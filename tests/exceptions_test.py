@@ -18,6 +18,7 @@ from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
 from deeptrain.util.misc import pass_on_error
+from deeptrain.visuals import layer_hists
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
@@ -71,7 +72,8 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {f'{name}_exceptions': None for name in ('datagen', 'util')}
+tests_done = {f'{name}_exceptions': None for name in (
+    'datagen', 'visuals', 'util', 'data_to_hdf5')}
 
 
 def test_datagen():
@@ -113,6 +115,24 @@ def test_datagen():
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
     _notify('datagen_exceptions')
+
+
+def test_visuals():
+    def _layer_hists(model):
+        _pass_on_fail(layer_hists, model, '*', mode='gradients')
+        _pass_on_fail(layer_hists, model, '*', mode='outputs')
+        _pass_on_fail(layer_hists, model, '*', mode='skeletons')
+
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        tg = _init_session(C, _make_autoencoder)
+        model = tg.model
+
+        _layer_hists(model)
+
+    _notify('visuals')
+
 
 def test_util():
     t0 = time()
@@ -427,6 +447,8 @@ def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
         _data = [np.vstack([data[0], data[0]])]
         pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
                       kw['batch_size'], data=_data, overwrite=True)
+
+    _notify('data_to_hdf5')
 
 
 def _test_load(tg, C, make_model_fn):

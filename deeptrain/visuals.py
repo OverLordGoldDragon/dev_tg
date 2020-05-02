@@ -297,6 +297,7 @@ def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
         return data_flat, list(data)
 
     configs = _process_configs(configs, mode)
+    _prevalidate(mode, input_data, labels)
     data_flat, data_names = _get_data(model, _id, mode, input_data, labels,
                                       omit_names, kw)
     features_hist(data_flat, annotations=data_names, configs=configs, **kw)
