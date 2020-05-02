@@ -3,7 +3,6 @@ import os
 os.environ['IS_MAIN'] = '1' * (__name__ == '__main__')
 import pytest
 
-
 from pathlib import Path
 from termcolor import cprint
 from time import time
