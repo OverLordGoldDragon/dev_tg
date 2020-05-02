@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+os.environ['IS_MAIN'] = '1' * (__name__ == '__main__')
 import pytest
 
 from pathlib import Path
@@ -169,5 +170,4 @@ def _notify(name):
         cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 if __name__ == '__main__':
-    os.environ['IS_MAIN'] = '1'
     pytest.main([__file__, "-s"])
