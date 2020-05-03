@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """TODO:
     - replace metrics= w/ history=?
-    - visualizations
-        - layer outs/grads hists w/ 'all' option
     - logging.py ideas:
        - save each class's source code
        - create "init_configs" to log, then also
@@ -40,7 +38,7 @@ from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.configs  import _TRAINGEN_CFG
 from .util.training import _update_temp_history, _get_val_history
 from .util.training import _get_sample_weight, _get_api_metric_name
-from .util.logging  import _get_unique_model_name
+from .util.logging  import _get_unique_model_name, _log_init_state
 from .util.saving   import save, load, _save_history
 from .util.saving   import save_best_model, checkpoint_model_IF
 from .util.misc     import pass_on_error, _validate_traingen_configs
@@ -136,12 +134,19 @@ class TrainGenerator():
         self._init_class_vars()
         self._init_fit_and_pred_fns()
         self._init_callbacks()
+
         if self.loadpath:
             self.load()  # overwrites model_num, model_name, & others
         else:
             self._prepare_initial_data()
         if self.logs_dir:
             self._init_logger()
+            savedir = os.path.join(self.logdir, "misc")
+            if not os.path.isdir(savedir):
+                os.mkdir(savedir)
+            pass_on_error(_log_init_state, self, kwargs, savedir=savedir,
+                          fail_msg=(
+                              WARN + " could not log init state - skipping"))
         else:
             print(NOTE + "logging OFF")
             self.logdir = None
@@ -522,21 +527,9 @@ class TrainGenerator():
         _show_closed_fig(fig)
 
     # TODO
-    # def show_layer_outputs(self, layer_names=None):
-    #     raise NotImplementedError()
-
-    # def show_layer_weights(self, layer_names=None):
-    #     raise NotImplementedError()
-
-    # def visualize_gradients(self, on_current_train_batch=True, batch=None,
-    #             labels=None, sample_weight=None, learning_phase=0,
-    #             slide_size=None, **kwargs):
-    #     raise NotImplementedError()
-
     def compute_gradient_l2norm(self, val=True, learning_phase=0,
                                 return_values=False, w=1, h=1):
         return compute_gradient_l2norm(self, val, learning_phase, w, h)
-
 
     ########################## CALLBACK METHODS ######################
     def _apply_callbacks(self, stage):

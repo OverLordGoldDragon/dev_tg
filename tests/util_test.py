@@ -7,6 +7,7 @@ import numpy as np
 
 from pathlib import Path
 from termcolor import cprint
+from time import time
 
 from deeptrain.util import searching
 from deeptrain.util import misc
@@ -14,14 +15,15 @@ from deeptrain.util import logging
 from deeptrain.util import training
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
-from deeptrain.util.misc import pass_on_error
+from deeptrain.util.misc import pass_on_error, deeplen
 from deeptrain import metrics
 from deeptrain import preprocessing
 from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs',
-                                      'training', 'preprocessing', 'logging')}
+                                      'training', 'preprocessing', 'logging',
+                                      'deeplen')}
 
 
 def test_searching():
@@ -96,6 +98,36 @@ def test_logging():
         _test_get_unique_model_name()
 
     _notify('logging')
+
+
+def test_deeplen():
+    def _make_bignest():
+        arrays = [np.random.randn(100, 100), np.random.uniform(30, 40, 10)]
+        lists = [[1, 2, '3', '4', 5, [6, 7]] * 555, {'a': 1, 'b': arrays[0]}]
+        dicts = {'x': [1, {2: [3, 4]}, [5, '6', {'7': 8}]*99] * 55,
+                 'b': [{'a': 5, 'b': 3}] * 333, ('k', 'g'): (5, 9, [1, 2])}
+        tuples = (1, (2, {3: np.array([4., 5.])}, (6, 7, 8, 9) * 21) * 99,
+                  (10, (11,) * 5) * 666)
+        return {'arrays': arrays, 'lists': lists,
+                'dicts': dicts, 'tuples': tuples}
+
+    def _print_report(bignest, t0):
+        t = time() - t0
+        print("{:.5f} / iter ({} iter avg, total time: {:.3f}); sizes:".format(
+            t / iters, iters, t))
+        print("bignest:", deeplen(bignest))
+        print(("{} {}\n" * len(bignest)).format(
+            *[x for k, v in bignest.items()
+              for x in ((k + ':').ljust(8), deeplen(v))]))
+
+    iters = 2
+    bignest = _make_bignest()
+    t0 = time()
+    for _    in range(iters):
+        deeplen(bignest)
+    _print_report(bignest, t0)
+
+    _notify('deeplen')
 
 
 def test_training():

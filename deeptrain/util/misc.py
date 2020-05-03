@@ -38,6 +38,16 @@ def ordered_shuffle(*args):
             for _type, data in zip(map(type, args), zip(*zipped_args))]
 
 
+def deeplen(item, iterables=(list, tuple, dict, np.ndarray)):
+    # return 1 and terminate recursion when `item` is no longer iterable
+    if isinstance(item, iterables):
+        if isinstance(item, dict):
+            item = item.values()
+        return sum(deeplen(subitem) for subitem in item)
+    else:
+        return 1
+
+
 def nCk(n, k):  # n-Choose-k
     mul = lambda a, b: a * b
     r = min(k, n - k)

@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import numpy as np
 import textwrap
+import pickle
+import builtins
+
+from inspect import getsource
 from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
-from .misc import _dict_filter_keys
+from .misc import _dict_filter_keys, deeplen
 
 
 def generate_report(cls, savepath):
@@ -241,3 +246,138 @@ def _get_unique_model_name(cls):
             elif key in configs:
                 model_name += cls.name_process_key_fn(key, alias, configs)
     return model_name
+
+
+def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
+                    to_exclude=[], verbose=0):
+    """Extract `cls` __dict__ key-value pairs as string, ignoring funcs/methods
+    or getting their source codes. May include kwargs passed to __init__ via
+    `kwargs`, and __main__ via `source_lognames`.
+
+    Arguments:
+        kwargs: kwargs passed to cls's __init__.
+        source_lognames: str/list of str. Names of cls methoda attributes
+            to get source code of.
+        savedir: str. Path to directory where to save logs. Saves a .json of
+               cls dict, and .txt of source codes (if any).
+    """
+    def _save_logs(state, source, savedir, verbose):
+        path = os.path.join(savedir, "init_state.h5")
+        with open(path, 'wb') as f:
+            pickle.dump(state, f)
+        if verbose:
+            print(str(cls), "initial state saved to", path)
+
+        if source != '':
+            path = os.path.join(savedir, "init_source.txt")
+            with open(path, 'w') as f:
+                f.write(source)
+            if verbose:
+                print(str(cls), "source codes saved to", path)
+
+    def is_builtin_or_numpy_scalar(x):
+        return (type(x) in (*vars(builtins).values(), type(None)) or
+                isinstance(x, np.generic))
+
+    def _name(x):
+        if hasattr(x, '__name__'):
+            return x.__name__
+        elif hasattr(x, '__class__'):
+            return str(x.__class__).replace("<class ", '').replace(
+                ">", '').replace("'", '')
+        else:
+            return str(x)
+
+    def _filter_objects(state_full, to_exclude):
+        state = {}
+        for k, v in state_full.items():
+            if k in to_exclude:
+                continue
+            elif is_builtin_or_numpy_scalar(v):
+                if hasattr(v, '__len__') and deeplen(v) > 50:
+                    v = _name(v)
+                state[k] = str(v)
+            else:
+                state[k] = _name(v)
+        return state
+
+    def _get_source_code(state_full, source_lognames):
+        def _get_main_source():
+            if not hasattr(sys.modules['__main__'], '__file__'):
+                return '', ''
+            path = os.path.abspath(sys.modules['__main__'].__file__)
+            with open(path, 'r') as f:
+                return f.read(), path
+
+        def _to_text(source):
+            def _wrap_decor(x):
+                """Format as: ## long_text_s ##
+                              ## tuff #########"""
+                wrapped = textwrap.wrap(x, width=77)
+                txt = ''
+                for line in wrapped:
+                    txt += "## %s\n" % (line + ' ' + "#" * 77)[:80]
+                return txt.rstrip('\n')
+
+            txt = ''
+            for k, v in source.items():
+                txt += "\n\n{}\n{}".format(_wrap_decor(k), v)
+            return txt.lstrip('\n')
+
+        def not_func(x):
+            return getattr(getattr(x, '__class__', None),
+                           '__name__', '') not in ('function', 'method')
+
+        def _get_all_sourceable(keys, source):
+            to_skip = ['__main__']
+            if not isinstance(keys, (list, tuple)):
+                keys = [keys]
+
+            for k in keys:
+                if k in to_skip:
+                    continue
+                elif k not in state_full:
+                    print(WARN, f"{k} not found in cls.__dict__ - will skip")
+                    continue
+                v = state_full[k]
+                if (not is_builtin_or_numpy_scalar(v) and
+                    not isinstance(v, np.ndarray)):
+                    if not_func(v):
+                        v = v.__class__
+                    try:
+                        source[_name(v)] = getsource(v)
+                    except Exception as e:
+                        print("Failed to log:", k, v, "-- skipping. "
+                              "Errmsg: %s" % e)
+            return source
+
+        source = {}
+        if source_lognames == '*':
+            source = _get_all_sourceable(list(state_full), source)
+        else:
+            source = _get_all_sourceable(source_lognames, source)
+
+        if '__main__' in source_lognames or source_lognames == '*':
+            src, path = _get_main_source()
+            source[path] = src
+
+        source = _to_text(source)
+        return source
+
+    if not isinstance(to_exclude, (list, tuple)):
+        to_exclude = [to_exclude]
+
+    state_full = vars(cls)
+    for k, v in kwargs.items():
+        if k not in state_full:
+            state_full[k] = v
+    state = _filter_objects(state_full, to_exclude)
+
+    if source_lognames is not None:
+        source = _get_source_code(state_full, source_lognames)
+    else:
+        source = ''
+
+    if savedir is not None:
+        _save_logs(state, source, savedir, verbose)
+    return state, source
