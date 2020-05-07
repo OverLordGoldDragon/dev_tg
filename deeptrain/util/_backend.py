@@ -13,15 +13,6 @@ else:
     import keras.backend as K
 
 try:
-    from see_rnn import get_weights, get_outputs, get_gradients
-    from see_rnn import features_hist
-    IMPORTS['see_rnn'] = 1
-except:
-    get_weights, get_outputs, get_gradients = None, None, None
-    features_hist = None
-    IMPORTS['see_rnn'] = 0
-
-try:
     from PIL import Image, ImageDraw, ImageFont
     IMPORTS['PIL'] = 1
 except:

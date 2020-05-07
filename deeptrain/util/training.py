@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+from see_rnn import weight_loss
 from .searching import find_best_predict_threshold, find_best_subset
 from .searching import find_best_subset_from_history
-from ..introspection import l1l2_weight_loss
 from ._backend import NOTE, WARN
 from .. import metrics as metric_fns
 
@@ -322,7 +322,7 @@ def _compute_metrics(cls, labels_all_norm, preds_all_norm, sample_weight_all):
         if name == 'loss' or name == cls.key_metric:
             metrics[name] = _compute_metric(data, metric_fn=cls.key_metric_fn)
             if name == 'loss' or name[-1] == '*':
-                metrics[name] += l1l2_weight_loss(cls.model)
+                metrics[name] += weight_loss(cls.model)
         else:
             metrics[name] = _compute_metric(data, metric_name=api_name)
 

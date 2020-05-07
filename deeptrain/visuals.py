@@ -2,9 +2,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from see_rnn import get_weights, get_outputs, get_gradients
+from see_rnn import features_hist
 from .util._backend import K
-from .util._backend import get_weights, get_outputs, get_gradients
-from .util._backend import features_hist
 
 
 def show_predictions_per_iteration(_labels_cache, _preds_cache):
@@ -224,16 +224,7 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
 def comparative_histogram(model, layer_name, data, keep_borders=True,
                           bins=100, xlims=(0, 1), fontsize=14, vline=None,
                           w=1, h=1):
-    def _get_layer_outs(model, layer_name, data):  # TODO: move to introspection
-        def _make_outs_fn(model, layer_name):
-            outs_tensors = [l.output for l in model.layers
-                            if layer_name in l.name]
-            return K.function([model.input, K.learning_phase()], outs_tensors)
-
-        outs_fn = _make_outs_fn(model, layer_name)
-        return outs_fn([data, 1]), outs_fn([data, 0])
-
-    outs = _get_layer_outs(model, layer_name, data)
+    outs = get_outputs(model, layer_name, data)
 
     _, axes = plt.subplots(2, 1, sharex=True, sharey=True,
                            figsize=(13 * w, 6 * h))
@@ -251,9 +242,9 @@ def comparative_histogram(model, layer_name, data, keep_borders=True,
 
 
 def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
-                omit_names='bias', configs=None, **kw):
+                omit_names='bias', share_xy=(0, 0), configs=None, **kw):
     def _process_configs(configs, mode):
-        defaults = {'subplot': dict(sharey=False)}
+        defaults = {}
         if 'gradients' in mode or mode == 'outputs':
             defaults.update({'plot': dict(peaks_to_clip=2, annot_kw=None),
                              'subplot': dict(sharex=False, sharey=False)})
@@ -300,7 +291,8 @@ def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
     _prevalidate(mode, input_data, labels)
     data_flat, data_names = _get_data(model, _id, mode, input_data, labels,
                                       omit_names, kw)
-    features_hist(data_flat, annotations=data_names, configs=configs, **kw)
+    features_hist(data_flat, annotations=data_names, configs=configs,
+                  share_xy=share_xy, **kw)
 
 
 def viz_roc_auc(y_true, y_pred):

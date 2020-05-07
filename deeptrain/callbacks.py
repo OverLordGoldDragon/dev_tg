@@ -2,11 +2,12 @@ import os
 import pickle
 
 from pathlib import Path
+from see_rnn import get_weights, get_outputs, get_gradients
 
 from .visuals import show_predictions_per_iteration
 from .visuals import show_predictions_distribution
 from .visuals import comparative_histogram, layer_hists
-from .util._backend import NOTE, get_weights, get_outputs, get_gradients
+from .util._backend import NOTE
 
 
 def make_callbacks(cb_makers):
@@ -69,12 +70,13 @@ def comparative_histogram_cb(cls):
 
 
 def make_layer_hists_cb(_id='*', mode='weights', x=None, y=None,
-                        omit_names='bias', configs=None, **kw):
+                        omit_names='bias', share_xy=(0, 0),
+                        configs=None, **kw):
     def layer_hists_cb(cls):
         _x = x or cls.val_datagen.batch
         _y = y or (cls.val_datagen.labels if not cls.input_as_labels else x)
-        layer_hists(cls.model, _id, mode, _x, _y, omit_names, configs, **kw)
-
+        layer_hists(cls.model, _id, mode, _x, _y, omit_names, share_xy,
+                    configs, **kw)
     return layer_hists_cb
 
 

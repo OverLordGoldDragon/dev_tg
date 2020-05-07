@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """TODO:
     - label preloaders
+    - data_category -> data_dim?
     - labels_path non-positional (autoencoders)
     - Ambiguous `data_ext` vs. `data_format`? (try `data_loader`?)
     - no labels
@@ -32,7 +33,8 @@ class BatchGenerator():
                          'hdf5', 'hdf5-dataset'}
     SUPPORTED_EXTENSIONS = {'.npy', '.h5'}
 
-    def __init__(self, data_dir, labels_path, batch_size, data_category,
+    def __init__(self, data_dir, batch_size, data_category,
+                 labels_path=None,
                  data_format=None,
                  preprocessor_configs=None,
                  base_name=None,
@@ -44,11 +46,11 @@ class BatchGenerator():
                  superbatch_set_nums=None,
                  **kwargs):
         self.data_dir=data_dir
-        self.labels_path=labels_path
         self.batch_size=batch_size
+        self.data_category=data_category
+        self.labels_path=labels_path
         self.data_format=data_format
         self.preprocessor_configs=preprocessor_configs or {}
-        self.data_category=data_category
         self.base_name=base_name
         self.shuffle=shuffle
         self.dtype=dtype
@@ -71,7 +73,11 @@ class BatchGenerator():
         self._set_class_params(set_nums, superbatch_set_nums)
         self._set_preprocessor(data_category, self.preprocessor_configs)
 
-        self.preload_labels()
+        if self.labels_path is not None:
+            self.preload_labels()
+        else:
+            self.all_labels = {}
+            self.labels = []
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
         print("BatchGenerator initiated")
@@ -111,8 +117,9 @@ class BatchGenerator():
                                 "is empty)")
             self.set_num = self.set_nums_to_process.pop(0)
             self._set_names = [str(self.set_num)]
-            self.labels.extend(self.all_labels[self.set_num])
-        else:
+            if self.labels_path:
+                self.labels.extend(self.all_labels[self.set_num])
+        elif self.labels_path:
             self.labels.extend(self._labels_from_group_batch())
         self.batch.extend(self._get_next_batch())
 
@@ -124,7 +131,8 @@ class BatchGenerator():
         s = self._set_names.pop(0)
         self.set_name = s if not is_recursive else "%s+%s" % (self.set_name, s)
         self.batch = np.asarray(self.batch)
-        self.labels = np.asarray(self.labels)
+        if self.labels_path:
+            self.labels = np.asarray(self.labels)
 
         self.batch_loaded = True
         self.batch_exhausted = False

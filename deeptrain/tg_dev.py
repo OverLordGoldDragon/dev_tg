@@ -2,9 +2,6 @@
 """TODO:
     - replace metrics= w/ history=?
     - logging.py ideas:
-       - save each class's source code
-       - create "init_configs" to log, then also
-       getattr(...) for x in init_configs at save time
        - dedicate 'long column'
     - Utils classes (@staticmethod def fn(cls, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
@@ -43,9 +40,8 @@ from .util.saving   import save, load, _save_history
 from .util.saving   import save_best_model, checkpoint_model_IF
 from .util.misc     import pass_on_error, _validate_traingen_configs
 from .introspection import print_dead_weights, print_nan_weights
-from .introspection import compute_gradient_l2norm
-from .visuals import _get_history_fig
-from . import metrics as metrics_fns
+from .visuals       import _get_history_fig
+from .              import metrics as metrics_fns
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 
 
@@ -526,11 +522,6 @@ class TrainGenerator():
             self._history_fig = fig
         _show_closed_fig(fig)
 
-    # TODO
-    def compute_gradient_l2norm(self, val=True, learning_phase=0,
-                                return_values=False, w=1, h=1):
-        return compute_gradient_l2norm(self, val, learning_phase, w, h)
-
     ########################## CALLBACK METHODS ######################
     def _apply_callbacks(self, stage):
         def _get_matching_stage(cb, stage):
@@ -583,10 +574,10 @@ class TrainGenerator():
     ########################## MISC METHODS ##########################
     # very fast, inexpensive
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
-                     verbose_notify_only=True):
-        print_dead_weights(self.model,dead_threshold,
-                           dead_notify_above_frac, verbose_notify_only)
-        print_nan_weights(self.model, verbose_notify_only)
+                     notify_detected_only=True):
+        print_dead_weights(self.model,dead_threshold, dead_notify_above_frac,
+                           notify_detected_only)
+        print_nan_weights(self.model, notify_detected_only)
 
     def get_unique_model_name(self):
         return _get_unique_model_name(self)

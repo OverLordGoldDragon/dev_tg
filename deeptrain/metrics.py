@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
 import numpy as np
-import sklearn.metrics
 
 
 def __getattr__(name):
     """If not implemented, get from sklearn.metrics"""
+    try:
+        import sklearn.metrics
+    except:
+        raise ValueError("metrics '{name}' unsupported by deeptrain.metrics, "
+                         "and `sklearn` is not installed; to include "
+                         "sklearn.metrics, install sklearn.")
     try:
         return getattr(sklearn.metrics, name)
     except:
