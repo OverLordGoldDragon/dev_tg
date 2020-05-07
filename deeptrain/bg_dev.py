@@ -2,13 +2,10 @@
 """TODO:
     - label preloaders
     - data_category -> data_dim?
-    - labels_path non-positional (autoencoders)
+       - GenericPreprocessor can handle ndim case, not just 2D
     - Ambiguous `data_ext` vs. `data_format`? (try `data_loader`?)
-    - no labels
     - deprecate full_batch_shape?
     - profile batch.extend speed
-    - batch_size > loaded batch_size
-    - superbatch_set_nums = 'all' -> no need to specify superbatch_dir
 """
 import os
 import h5py
@@ -20,10 +17,10 @@ from pathlib import Path
 from copy import deepcopy
 
 from .pp_dev import GenericPreprocessor, TimeseriesPreprocessor
-from deeptrain.util.misc import ordered_shuffle
-from deeptrain.util.configs import _DATAGEN_CFG
+from .util.misc import ordered_shuffle
+from .util.configs import _DATAGEN_CFG
 from .util._backend import WARN, NOTE, IMPORTS, lz4f
-from deeptrain.util._default_configs import _DEFAULT_DATAGEN_CFG
+from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
 
 ###############################################################################
@@ -217,10 +214,11 @@ class BatchGenerator():
                            "abcdefghijklmnopqrstuvwxyz"[:int(n_batches)]]
         gb = np.asarray(self.batch)
         lb = np.asarray(self.labels)
-        assert len(gb) == len(lb), ("len(batch) != len(labels)")
+        assert len(gb) == len(lb), ("len(batch) != len(labels) ({} != {})"
+                                    ).format(len(gb), len(lb))
         self.batch = []  # free memory
 
-        if self.shuffle_group_samples:  #TODO labels
+        if self.shuffle_group_samples:
             gb, lb = ordered_shuffle(gb, lb)
         elif self.shuffle_group_batches:
             gb_shape, lb_shape = gb.shape, lb.shape
@@ -262,7 +260,6 @@ class BatchGenerator():
                     return _set_nums_from_hdf5_dataset(hdf5_dataset)
             else:
                 return _set_nums_from_dir(self.data_dir)
-
 
         def _set_or_validate_set_nums(set_nums):
             nums_to_load = _get_set_nums_to_load()

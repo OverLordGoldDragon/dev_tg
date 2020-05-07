@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 from see_rnn import get_weights, get_outputs, get_gradients
 from see_rnn import features_hist
-from .util._backend import K
 
 
 def show_predictions_per_iteration(_labels_cache, _preds_cache):

@@ -3,59 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gc
 
-from ..introspection import get_grads_fn, compute_gradient_l2norm
-from ._backend import NOTE, WARN
-
-
-def _compute_gradient_l2norm(self, val=True, learning_phase=0, w=1, h=1):
-    raise NotImplementedError()  # TODO
-
-    datagen_type = "val" if val else "train"
-    print(NOTE, datagen_type + " datagen states will be reset")
-    print("'.' = window processed, '|' = batch processed")
-    mode = "train" if learning_phase==1 else "inference"
-    print("Computing gradient l2-norm over " + datagen_type + " batches, in "
-          + mode + " mode")
-    datagen = self.val_datagen if val else self.datagen
-    datagen.reset_datagen_states()
-
-    grads_fn = get_grads_fn(self.model)
-    grad_l2norm = []
-    batches_processed = 0
-    while not datagen.all_data_exhausted:
-        data, labels, sample_weight = self.get_data(val=val)
-
-        grad_l2norm += [compute_gradient_l2norm(
-            data, labels, sample_weight, learning_phase, grads_fn)]
-        datagen.update_datagen_states()
-
-        # PROGBAR
-        if datagen.batch_exhausted:
-            prog_mark = '|'
-            batches_processed += 1
-            if not (batches_processed % np.ceil(datagen.num_batches / 10)):
-                prog_mark += "{:}%".format(100 * batches_processed /
-                                           datagen.num_batches)
-        else:
-            prog_mark = '.'
-        print(end=prog_mark)
-
-    print(("\nGRADIENT L2-NORM (AVG, MAX) = ({:.2f}, {:.2f}), computed over {} "
-           "batches, {} updates").format(
-               grad_l2norm.mean(), grad_l2norm.max(), datagen.num_batches,
-               datagen_type, len(grad_l2norm)))
-
-    bins = len(grad_l2norm) if len(grad_l2norm) < 600 else 600
-    plt.hist(grad_l2norm, bins=bins)
-    plt.gcf().set_size_inches(9*w, 4*h)
-
-    datagen.reset_datagen_states()
-    gc.collect()
-
-    return grad_l2norm
+from ..introspection import get_grads_fn
+from ._backend import WARN
 
 
 #TODO: revamp
+# wontdo
 def visualize_gradients(cls, on_current_train_batch=True, batch=None,
             labels=None, sample_weight=None, learning_phase=0,
             slide_size=None, **kwargs):

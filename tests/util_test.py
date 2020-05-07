@@ -23,7 +23,7 @@ from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs',
                                       'training', 'preprocessing', 'logging',
-                                      'deeplen')}
+                                      'deeplen', 'introspection')}
 
 
 def test_searching():
