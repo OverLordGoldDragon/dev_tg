@@ -30,6 +30,7 @@ before_install:
   - export LD_LIBRARY_PATH=$HOME/miniconda/envs/test-environment/lib/:$LD_LIBRARY_PATH
   - pip install -r requirements-dev.txt
   - conda install matplotlib
+  - pip install see_rnn
   - pip install coveralls
   
 install:
