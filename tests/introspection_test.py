@@ -11,7 +11,7 @@ from copy import deepcopy
 from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir
-from deeptrain.introspection import gradient_norm_over_dataset
+from deeptrain import introspection
 from deeptrain import TrainGenerator, SimpleBatchgen
 
 
@@ -58,15 +58,18 @@ TRAINGEN_CFG = dict(
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in
-              ('gradient_norm_over_dataset',)}
+              ('gather_over_dataset',)}
 
 
-def test_gradient_norm_over_dataset():
+def test_gather_over_dataset():
     C = deepcopy(CONFIGS)
     tg = _init_session(C)
     tg.train()
 
-    gradient_norm_over_dataset(tg)
+    introspection.gradient_norm_over_dataset(tg, n_iters=5)
+    introspection.gradients_sum_over_dataset(tg, n_iters=5)
+
+    _notify('gather_over_dataset')
 
 
 def _make_model(weights_path=None, **kw):
