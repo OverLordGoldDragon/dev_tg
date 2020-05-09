@@ -198,12 +198,15 @@ def print_nan_weights(model, notify_detected_only=False):
 
     has_nan = False
     for w_name, w_value in zip(weight_names, weight_values):
-        num_nan = np.sum(np.isnan(w_value))
-        if num_nan > 0:
-            has_nan = True
+        num_nan = np.sum(np.isnan(w_value) + np.isinf(w_value))
         txt = detect_nans(w_value)
         if txt:
-            cprint("\n{} -- '{}'".format(txt, w_name), color='red')
+            if not has_nan:
+                print(flush=True)  # newline
+
+            cprint("{} -- '{}'".format(txt, w_name), color='red', flush=True)
+        if num_nan > 0:
+            has_nan = True
 
     if has_nan:
         print("L = layer index, W = weight matrix index", end='')

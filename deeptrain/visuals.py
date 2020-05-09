@@ -249,16 +249,16 @@ def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
                              'subplot': dict(sharex=False, sharey=False)})
         if not configs:
             return defaults
-        for k, v in defaults.items():
-            if k not in configs:
-                configs[k] = v
+        for name, _dict in defaults.items():
+            if name not in configs:
+                configs[name] = _dict
+            else:
+                for k, v in _dict.items():
+                    if k not in configs[name]:
+                        configs[name][k] = v
         return configs
 
     def _prevalidate(mode, input_data, labels):
-        if features_hist is None:
-            raise Exception("`weights_hists_cb` requires `see-rnn` "
-                            "(!pip install see-rnn)")
-
         supported = ('weights', 'outputs', 'gradients',
                      'gradients:outputs', 'gradients:weights')
         if mode not in supported:

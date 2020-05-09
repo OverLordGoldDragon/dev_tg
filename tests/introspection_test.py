@@ -5,12 +5,12 @@ import pytest
 
 from pathlib import Path
 from termcolor import cprint
-from time import time
 from copy import deepcopy
 
 from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
-from tests.backend import BASEDIR, tempdir
+from tests.backend import Adam
+from tests.backend import BASEDIR
 from deeptrain import introspection
 from deeptrain import TrainGenerator, SimpleBatchgen
 
@@ -58,7 +58,7 @@ TRAINGEN_CFG = dict(
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in
-              ('gather_over_dataset',)}
+              ('gather_over_dataset', 'print_dead_nan')}
 
 
 def test_gather_over_dataset():
@@ -70,6 +70,17 @@ def test_gather_over_dataset():
     introspection.gradients_sum_over_dataset(tg, n_iters=5)
 
     _notify('gather_over_dataset')
+
+
+def test_print_dead_nan():
+    C = deepcopy(CONFIGS)
+    C['model']['optimizer'] = Adam(lr=1e50)
+    tg = _init_session(C)
+    tg.train()
+
+    tg.check_health()
+
+    _notify('print_dead_nan')
 
 
 def _make_model(weights_path=None, **kw):

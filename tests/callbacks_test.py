@@ -2,11 +2,13 @@
 import os
 os.environ['IS_MAIN'] = '1' * (__name__ == '__main__')
 import pytest
+import numpy as np
 
 from pathlib import Path
 from termcolor import cprint
 from time import time
 from copy import deepcopy
+from see_rnn import get_weights
 
 from tests.backend import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tests.backend import Model
@@ -63,16 +65,19 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
 tests_done = {name: None for name in ('main', 'load')}
 
 
-def _make_logger_cb():
+def _make_logger_cb(get_data_fn=None, get_labels_fn=None, gather_fns=None):
     log_configs = {
         'weights': ['conv2d'],
-        'outputs': ['conv2d'],
-        'gradients': ['conv2d'],
+        'outputs': 'conv2d',
+        'gradients': ('conv2d',),
         'outputs-kw': dict(learning_phase=0),
         'gradients-kw': dict(learning_phase=0),
     }
     callbacks_init = {
-        'logger': lambda cls: TraingenLogger(cls, logger_savedir, log_configs)
+        'logger': lambda cls: TraingenLogger(cls, logger_savedir, log_configs,
+                                             get_data_fn=get_data_fn,
+                                             get_labels_fn=get_labels_fn,
+                                             gather_fns=gather_fns)
         }
     save_fn = lambda cls: TraingenLogger.save(cls, _id=cls.tg.epoch)
     callbacks = {
@@ -145,6 +150,26 @@ def _test_load(tg, C):
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(C, weights_path, loadpath)
     _notify('load')
+
+
+def test_traingen_logger():
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']), tempdir(logger_savedir):
+        batch_shape = (batch_size, width, height, channels)
+
+        cb_makers = [lambda: _make_logger_cb(
+            get_data_fn=lambda: np.random.randn(*batch_shape),
+            get_labels_fn=lambda: np.random.randint(
+                0, 2, (batch_size, C['model']['num_classes'])),
+            gather_fns={'weights': get_weights},
+            )]
+        callbacks, callbacks_init = make_callbacks(cb_makers)
+
+        C['traingen'].update({'callbacks': callbacks,
+                              'callbacks_init': callbacks_init})
+        tg = _init_session(C)
+        tg.train()
 
 
 def _make_model(weights_path=None, **kw):

@@ -21,6 +21,7 @@ if TF_KERAS:
     from tensorflow.keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D
     from tensorflow.keras.regularizers import l2
+    from tensorflow.keras.optimizers import Adam
     from tensorflow.keras.models import Model
 else:
     from keras import backend as K
@@ -29,6 +30,7 @@ else:
     from keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
     from keras.regularizers import l2
+    from keras.optimizers import Adam
     from keras.models import Model
 
 
