@@ -73,13 +73,23 @@ def test_gather_over_dataset():
 
 
 def test_print_dead_nan():
-    C = deepcopy(CONFIGS)
-    C['model']['optimizer'] = Adam(lr=1e50)
-    tg = _init_session(C)
-    tg.train()
+    def _test_print_nan_weights():
+        C = deepcopy(CONFIGS)
+        C['model']['optimizer'] = Adam(lr=1e50)
+        tg = _init_session(C)
+        tg.train()
+        tg.check_health()
 
-    tg.check_health()
+    def _test_print_dead_weights():
+        C = deepcopy(CONFIGS)
+        C['model']['optimizer'] = Adam(lr=1e-4)
+        tg = _init_session(C)
+        tg.train()
+        tg.check_health(dead_threshold=.1)
+        tg.check_health(notify_detected_only=False)
 
+    _test_print_nan_weights()
+    _test_print_dead_weights()
     _notify('print_dead_nan')
 
 

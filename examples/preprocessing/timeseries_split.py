@@ -3,8 +3,8 @@ import numpy as np
 from pathlib import Path
 from deeptrain.preprocessing import data_to_hdf5
 
-batch_shape = (128, 50, 8)
-n_batches = 6
+batch_shape = (32, 20, 6)
+n_batches = 8
 overwrite = False
 
 ###############################################################

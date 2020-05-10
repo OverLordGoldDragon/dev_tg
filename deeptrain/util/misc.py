@@ -56,7 +56,6 @@ def nCk(n, k):  # n-Choose-k
     return numer / denom
 
 
-# TODO: improve case coverage
 def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
                           alias_to_metric_name_fn=None):
     """Instantiates trainer & optimizer, but does NOT train (update weights)"""

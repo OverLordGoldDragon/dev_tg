@@ -220,7 +220,7 @@ class BatchGenerator():
 
         if self.shuffle_group_samples:
             gb, lb = ordered_shuffle(gb, lb)
-        elif self.shuffle_group_batches:
+        elif self.shuffle_group_batches:  # TODO check shapes and reshapes
             gb_shape, lb_shape = gb.shape, lb.shape
             gb = gb.reshape(-1, self.batch_size, *gb_shape[1:])
             lb = lb.reshape(-1, self.batch_size, *lb_shape[1:])

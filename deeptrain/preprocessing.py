@@ -2,9 +2,36 @@
 import os
 import h5py
 import numpy as np
+import pandas as pd
 
 from pathlib import Path
 from .util._backend import WARN, NOTE
+
+
+def numpy2D_to_csv(data, savepath, batch_size=None, columns=None, batch_dim=1):
+    def _process_data(data, batch_size, batch_dim):
+        assert data.ndim == 2, "`data` must be 2D"
+
+        batch_size = batch_size or data.shape[1]
+        if data.shape[1] != batch_size:
+            try:
+                # need to 'stack' samples dims, matching format of `data_to_hdf5`
+                if batch_dim == 1:
+                    data = data.reshape(-1, batch_size, order='C').T
+                else:
+                    data = data.reshape(batch_size, -1, order='F')
+            except Exception as e:
+                raise Exception("could not reshape `data`; specify different "
+                                "`batch_size`.\nErrmsg: " + str(e))
+        return data
+
+    data = _process_data(data, batch_size, batch_dim)
+    if columns is None:
+        columns = list(map(str, range(data.shape[1])))
+
+    df = pd.DataFrame(data, columns=columns)
+    df.to_csv(savepath, index=False)
+    print(len(df.columns), "batch labels saved to", savepath)
 
 
 def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,

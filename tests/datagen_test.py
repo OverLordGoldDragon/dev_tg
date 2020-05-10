@@ -65,7 +65,7 @@ def test_data_loaders():
     C['labels_path'] = os.path.join(datadir, 'timeseries_split', 'train',
                                     'labels.h5')
     C['batch_size'] = 128
-    C['base_name'] = 'batch128_'
+    C['base_name'] = 'batch32_'
     dg = SimpleBatchgen(**C)
     dg.advance_batch()
 

@@ -162,7 +162,7 @@ def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,
         precision = int(np.ceil(-np.log10(notify_above_frac)))
         perc_dead = f'%.{precision}f' % (100 * frac_dead) + '%'
 
-        cprint("{} dead -- '{}')".format(w_name, perc_dead), 'red')
+        cprint("{} dead -- '{}'".format(perc_dead, w_name), 'red')
 
     weight_names   = [w.name for layer in model.layers for w in layer.weights]
     weight_tensors = [w for layer in model.layers for w in layer.weights]

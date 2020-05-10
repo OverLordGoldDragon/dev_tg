@@ -22,8 +22,8 @@ datadir = os.path.join(BASEDIR, 'tests', 'data', 'timeseries')
 batch_size = 32
 
 MODEL_CFG = dict(
-    batch_shape=(batch_size, 25, 16),
-    units=16,
+    batch_shape=(batch_size, 4, 6),
+    units=6,
     optimizer='adam',
     loss='binary_crossentropy'
 )
@@ -33,7 +33,7 @@ DATAGEN_CFG = dict(
     batch_size=batch_size,
     data_category='timeseries',
     shuffle=True,
-    preprocessor_configs=dict(batch_timesteps=100, window_size=25),
+    preprocessor_configs=dict(batch_timesteps=20, window_size=4),
 )
 VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
@@ -42,7 +42,7 @@ VAL_DATAGEN_CFG = dict(
     batch_size=batch_size,
     data_category='timeseries',
     shuffle=False,
-    preprocessor_configs=dict(batch_timesteps=100, window_size=25),
+    preprocessor_configs=dict(batch_timesteps=20, window_size=4),
 )
 TRAINGEN_CFG = dict(
     epochs=2,

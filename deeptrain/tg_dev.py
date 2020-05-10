@@ -144,7 +144,7 @@ class TrainGenerator():
                           fail_msg=(
                               WARN + " could not log init state - skipping"))
         else:
-            print(NOTE + "logging OFF")
+            print(NOTE, "logging OFF")
             self.logdir = None
 
     ########################## MAIN METHODS ##########################

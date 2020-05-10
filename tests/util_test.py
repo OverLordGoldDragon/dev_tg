@@ -4,6 +4,7 @@ os.environ['IS_MAIN'] = '1' * (__name__ == '__main__')
 import pytest
 import shutil
 import numpy as np
+import pandas as pd
 
 from pathlib import Path
 from termcolor import cprint
@@ -242,10 +243,42 @@ def test_preprocessing(monkeypatch):
 
         shutil.rmtree(datadir)
 
+    def _test_numpy2D_to_csv(datadir):
+        def _batches_from_df(savepath):
+            df = pd.read_csv(savepath)
+            assert df.shape == (32, 2)
+            x0 = df['0'][:16].to_numpy()
+            x1 = df['0'][16:].to_numpy()
+            return x0, x1
+
+        def _test_batch_dim_0(savepath):
+            X = np.random.randint(0, 2, (16, 4))
+            preprocessing.numpy2D_to_csv(data=X, savepath=savepath,
+                                         batch_size=32, batch_dim=0)
+            x0, x1 = _batches_from_df(savepath)
+            assert np.sum(np.abs(x0 - X[:, 0])) == 0
+            assert np.sum(np.abs(x1 - X[:, 1])) == 0
+
+        def _test_batch_dim_1(savepath):
+            X = np.random.randint(0, 2, (4, 16))
+            preprocessing.numpy2D_to_csv(data=X, savepath=savepath,
+                                         batch_size=32, batch_dim=1)
+            x0, x1 = _batches_from_df(savepath)
+            assert np.sum(np.abs(x0 - X[0])) == 0
+            assert np.sum(np.abs(x1 - X[1])) == 0
+
+        os.mkdir(datadir)
+        savepath = os.path.join(datadir, "labels.csv")
+        _test_batch_dim_0(savepath)
+        _test_batch_dim_1(savepath)
+        shutil.rmtree(datadir)
 
     datadir = os.path.join(BASEDIR, "_data")
+
     paths = _test_numpy_data_to_numpy_sets(datadir)
     _test_data_to_hdf5(datadir, paths)
+    _test_numpy2D_to_csv(datadir)
+
     _notify('preprocessing')
 
 

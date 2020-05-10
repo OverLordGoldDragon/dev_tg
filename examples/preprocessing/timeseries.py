@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from pathlib import Path
-from deeptrain.preprocessing import data_to_hdf5
+from deeptrain.preprocessing import data_to_hdf5, numpy2D_to_csv
 
-batch_shape = (64, 50, 8)
-n_batches = 12
-save_batch_size = 128
+
+batch_shape = (16, 20, 6)
+n_batches = 16
+save_batch_size = 32
 overwrite = False
+labels_format = 'csv'  # 'h5' or 'csv'
 
 ###############################################################
 join = lambda *args: str(Path(*args))
@@ -23,6 +25,16 @@ x_test,  y_test  = make_data(batch_shape, n_batches // 2)
 
 kw = dict(batch_size=save_batch_size, overwrite=overwrite)
 data_to_hdf5(join(basedir, "train", "data.h5"),   data=x_train, **kw)
-data_to_hdf5(join(basedir, "train", "labels.h5"), data=y_train, **kw)
 data_to_hdf5(join(basedir, "val",   "data.h5"),   data=x_test,  **kw)
-data_to_hdf5(join(basedir, "val",   "labels.h5"), data=y_test,  **kw)
+
+if labels_format == 'h5':
+    data_to_hdf5(join(basedir, "train", "labels.h5"), data=y_train, **kw)
+    data_to_hdf5(join(basedir, "val",   "labels.h5"), data=y_test,  **kw)
+elif labels_format == 'csv':
+    kw.pop('overwrite')
+    y_train, y_test = y_train.squeeze(axis=-1).T, y_test.squeeze(axis=-1).T
+    numpy2D_to_csv(y_train, join(basedir, "train", "labels.csv"), **kw)
+    numpy2D_to_csv(y_test,  join(basedir, "val",   "labels.csv"), **kw)
+else:
+    raise ValueError("unsupported `labels_format`: " + labels_format + "; "
+                     "supported are: h5, csv")
