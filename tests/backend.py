@@ -1,8 +1,8 @@
 import os
+import pytest
 import contextlib
 import shutil
 import tempfile
-import inspect
 import numpy as np
 
 from pathlib import Path
@@ -53,8 +53,8 @@ def tempdir(dirpath=None):
 
 def notify(tests_done):
     def wrap(test_fn):
-        def _notify(*args, **kwargs):
-            test_fn(*args, **kwargs)
+        def _notify(monkeypatch, *args, **kwargs):
+            test_fn(monkeypatch, *args, **kwargs)
 
             name = test_fn.__name__.split('test_')[-1]
             tests_done[name] = True
