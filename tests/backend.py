@@ -54,7 +54,10 @@ def tempdir(dirpath=None):
 def notify(tests_done):
     def wrap(test_fn):
         def _notify(monkeypatch, *args, **kwargs):
-            test_fn(monkeypatch, *args, **kwargs)
+            if 'monkeypatch' in test_fn.__code__.co_varnames:
+                test_fn(monkeypatch, *args, **kwargs)
+            else:
+                test_fn(*args, **kwargs)
 
             name = test_fn.__name__.split('test_')[-1]
             tests_done[name] = True
