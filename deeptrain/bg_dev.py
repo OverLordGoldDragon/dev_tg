@@ -6,6 +6,7 @@
     - Ambiguous `data_ext` vs. `data_format`? (try `data_loader`?)
     - deprecate full_batch_shape?
     - profile batch.extend speed
+    - rid of SimpleBatchgen?
 """
 import os
 import h5py
@@ -25,15 +26,16 @@ from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
 ###############################################################################
 class BatchGenerator():
-    SUPPORTED_CATEGORIES = {'image', 'timeseries'}
+    BUILTIN_PREPROCESSORS = (GenericPreprocessor, TimeseriesPreprocessor)
     SUPPORTED_FORMATS = {'numpy', 'numpy-memmap', 'numpy-lz4f',
                          'hdf5', 'hdf5-dataset'}
     SUPPORTED_EXTENSIONS = {'.npy', '.h5'}
 
-    def __init__(self, data_dir, batch_size, data_category,
+    def __init__(self, data_dir, batch_size,
                  labels_path=None,
-                 data_format=None,
+                 preprocessor=None,
                  preprocessor_configs=None,
+                 data_format=None,
                  base_name=None,
                  shuffle=False,
                  dtype='float32',
@@ -44,10 +46,10 @@ class BatchGenerator():
                  **kwargs):
         self.data_dir=data_dir
         self.batch_size=batch_size
-        self.data_category=data_category
         self.labels_path=labels_path
-        self.data_format=data_format
+        self.preprocessor=preprocessor
         self.preprocessor_configs=preprocessor_configs or {}
+        self.data_format=data_format
         self.base_name=base_name
         self.shuffle=shuffle
         self.dtype=dtype
@@ -68,7 +70,7 @@ class BatchGenerator():
 
         self.load_data = self._get_data_loader(self.data_format)
         self._set_class_params(set_nums, superbatch_set_nums)
-        self._set_preprocessor(data_category, self.preprocessor_configs)
+        self._set_preprocessor(preprocessor, self.preprocessor_configs)
 
         if self.labels_path is not None:
             self.preload_labels()
@@ -220,7 +222,7 @@ class BatchGenerator():
 
         if self.shuffle_group_samples:
             gb, lb = ordered_shuffle(gb, lb)
-        elif self.shuffle_group_batches:  # TODO check shapes and reshapes
+        elif self.shuffle_group_batches:
             gb_shape, lb_shape = gb.shape, lb.shape
             gb = gb.reshape(-1, self.batch_size, *gb_shape[1:])
             lb = lb.reshape(-1, self.batch_size, *lb_shape[1:])
@@ -331,34 +333,51 @@ class BatchGenerator():
             raise Exception("unsupported data format: '%s'" % data_format)
         return load_data
 
-    def _set_preprocessor(self, data_category, preprocessor_configs):
-        def _validate_preprocessor_attributes(required):
+    def _set_preprocessor(self, preprocessor, preprocessor_configs):
+        def _set(preprocessor, preprocessor_configs):
+            _builtins = BatchGenerator.BUILTIN_PREPROCESSORS
+            if preprocessor is None:
+                self.preprocessor = GenericPreprocessor(**preprocessor_configs)
+            elif isinstance(preprocessor, (_builtins, type)):
+                if isinstance(preprocessor, type):  # uninstantiated
+                    self.preprocessor = preprocessor(**preprocessor_configs)
+                else:
+                    self.preprocessor = preprocessor
+            elif preprocessor == 'timeseries':
+                self.preprocessor = TimeseriesPreprocessor(**preprocessor_configs)
+            else:
+                raise ValueError("`preprocessor` must be either string, class, "
+                                 "or instantiated object - got: %s" % preprocessor)
+
+        def _validate_preprocessor_attributes():
+            def raise_err(name):
+                _builtins = ', '.join(
+                    (c.__module__ + '.' + c.__name__) for c in
+                    BatchGenerator.BUILTIN_PREPROCESSORS)
+                raise AttributeError(
+                    ("`{}` attribute not found in `preprocessor`; required "
+                     "are: {}\nSupported builtin preprocessors are: {}"
+                     ).format(name, ', '.join(required),
+                              "'timeseries', %s" % _builtins))
+
+            required = ('process', 'reset_state', 'update_state',
+                        'on_epoch_end') + self._SYNCH_ATTRS
             for name in required:
-                if name not in vars(self.preprocessor):
-                    raise AttributeError(
-                        ("`{}` attribute not found in `preprocessor`; required "
-                         "are: {}").format(name, ', '.join(required)))
+                if name not in dir(self.preprocessor):
+                    raise_err(name)
 
-        supported = BatchGenerator.SUPPORTED_CATEGORIES
-        if data_category == 'image':
-            self.preprocessor = GenericPreprocessor(**preprocessor_configs)
-            self._SLICE_ATTRS = ()
-        elif data_category == 'timeseries':
-            self.preprocessor = TimeseriesPreprocessor(**preprocessor_configs)
+        _set(preprocessor, preprocessor_configs)
+
+        if isinstance(self.preprocessor, TimeseriesPreprocessor):
             self._SLICE_ATTRS = ('slice_idx', 'slices_per_batch')
-        elif data_category is None:
-            print(WARN, "`data_category` not set; defaulting to "
-                  "Generic Preprocessor. Supported are:", ', '.join(supported))
         else:
-            print(WARN, "unknown `data_category`:", data_category,
-                  "; defaulting `preprocessor` to GenericPreprocessor. "
-                  "Supported are:", ', '.join(supported))
-
+            self._SLICE_ATTRS = ()
         self._BATCH_ATTRS = ('batch_exhausted', 'batch_loaded')
         self._SYNCH_ATTRS = (*self._BATCH_ATTRS, *self._SLICE_ATTRS)
-        _validate_preprocessor_attributes(self._SYNCH_ATTRS)
 
+        _validate_preprocessor_attributes()
         self._synch_from_preprocessor(self._SYNCH_ATTRS)
+
 
     def _synch_from_preprocessor(self, attrs):
         [setattr(self, x, getattr(self.preprocessor, x)) for x in attrs]

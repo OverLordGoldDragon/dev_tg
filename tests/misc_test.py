@@ -33,7 +33,6 @@ DATAGEN_CFG = dict(
     superbatch_dir=os.path.join(datadir, 'train'),
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
-    data_category='image',
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
@@ -41,7 +40,6 @@ VAL_DATAGEN_CFG = dict(
     superbatch_dir=os.path.join(datadir, 'val'),
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
-    data_category='image',
     shuffle=False,
 )
 TRAINGEN_CFG = dict(

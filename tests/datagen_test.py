@@ -16,7 +16,6 @@ DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'image', 'train'),
     labels_path=os.path.join(datadir, 'image', 'train', 'labels.h5'),
     batch_size=128,
-    data_category='image',
     shuffle=True,
 )
 
