@@ -3,14 +3,12 @@ import os
 os.environ['IS_MAIN'] = '1' * (__name__ == '__main__')
 import pytest
 
-from pathlib import Path
-from termcolor import cprint
 from copy import deepcopy
 
 from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
 from tests.backend import Adam
-from tests.backend import BASEDIR
+from tests.backend import BASEDIR, notify
 from deeptrain import introspection
 from deeptrain import TrainGenerator, SimpleBatchgen
 
@@ -61,6 +59,7 @@ tests_done = {name: None for name in
               ('gather_over_dataset', 'print_dead_nan')}
 
 
+@notify(tests_done)
 def test_gather_over_dataset():
     C = deepcopy(CONFIGS)
     tg = _init_session(C)
@@ -69,9 +68,8 @@ def test_gather_over_dataset():
     introspection.gradient_norm_over_dataset(tg, n_iters=5)
     introspection.gradients_sum_over_dataset(tg, n_iters=5)
 
-    _notify('gather_over_dataset')
 
-
+@notify(tests_done)
 def test_print_dead_nan():
     def _test_print_nan_weights():
         C = deepcopy(CONFIGS)
@@ -90,7 +88,6 @@ def test_print_dead_nan():
 
     _test_print_nan_weights()
     _test_print_dead_weights()
-    _notify('print_dead_nan')
 
 
 def _make_model(weights_path=None, **kw):
@@ -139,15 +136,6 @@ def _destroy_session(tg):
     _clear_data(tg)
     [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
     del tg
-
-
-def _notify(name):
-    tests_done[name] = True
-    print("\n>%s TEST PASSED" % name.upper())
-
-    if all(tests_done.values()):
-        test_name = Path(__file__).stem.replace('_', ' ').upper()
-        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

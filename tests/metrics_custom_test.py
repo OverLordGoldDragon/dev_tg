@@ -5,9 +5,6 @@ import pytest
 import numpy as np
 import sklearn.metrics
 
-from pathlib import Path
-from termcolor import cprint
-
 from deeptrain.util.training import _get_val_history, _weighted_normalize_preds
 from deeptrain.metrics import (
     f1_score,
@@ -19,7 +16,7 @@ from deeptrain.metrics import (
     roc_auc_score
     )
 from deeptrain import metrics as metric_fns
-from tests.backend import TraingenDummy
+from tests.backend import notify, TraingenDummy
 
 
 tests_done = {name: None for name in (
@@ -27,6 +24,7 @@ tests_done = {name: None for name in (
     'roc_auc_score', 'sample_unrolling', 'sklearn')}
 
 
+@notify(tests_done)
 def test_f1_score():
     def _test_basic():
         y_true = [0,     0,   1,   0,   0, 0, 1, 1]
@@ -59,9 +57,8 @@ def test_f1_score():
     _test_no_positive_predictions()
     _test_vs_sklearn()
 
-    _notify('f1_score')
 
-
+@notify(tests_done)
 def test_f1_score_multi_th():
     def _test_no_positive_labels():
         y_true = [0] * 6
@@ -89,9 +86,8 @@ def test_f1_score_multi_th():
     _test_nan_handling()
     _compare_against_f1_score()
 
-    _notify('f1_score_multi_th')
 
-
+@notify(tests_done)
 def test_binaries():
     y_true = [0,  0,  0,  0,  1,  1,  1,  1]
     y_pred = [0, .6, .7, .9,  1,  0, .8, .6]
@@ -101,9 +97,8 @@ def test_binaries():
     assert tnr_tpr(y_true, y_pred) == [.25, .75]
     assert binary_informedness(y_true, y_pred) == 0.
 
-    _notify('binaries')
 
-
+@notify(tests_done)
 def test_binaries_multi_th():
     def _compare_against_single_th(metric_name):
         y_true = np.random.randint(0, 2, (64,))
@@ -127,9 +122,8 @@ def test_binaries_multi_th():
     for metric_name in to_test:
         _compare_against_single_th(metric_name)
 
-    _notify('binaries_multi_th')
 
-
+@notify(tests_done)
 def test_roc_auc_score():
     y_true = np.array([1] * 5 + [0] * 27)  # imbalanced
     np.random.shuffle(y_true)
@@ -141,9 +135,9 @@ def test_roc_auc_score():
     assert (adiff < 1e-10), ("sklearn: {:.15f}\ntest:    {:.15f}"
                              "\nabsdiff: {}".format(
                                  sklearn_score, test_score, adiff))
-    _notify('roc_auc_score')
 
 
+@notify(tests_done)
 def test_sample_unrolling():
     """Compare results from internal (TrainGenerator) data transforms vs. those
     of correct transforms done explicitly. Formats included:
@@ -245,24 +239,13 @@ def test_sample_unrolling():
     test_fns = (_batches, _unweighted_slices, _weighted_slices, _batches_slices)
     _test_binaries(test_fns)
 
-    _notify('sample_unrolling')
 
-
+@notify(tests_done)
 def test_sklearn():
     y_true = np.random.randint(0, 2, (32,))
     y_pred = np.random.uniform(0, 1, (32,))
     assert (metric_fns.r2_score(y_true, y_pred) ==
             sklearn.metrics.r2_score(y_true, y_pred))
-    _notify('sklearn')
-
-
-def _notify(name):
-    tests_done[name] = True
-    print("\n>%s TEST PASSED" % name.upper())
-
-    if all(tests_done.values()):
-        test_name = Path(__file__).stem.replace('_', ' ').upper()
-        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

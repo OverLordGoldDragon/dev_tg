@@ -5,14 +5,13 @@ import pytest
 import numpy as np
 
 from pathlib import Path
-from termcolor import cprint
 from time import time
 from copy import deepcopy
-from see_rnn import get_weights
+from see_rnn import get_weights, features_2D
 
 from tests.backend import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tests.backend import Model
-from tests.backend import BASEDIR, tempdir, features_2D
+from tests.backend import BASEDIR, tempdir, notify
 from deeptrain import TrainGenerator, SimpleBatchgen
 from deeptrain.callbacks import TraingenLogger, make_callbacks
 from deeptrain.callbacks import make_layer_hists_cb
@@ -122,6 +121,7 @@ layer_hists_cbs = {
 }
 
 
+@notify(tests_done)
 def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
@@ -137,9 +137,9 @@ def test_main():
         _test_load(tg, C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('main')
 
 
+@notify(tests_done)
 def _test_load(tg, C):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
@@ -152,9 +152,9 @@ def _test_load(tg, C):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(C, weights_path, loadpath)
-    _notify('load')
 
 
+@notify(tests_done)
 def test_traingen_logger():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
@@ -225,15 +225,6 @@ def _destroy_session(tg):
     _clear_data(tg)
     [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
     del tg
-
-
-def _notify(name):
-    tests_done[name] = True
-    print("\n>%s TEST PASSED" % name.upper())
-
-    if all(tests_done.values()):
-        test_name = Path(__file__).stem.replace('_', ' ').upper()
-        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

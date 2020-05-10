@@ -7,7 +7,6 @@ import numpy as np
 
 from unittest.mock import patch
 from pathlib import Path
-from termcolor import cprint
 from time import time
 from copy import deepcopy
 
@@ -15,7 +14,7 @@ from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Dense, LSTM
 from tests.backend import l2
 from tests.backend import Model
-from tests.backend import BASEDIR, tempdir
+from tests.backend import BASEDIR, tempdir, notify
 from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
@@ -78,6 +77,7 @@ tests_done = {f'{name}_exceptions': None for name in (
     'datagen', 'visuals', 'util', 'data_to_hdf5')}
 
 
+@notify(tests_done)
 def test_datagen():
     t0 = time()
     C = deepcopy(CONFIGS)
@@ -116,9 +116,9 @@ def test_datagen():
         dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('datagen_exceptions')
 
 
+@notify(tests_done)
 def test_visuals():
     def _layer_hists(model):
         _pass_on_fail(layer_hists, model, '*', mode='gradients')
@@ -133,9 +133,8 @@ def test_visuals():
 
         _layer_hists(model)
 
-    _notify('visuals')
 
-
+@notify(tests_done)
 def test_util():
     t0 = time()
 
@@ -399,9 +398,9 @@ def test_util():
             print("Passed", _test.__name__)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-    _notify('util_exceptions')
 
 
+@notify(tests_done)
 def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
     """Dedicated test since it uses monkeypatch"""
     C = deepcopy(CONFIGS)
@@ -450,9 +449,8 @@ def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
         pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
                       kw['batch_size'], data=_data, overwrite=True)
 
-    _notify('data_to_hdf5')
 
-
+@notify(tests_done)
 def _test_load(tg, C, make_model_fn):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
@@ -465,7 +463,6 @@ def _test_load(tg, C, make_model_fn):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(C, make_model_fn, weights_path, loadpath)
-    print("\n>LOAD TEST PASSED")
 
 
 def _make_autoencoder(weights_path=None, **kw):
@@ -543,15 +540,6 @@ def _pass_on_fail(fn, *args, **kwargs):
         fn(*args, **kwargs)
     except Exception as e:
         print("Errmsg", e)
-
-
-def _notify(name):
-    tests_done[name] = True
-    print("\n>%s TEST PASSED" % name.upper())
-
-    if all(tests_done.values()):
-        test_name = Path(__file__).stem.replace('_', ' ').upper()
-        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':

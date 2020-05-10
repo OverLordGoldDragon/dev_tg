@@ -2,9 +2,11 @@ import os
 import contextlib
 import shutil
 import tempfile
+import inspect
 import numpy as np
 
 from pathlib import Path
+from termcolor import cprint
 
 from deeptrain import util
 from deeptrain import metrics
@@ -34,9 +36,6 @@ else:
     from keras.models import Model
 
 
-from see_rnn import features_2D
-
-
 @contextlib.contextmanager
 def tempdir(dirpath=None):
     if dirpath is not None and os.path.isdir(dirpath):
@@ -50,6 +49,23 @@ def tempdir(dirpath=None):
         yield dirpath
     finally:
         shutil.rmtree(dirpath)
+
+
+def notify(tests_done):
+    def wrap(test_fn):
+        def _notify(*args, **kwargs):
+            test_fn(*args, **kwargs)
+
+            name = test_fn.__name__.split('test_')[-1]
+            tests_done[name] = True
+            print("\n>%s TEST PASSED" % name.upper())
+
+            if all(tests_done.values()):
+                test_name = test_fn.__module__.replace(
+                    '_', ' ').replace('tests.', '').upper()
+                cprint(f"<< {test_name} PASSED >>\n", 'green')
+        return _notify
+    return wrap
 
 
 class ModelDummy():

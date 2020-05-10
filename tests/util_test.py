@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from pathlib import Path
-from termcolor import cprint
 from time import time
 
 from deeptrain.util import searching
@@ -19,7 +18,7 @@ from deeptrain.util import _default_configs
 from deeptrain.util.misc import pass_on_error, deeplen
 from deeptrain import metrics
 from deeptrain import preprocessing
-from tests.backend import BASEDIR, tempdir, ModelDummy, TraingenDummy
+from tests.backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs',
@@ -27,6 +26,7 @@ tests_done = {name: None for name in ('searching', 'misc', 'configs',
                                       'deeplen', 'introspection')}
 
 
+@notify(tests_done)
 def test_searching():
     labels = np.random.randint(0, 2, (32,))
     preds = np.random.uniform(0, 1, (32,))
@@ -34,9 +34,9 @@ def test_searching():
     searching.find_best_predict_threshold(labels, preds, metric_fn, verbosity=2)
 
     assert True
-    _notify('searching')
 
 
+@notify(tests_done)
 def test_misc():
     def _test_nCk():
         assert misc.nCk(10, 2) == 45
@@ -82,9 +82,8 @@ def test_misc():
     _test_train_on_batch_dummy()
     _test_make_plot_configs_from_metrics()
 
-    _notify('misc')
 
-
+@notify(tests_done)
 def test_logging():
     def _test_get_unique_model_name():
         tg = TraingenDummy()
@@ -98,9 +97,8 @@ def test_logging():
     with tempdir(logs_dir), tempdir(best_models_dir):
         _test_get_unique_model_name()
 
-    _notify('logging')
 
-
+@notify(tests_done)
 def test_deeplen():
     def _make_bignest():
         arrays = [np.random.randn(100, 100), np.random.uniform(30, 40, 10)]
@@ -128,9 +126,8 @@ def test_deeplen():
         deeplen(bignest)
     _print_report(bignest, t0)
 
-    _notify('deeplen')
 
-
+@notify(tests_done)
 def test_training():
     def _test_unroll_into_samples():
         outs_ndim = (16, 100)
@@ -168,9 +165,8 @@ def test_training():
     _test_validate_data_shapes()
     _test_validate_class_data_shapes()
 
-    _notify('searching')
 
-
+@notify(tests_done)
 def test_configs():
     for name_fn in (configs._NAME_PROCESS_KEY_FN,
                     _default_configs._DEFAULT_NAME_PROCESS_KEY_FN):
@@ -198,9 +194,8 @@ def test_configs():
             _ = getattr(config, name)
             assert True
 
-    _notify('configs')
 
-
+@notify(tests_done)
 def test_preprocessing(monkeypatch):
     def _test_numpy_data_to_numpy_sets(datadir):
         with tempdir(datadir):
@@ -278,17 +273,6 @@ def test_preprocessing(monkeypatch):
     paths = _test_numpy_data_to_numpy_sets(datadir)
     _test_data_to_hdf5(datadir, paths)
     _test_numpy2D_to_csv(datadir)
-
-    _notify('preprocessing')
-
-
-def _notify(name):
-    tests_done[name] = True
-    print("\n>%s TEST PASSED" % name.upper())
-
-    if all(tests_done.values()):
-        test_name = Path(__file__).stem.replace('_', ' ').upper()
-        cprint(f"<< {test_name} PASSED >>\n", 'green')
 
 
 if __name__ == '__main__':
