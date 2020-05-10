@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-os.environ['IS_MAIN'] = '1' * (__name__ == '__main__')
 import pytest
 import numpy as np
 
