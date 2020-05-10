@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """TODO:
     - label preloaders
-    - data_category -> data_dim?
-       - GenericPreprocessor can handle ndim case, not just 2D
-    - Ambiguous `data_ext` vs. `data_format`? (try `data_loader`?)
-    - deprecate full_batch_shape?
     - profile batch.extend speed
-    - rid of SimpleBatchgen?
 """
 import os
 import h5py
@@ -16,26 +11,28 @@ import pandas as pd
 
 from pathlib import Path
 from copy import deepcopy
+from types import LambdaType
 
 from .pp_dev import GenericPreprocessor, TimeseriesPreprocessor
 from .util.misc import ordered_shuffle
 from .util.configs import _DATAGEN_CFG
-from .util._backend import WARN, NOTE, IMPORTS, lz4f
+from .util import data_loaders
+from .util._backend import WARN, NOTE, IMPORTS
 from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
 
 ###############################################################################
-class BatchGenerator():
+class DataGenerator():
     BUILTIN_PREPROCESSORS = (GenericPreprocessor, TimeseriesPreprocessor)
-    SUPPORTED_FORMATS = {'numpy', 'numpy-memmap', 'numpy-lz4f',
-                         'hdf5', 'hdf5-dataset'}
-    SUPPORTED_EXTENSIONS = {'.npy', '.h5'}
+    BUILTIN_DATA_LOADERS = {'numpy', 'numpy-memmap', 'numpy-lz4f',
+                            'hdf5', 'hdf5-dataset'}
+    SUPPORTED_DATA_EXTENSIONS = {'.npy', '.h5'}
 
     def __init__(self, data_dir, batch_size,
                  labels_path=None,
                  preprocessor=None,
                  preprocessor_configs=None,
-                 data_format=None,
+                 data_loader=None,
                  base_name=None,
                  shuffle=False,
                  dtype='float32',
@@ -49,7 +46,7 @@ class BatchGenerator():
         self.labels_path=labels_path
         self.preprocessor=preprocessor
         self.preprocessor_configs=preprocessor_configs or {}
-        self.data_format=data_format
+        self.data_loader=data_loader
         self.base_name=base_name
         self.shuffle=shuffle
         self.dtype=dtype
@@ -60,15 +57,15 @@ class BatchGenerator():
         else:
             self.superbatch_dir = superbatch_dir
 
-        info = self._infer_and_get_data_info(data_dir, data_ext, data_format,
+        info = self._infer_and_get_data_info(data_dir, data_ext, data_loader,
                                              base_name)
         name_and_alias = [
-            ('data_format', 'data_format'), ('base_name', 'base_name'),
+            ('data_loader', 'data_loader'), ('base_name', 'base_name'),
             ('filenames', '_filenames',), ('filepaths', '_filepaths'),
             ('data_ext', 'data_ext')]
         [setattr(self, alias, info[name]) for name, alias in name_and_alias]
 
-        self.load_data = self._get_data_loader(self.data_format)
+        self._set_data_loader(self.data_loader)
         self._set_class_params(set_nums, superbatch_set_nums)
         self._set_preprocessor(preprocessor, self.preprocessor_configs)
 
@@ -79,7 +76,7 @@ class BatchGenerator():
             self.labels = []
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
-        print("BatchGenerator initiated")
+        print("DataGenerator initiated")
 
 
     ######### Main methods #########
@@ -141,6 +138,9 @@ class BatchGenerator():
         self._synch_to_preprocessor(self._SYNCH_ATTRS)
 
     ######### Main method helpers #########
+    def load_data(self, set_num):
+        return self.data_loader(self, set_num)
+
     def _get_next_batch(self):
         if self._group_batch is not None:
             batch = self._batch_from_group_batch()
@@ -257,7 +257,7 @@ class BatchGenerator():
                 return [num for num in list(hdf5_dataset.keys()) if (
                     num.isdigit() or isinstance(num, (float, int)))]
 
-            if self.data_format == 'hdf5-dataset':
+            if 'hdf5_dataset' in self.data_loader.__name__:
                 with h5py.File(self._hdf5_path, 'r') as hdf5_dataset:
                     return _set_nums_from_hdf5_dataset(hdf5_dataset)
             else:
@@ -296,46 +296,29 @@ class BatchGenerator():
         _set_or_validate_set_nums(set_nums)
         _set_or_validate_superbatch_set_nums(superbatch_set_nums)
 
-    def _get_data_loader(self, data_format):
-        def _get_path(set_num):
-            filename = self.base_name + str(set_num) + self.data_ext
-            return os.path.join(self.data_dir, filename)
-
-        def numpy_loader(set_num):
-            return np.load(_get_path(set_num)).astype(self.dtype)
-
-        def numpy_lz4f_loader(set_num):
-            bytes_npy = lz4f.decompress(np.load(_get_path(set_num)))
-            return np.frombuffer(bytes_npy, dtype=self.dtype).reshape(
-                *self.full_batch_shape)
-
-        def hdf5_loader(set_num):
-            with h5py.File(_get_path(set_num), 'r') as hdf5_file:
-                a_key = list(hdf5_file.keys())[0]  # only one should be present
-                return hdf5_file[a_key][:]
-
-        def hdf5_dataset_loader(set_num):
-            with h5py.File(self._hdf5_path, 'r') as hdf5_dataset:
-                return hdf5_dataset[str(set_num)][:]
-
-        if data_format == 'numpy':
-            load_data = numpy_loader
-        elif data_format == 'numpy-lz4f':
+    def _set_data_loader(self, data_loader):
+        if isinstance(data_loader, LambdaType):  # custom
+            self.data_loader = data_loader
+        elif data_loader == 'numpy':
+            self.data_loader = data_loaders.numpy_loader
+        elif data_loader == 'numpy-lz4f':
             if not IMPORTS['LZ4F']:
                 raise ImportError("`lz4framed` must be imported for "
-                                  "`data_format = 'numpy-lz4f'`")
-            load_data = numpy_lz4f_loader
-        elif data_format == 'hdf5':
-            load_data = hdf5_loader
-        elif data_format == 'hdf5-dataset':
-            load_data = hdf5_dataset_loader
+                                  "`data_loader = 'numpy-lz4f'`")
+            if getattr(self, 'full_batch_shape', None) is None:
+                raise ValueError("'numpy-lz4f' data_loader requires "
+                                 "`full_batch_shape` attribute defined")
+            self.data_loader = data_loaders.numpy_lz4f_loader
+        elif data_loader == 'hdf5':
+            self.data_loader = data_loaders.hdf5_loader
+        elif data_loader == 'hdf5-dataset':
+            self.data_loader = data_loaders.hdf5_dataset_loader
         else:
-            raise Exception("unsupported data format: '%s'" % data_format)
-        return load_data
+            raise Exception("unsupported data_loader: '%s'" % data_loader)
 
     def _set_preprocessor(self, preprocessor, preprocessor_configs):
         def _set(preprocessor, preprocessor_configs):
-            _builtins = BatchGenerator.BUILTIN_PREPROCESSORS
+            _builtins = DataGenerator.BUILTIN_PREPROCESSORS
             if preprocessor is None:
                 self.preprocessor = GenericPreprocessor(**preprocessor_configs)
             elif isinstance(preprocessor, (_builtins, type)):
@@ -353,7 +336,7 @@ class BatchGenerator():
             def raise_err(name):
                 _builtins = ', '.join(
                     (c.__module__ + '.' + c.__name__) for c in
-                    BatchGenerator.BUILTIN_PREPROCESSORS)
+                    DataGenerator.BUILTIN_PREPROCESSORS)
                 raise AttributeError(
                     ("`{}` attribute not found in `preprocessor`; required "
                      "are: {}\nSupported builtin preprocessors are: {}"
@@ -386,23 +369,23 @@ class BatchGenerator():
         [setattr(self.preprocessor, x, getattr(self, x)) for x in attrs]
 
     def _infer_and_get_data_info(self, data_dir, data_ext=None,
-                                 data_format=None, base_name=None):
-        def _get_data_format(extension, filenames):
-            data_format = {'.npy': 'numpy',
+                                 data_loader=None, base_name=None):
+        def _infer_data_loader(extension, filenames):
+            data_loader = {'.npy': 'numpy',
                            '.h5': 'hdf5'}[extension]
 
-            if data_format == 'numpy':
+            if data_loader == 'numpy':
                 print(NOTE, "inferred data format: 'numpy'; "
                       "will load via np.load - if compression / memapping "
-                      "is used, specify the exact `data_format`.")
-            elif data_format == 'hdf5' and len(filenames) == 1:
+                      "is used, specify the exact `data_loader`.")
+            elif data_loader == 'hdf5' and len(filenames) == 1:
                 print(NOTE, "inferred data format: 'hdf5-dataset' "
                       "(all data in one file, one group key per batch)")
-                data_format = 'hdf5-dataset'
-            elif data_format == 'hdf5':
-                print(NOTE, "inferred data format: 'hdf5'. For SimpleBatchgen, "
+                data_loader = 'hdf5-dataset'
+            elif data_loader == 'hdf5':
+                print(NOTE, "inferred data format: 'hdf5'. For DataGenerator, "
                       ".h5 files should only have one group key")
-            return data_format
+            return data_loader
 
         def _get_base_name(extension, filenames):
             def _longest_common_substr(data):
@@ -442,7 +425,7 @@ class BatchGenerator():
                            "(specify `data_ext` if this is false)")
                 return data_ext
 
-            supported_extensions = BatchGenerator.SUPPORTED_EXTENSIONS
+            supported_extensions = DataGenerator.SUPPORTED_DATA_EXTENSIONS
             if data_ext is None:
                 data_ext = _infer_extension(data_dir, supported_extensions)
 
@@ -456,18 +439,18 @@ class BatchGenerator():
 
         filenames, data_ext = _get_filenames_and_data_ext(data_dir, data_ext)
 
-        supported = BatchGenerator.SUPPORTED_FORMATS
-        if data_format is None:
-            data_format = _get_data_format(data_ext, filenames)
-        elif data_format not in supported:
-            msg = "unsupported data_format '{}'; must be one of {}".format(
-                    data_format, ', '.join(supported))
+        supported = DataGenerator.BUILTIN_DATA_LOADERS
+        if data_loader is None:
+            data_loader = _infer_data_loader(data_ext, filenames)
+        elif data_loader not in supported:
+            msg = "unsupported data_loader '{}'; must be one of {}".format(
+                    data_loader, ', '.join(supported))
             raise ValueError(msg)
 
         base_name = base_name or _get_base_name(data_ext, filenames)
         filepaths = _get_filepaths(data_dir, filenames)
 
-        return dict(data_format=data_format, base_name=base_name,
+        return dict(data_loader=data_loader, base_name=base_name,
                     filenames=filenames, filepaths=filepaths,
                     data_ext=data_ext)
 
@@ -478,11 +461,10 @@ class BatchGenerator():
                                              self.data_ext)
         name_and_alias = [(name, '_superbatch_' + name) for name in info]
         [setattr(self, alias, info[name]) for name, alias in name_and_alias]
-        load_data = self._get_data_loader(self.data_format)
 
         self.superbatch = {}  # empty if not empty
         for set_num in self.superbatch_set_nums:
-            self.superbatch[set_num] = load_data(set_num)
+            self.superbatch[set_num] = self.load_data(set_num)
             print(end='.')
 
         num_samples = sum([len(batch) for batch in self.superbatch.values()])
@@ -538,7 +520,7 @@ class BatchGenerator():
             # attributes to skip in TrainGenerator.load(), i.e. will use
             # those passed to __init__ instead // # TODO put in docstr instead
             loadskip_list=['data_dir', 'labels_path', 'superbatch_dir',
-                           'data_format', 'set_nums_original',
+                           'data_loader', 'set_nums_original',
                            'set_nums_to_process', 'superbatch_set_nums'],
             )
         for k, v in _defaults.items():

@@ -88,7 +88,7 @@ _REPORT_CFG = {
             ['batch', 'group_batch', 'labels', 'all_labels',
              'batch_loaded', 'batch_exhausted', 'set_num', 'set_name',
              '_set_names', 'set_nums_original', 'set_nums_to_process',
-             'superbatch_set_nums', 'load_data', 'data_dir', 'labels_path',
+             'superbatch_set_nums', 'data_loader', 'data_dir', 'labels_path',
              'loadskip_list', '_path_attrs', 'preprocessor',
              '*_ATTRS', '*superbatch', '*_filepaths', '*_filenames']
         },

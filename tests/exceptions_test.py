@@ -19,7 +19,7 @@ from deeptrain import metrics
 from deeptrain import preprocessing
 from deeptrain.util.misc import pass_on_error
 from deeptrain.visuals import layer_hists
-from deeptrain import TrainGenerator, SimpleBatchgen
+from deeptrain import TrainGenerator, DataGenerator
 
 
 batch_size = 128
@@ -109,8 +109,8 @@ def test_datagen():
         pass_on_error(dg._set_preprocessor, "x", {})
 
         pass_on_error(dg._infer_and_get_data_info, dg.data_dir,
-                      data_format="x")
-        dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
+                      data_loader="x")
+        dg._infer_and_get_data_info(dg.data_dir, data_loader="hdf5")
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
@@ -513,8 +513,8 @@ def _make_classifier(weights_path=None, **kw):
 
 def _init_session(C, make_model_fn, weights_path=None, loadpath=None):
     model = make_model_fn(weights_path, **C['model'])
-    dg  = SimpleBatchgen(**C['datagen'])
-    vdg = SimpleBatchgen(**C['val_datagen'])
+    dg  = DataGenerator(**C['datagen'])
+    vdg = DataGenerator(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
                          **C['traingen'])
     return tg

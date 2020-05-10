@@ -7,7 +7,7 @@ from copy import deepcopy
 
 from tests.backend import BASEDIR, notify
 from deeptrain.util.misc import pass_on_error, ordered_shuffle
-from deeptrain import SimpleBatchgen
+from deeptrain import DataGenerator
 
 
 datadir = os.path.join(BASEDIR, 'tests', 'data')
@@ -27,20 +27,20 @@ tests_done = {name: None for name in ('advance_batch', 'shuffle',
 def test_advance_batch():
     C = deepcopy(DATAGEN_CFG)
     C['superbatch_dir'] = os.path.join(datadir, 'image', 'train')
-    dg = SimpleBatchgen(**C)
+    dg = DataGenerator(**C)
     dg.advance_batch()
 
     C['batch_size'] = 31
-    dg = SimpleBatchgen(**C)
+    dg = DataGenerator(**C)
     pass_on_error(dg.advance_batch)
 
     C['batch_size'] = 256
-    dg = SimpleBatchgen(**C)
+    dg = DataGenerator(**C)
     dg.set_nums_to_process = []
     pass_on_error(dg.advance_batch)
 
-    C['data_format'] = 'pigeon'
-    pass_on_error(SimpleBatchgen, **C)
+    C['data_loader'] = 'pigeon'
+    pass_on_error(DataGenerator, **C)
 
 
 @notify(tests_done)
@@ -49,7 +49,7 @@ def test_shuffle():
     C['shuffle_group_batches'] = True
     C['superbatch_dir'] = os.path.join(datadir, 'image', 'train')
     C['batch_size'] = 64
-    dg = SimpleBatchgen(**C)
+    dg = DataGenerator(**C)
     dg.preload_superbatch()
     dg.advance_batch()
 
@@ -62,7 +62,7 @@ def test_data_loaders():
                                     'labels.h5')
     C['batch_size'] = 128
     C['base_name'] = 'batch32_'
-    dg = SimpleBatchgen(**C)
+    dg = DataGenerator(**C)
     dg.advance_batch()
 
 

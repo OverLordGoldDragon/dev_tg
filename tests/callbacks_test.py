@@ -11,7 +11,7 @@ from see_rnn import get_weights, features_2D
 from tests.backend import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir, notify
-from deeptrain import TrainGenerator, SimpleBatchgen
+from deeptrain import TrainGenerator, DataGenerator
 from deeptrain.callbacks import TraingenLogger, make_callbacks
 from deeptrain.callbacks import make_layer_hists_cb
 
@@ -206,8 +206,8 @@ def _make_model(weights_path=None, **kw):
 
 def _init_session(C, weights_path=None, loadpath=None):
     model = _make_model(weights_path, **C['model'])
-    dg  = SimpleBatchgen(**C['datagen'])
-    vdg = SimpleBatchgen(**C['val_datagen'])
+    dg  = DataGenerator(**C['datagen'])
+    vdg = DataGenerator(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
     return tg
 

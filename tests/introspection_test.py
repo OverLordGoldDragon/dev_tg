@@ -9,7 +9,7 @@ from tests.backend import Model
 from tests.backend import Adam
 from tests.backend import BASEDIR, notify
 from deeptrain import introspection
-from deeptrain import TrainGenerator, SimpleBatchgen
+from deeptrain import TrainGenerator, DataGenerator
 
 
 batch_size = 128
@@ -117,8 +117,8 @@ def _make_model(weights_path=None, **kw):
 
 def _init_session(C, weights_path=None, loadpath=None):
     model = _make_model(weights_path, **C['model'])
-    dg  = SimpleBatchgen(**C['datagen'])
-    vdg = SimpleBatchgen(**C['val_datagen'])
+    dg  = DataGenerator(**C['datagen'])
+    vdg = DataGenerator(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
     return tg
 

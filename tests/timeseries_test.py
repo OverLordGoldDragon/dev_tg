@@ -13,7 +13,7 @@ from tests.backend import BASEDIR, tempdir, notify
 from deeptrain.callbacks import predictions_per_iteration_cb
 from deeptrain.callbacks import predictions_distribution_cb
 from deeptrain.callbacks import comparative_histogram_cb
-from deeptrain import TrainGenerator, SimpleBatchgen
+from deeptrain import TrainGenerator, DataGenerator
 
 
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'timeseries')
@@ -147,8 +147,8 @@ def _make_model(weights_path=None, **kw):
 
 def _init_session(C, weights_path=None, loadpath=None):
     model = _make_model(weights_path, **C['model'])
-    dg  = SimpleBatchgen(**C['datagen'])
-    vdg = SimpleBatchgen(**C['val_datagen'])
+    dg  = DataGenerator(**C['datagen'])
+    vdg = DataGenerator(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
                          **C['traingen'])
     return tg
