@@ -112,10 +112,13 @@ def _make_2Dviz_cb():
 
 
 layer_hists_cbs = {
-    'lhgw': {'val_end': make_layer_hists_cb(mode='gradients:weights')},
     'lhgo': {'val_end': make_layer_hists_cb(mode='gradients:outputs')},
-    'lho':  {'val_end': make_layer_hists_cb(mode='outputs')},
-    'lhw':  {'val_end': make_layer_hists_cb(mode='weights')},
+    'lhgw': {'val_end': make_layer_hists_cb(mode='gradients:weights')},
+    'lho':  {'val_end': make_layer_hists_cb(mode='weights')},
+    'lhw':  {'val_end': make_layer_hists_cb(mode='outputs',
+                                            configs={'title': dict(fontsize=13),
+                                                     'plot': dict(annot_kw=None)},
+                                            )},
 }
 
 
