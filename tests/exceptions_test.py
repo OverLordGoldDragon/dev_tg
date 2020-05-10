@@ -106,7 +106,7 @@ def test_datagen():
         _pass_on_fail(dg._set_class_params, ['1', '2'], ['1', '2'])
 
         dg._set_preprocessor(None, {})
-        dg._set_preprocessor("x", {})
+        _pass_on_fail(dg._set_preprocessor, "x", {})
 
         _pass_on_fail(dg._infer_and_get_data_info, dg.data_dir,
                       data_format="x")
