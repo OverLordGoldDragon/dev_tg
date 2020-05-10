@@ -13,7 +13,8 @@ def pass_on_error(fn, *args, **kwargs):
     try:
         fn(*args, **kwargs)
     except BaseException as e:
-        print(fail_msg)
+        if fail_msg is not None:
+            print(fail_msg)
         print("Errmsg:", e)
 
 

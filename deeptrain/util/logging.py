@@ -75,8 +75,8 @@ def get_report_text(cls):
                 supported = ('model', 'traingen', 'datagen', 'val_datagen')
                 for key in keys:
                     if key not in supported:
-                        print(WARN,  key + " report_configs key not "
-                              "supported, and will be ignored; supported "
+                        print(WARN, "'%s' report_configs key not " % key
+                              + "supported, and will be ignored; supported "
                               "are: {}".format(', '.join(supported)))
                         keys.pop(keys.index(key))
                 return keys
@@ -84,18 +84,18 @@ def get_report_text(cls):
             def _validate_subkeys(cfg):
                 supported = ('include', 'exclude', 'exclude_types')
                 for key, val in cfg.items():
+                    if 'include' in val and 'exclude' in val:
+                        raise ValueError("cannot have both 'include' and "
+                                         "'exclude' subkeys in report_configs")
                     for subkey, attrs in val.items():
                         if not isinstance(attrs, list):
                             raise ValueError("report_configs subkey values must "
                                              "be lists (e.g. 'exclude' values)")
                         if subkey not in supported:
-                            raise ValueError(subkey + " report_configs subkey "
-                                             "not supported; must be one of: "
-                                             + ', '.join(supported))
-                        elif 'include' in subkey and 'exclude' in subkey:
-                            raise ValueError("cannot have both 'include' and "
-                                             "'exclude' subkeys in "
-                                             "report_configs")
+                            raise ValueError(
+                                ("'{}' report_configs subkey not supported; must "
+                                 "be one of: {}").format(
+                                     subkey, ', '.join(supported)))
                 return cfg
 
             def _unpack_tuple_keys(_dict):
@@ -276,7 +276,7 @@ def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
                 print(str(cls), "source codes saved to", path)
 
     def is_builtin_or_numpy_scalar(x):
-        return (type(x) in (*vars(builtins).values(), type(None)) or
+        return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
                 isinstance(x, np.generic))
 
     def _name(x):
@@ -309,26 +309,11 @@ def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
             with open(path, 'r') as f:
                 return f.read(), path
 
-        def _to_text(source):
-            def _wrap_decor(x):
-                """Format as: ## long_text_s ##
-                              ## tuff #########"""
-                wrapped = textwrap.wrap(x, width=77)
-                txt = ''
-                for line in wrapped:
-                    txt += "## %s\n" % (line + ' ' + "#" * 77)[:80]
-                return txt.rstrip('\n')
+        def _get_all_sourceable(keys, source, state_full):
+            def not_func(x):
+                return getattr(getattr(x, '__class__', None),
+                               '__name__', '') not in ('function', 'method')
 
-            txt = ''
-            for k, v in source.items():
-                txt += "\n\n{}\n{}".format(_wrap_decor(k), v)
-            return txt.lstrip('\n')
-
-        def not_func(x):
-            return getattr(getattr(x, '__class__', None),
-                           '__name__', '') not in ('function', 'method')
-
-        def _get_all_sourceable(keys, source):
             to_skip = ['__main__']
             if not isinstance(keys, (list, tuple)):
                 keys = [keys]
@@ -351,11 +336,25 @@ def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
                               "Errmsg: %s" % e)
             return source
 
+        def _to_text(source):
+            def _wrap_decor(x):
+                """Format as: ## long_text_s ##
+                              ## tuff #########"""
+                wrapped = textwrap.wrap(x, width=77)
+                txt = ''
+                for line in wrapped:
+                    txt += "## %s\n" % (line + ' ' + "#" * 77)[:80]
+                return txt.rstrip('\n')
+
+            txt = ''
+            for k, v in source.items():
+                txt += "\n\n{}\n{}".format(_wrap_decor(k), v)
+            return txt.lstrip('\n')
+
         source = {}
         if source_lognames == '*':
-            source = _get_all_sourceable(list(state_full), source)
-        else:
-            source = _get_all_sourceable(source_lognames, source)
+            source_lognames = list(state_full)
+        source = _get_all_sourceable(source_lognames, source, state_full)
 
         if '__main__' in source_lognames or source_lognames == '*':
             src, path = _get_main_source()

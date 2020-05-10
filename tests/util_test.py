@@ -90,11 +90,45 @@ def test_logging():
         os.mkdir(os.path.join(tg.logs_dir, 'M0'))
         logging._get_unique_model_name(tg)
 
+    def _test_log_init_state():
+        class SUV():
+            pass
+
+        tg = TraingenDummy()
+        tg.SUV = SUV()
+        logging._log_init_state(tg, source_lognames=['swordfish', 'SUV'])
+        logging._log_init_state(tg, source_lognames='*')
+        logging._log_init_state(tg, source_lognames=None)
+
+    def _test_get_report_text():
+        tg = TraingenDummy()
+        tg.report_configs = {'model': dict(stuff='staff'), 'saitama': None}
+        pass_on_error(logging.get_report_text, tg)
+
+        tg.report_configs = {'model': {'genos': [1]}}
+        pass_on_error(logging.get_report_text, tg)
+
+        tg.report_configs = {'model': {'include': [], 'exclude': []}}
+        pass_on_error(logging.get_report_text, tg)
+
+        tg.report_configs = {'model': {'exclude_types': ['etc']}}
+        tg.model_configs = {'a': 1}
+        pass_on_error(logging.get_report_text, tg)
+
+    def _test_generate_report():
+        tg = TraingenDummy()
+        tg.report_configs = {'model': {'include': []}}
+        tg.logdir = ''
+        pass_on_error(logging.generate_report, tg, '')
+
     logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
     best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_models')
-
     with tempdir(logs_dir), tempdir(best_models_dir):
         _test_get_unique_model_name()
+
+    _test_log_init_state()
+    _test_get_report_text()
+    _test_generate_report()
 
 
 @notify(tests_done)

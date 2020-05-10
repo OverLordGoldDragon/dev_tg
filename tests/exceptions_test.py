@@ -87,7 +87,7 @@ def test_datagen():
         dg.advance_batch()
         dg.batch = dg.batch[:1]
         dg.batch_loaded = False
-        _pass_on_fail(dg.advance_batch)
+        pass_on_error(dg.advance_batch)
         dg.batch_loaded = True
         dg.advance_batch(forced=False)
 
@@ -100,15 +100,15 @@ def test_datagen():
         dg._validate_batch()
 
         dg.set_nums_to_process = dg.set_nums_original.copy()
-        _pass_on_fail(dg._set_class_params, ['99', '100'], ['100', '101'])
-        _pass_on_fail(dg._set_class_params, ['1', '2'], ['100', '101'])
+        pass_on_error(dg._set_class_params, ['99', '100'], ['100', '101'])
+        pass_on_error(dg._set_class_params, ['1', '2'], ['100', '101'])
         dg.superbatch_dir = None
-        _pass_on_fail(dg._set_class_params, ['1', '2'], ['1', '2'])
+        pass_on_error(dg._set_class_params, ['1', '2'], ['1', '2'])
 
         dg._set_preprocessor(None, {})
-        _pass_on_fail(dg._set_preprocessor, "x", {})
+        pass_on_error(dg._set_preprocessor, "x", {})
 
-        _pass_on_fail(dg._infer_and_get_data_info, dg.data_dir,
+        pass_on_error(dg._infer_and_get_data_info, dg.data_dir,
                       data_format="x")
         dg._infer_and_get_data_info(dg.data_dir, data_format="hdf5")
 
@@ -118,9 +118,9 @@ def test_datagen():
 @notify(tests_done)
 def test_visuals():
     def _layer_hists(model):
-        _pass_on_fail(layer_hists, model, '*', mode='gradients')
-        _pass_on_fail(layer_hists, model, '*', mode='outputs')
-        _pass_on_fail(layer_hists, model, '*', mode='skeletons')
+        pass_on_error(layer_hists, model, '*', mode='gradients')
+        pass_on_error(layer_hists, model, '*', mode='outputs')
+        pass_on_error(layer_hists, model, '*', mode='skeletons')
 
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
@@ -530,13 +530,6 @@ def _destroy_session(tg):
     _clear_data(tg)
     [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
     del tg
-
-
-def _pass_on_fail(fn, *args, **kwargs):
-    try:
-        fn(*args, **kwargs)
-    except Exception as e:
-        print("Errmsg", e)
 
 
 if __name__ == '__main__':
