@@ -19,7 +19,7 @@ def generate_report(cls, savepath):
         fnt = ImageFont.truetype(fontpath, fontsize)
 
         d = ImageDraw.Draw(img)
-        d.text((10,30), text, fill=(0,0,0), font=fnt)
+        d.text((10,30), text, fill=(0, 0, 0), font=fnt)
 
         img.save(savepath)
 

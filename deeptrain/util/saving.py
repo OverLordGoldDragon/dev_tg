@@ -331,8 +331,6 @@ def load(cls, filepath=None):
         dg.preload_labels()
         dg.advance_batch()
 
-    cls._labels      = cls.datagen.labels
-    cls._val_labels  = cls.val_datagen.labels
     cls._set_num     = cls.datagen.set_num
     cls._val_set_num = cls.val_datagen.set_num
 

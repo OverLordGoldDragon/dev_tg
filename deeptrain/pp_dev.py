@@ -14,17 +14,17 @@ class TimeseriesPreprocessor():
         self.batch_timesteps=batch_timesteps
         self.slide_size=slide_size or window_size
         self.start_increments=start_increments
-        
+
         self.start_increment = 0
         self.reset_state()
         self._set_start_increment(epoch=0)
         self._set_windows_per_batch()
-        
+
         self.loadskip_list=loadskip_list or [
             'start_increments', 'window_size', 'slide_size']
 
-    def process(self, batch):
-        return self._next_window(batch)
+    def process(self, batch, labels):
+        return self._next_window(batch), labels
 
     def _next_window(self, batch):
         start = self.slice_idx * self.slide_size + self.start_increment
@@ -58,13 +58,14 @@ class TimeseriesPreprocessor():
             ) // self.slide_size
         self.slices_per_batch = self.slices_per_batch
 
+
 class GenericPreprocessor():
-    def __init__(self, loadskip_list=None):        
+    def __init__(self, loadskip_list=None):
         self.loadskip_list=loadskip_list or []
         self.reset_state()
 
-    def process(self, batch):
-        return batch
+    def process(self, batch, labels):
+        return batch, labels
 
     def reset_state(self):
         self.batch_exhausted = True

@@ -2,6 +2,7 @@
 """TODO:
     - label preloaders
     - profile batch.extend speed
+    - pp labels
 """
 import os
 import h5py
@@ -33,6 +34,7 @@ class DataGenerator():
                  preprocessor=None,
                  preprocessor_configs=None,
                  data_loader=None,
+                 labels_preloader=None,
                  base_name=None,
                  shuffle=False,
                  dtype='float32',
@@ -47,6 +49,7 @@ class DataGenerator():
         self.preprocessor=preprocessor
         self.preprocessor_configs=preprocessor_configs or {}
         self.data_loader=data_loader
+        self.labels_preloader=labels_preloader
         self.base_name=base_name
         self.shuffle=shuffle
         self.dtype=dtype
@@ -59,17 +62,19 @@ class DataGenerator():
 
         info = self._infer_and_get_data_info(data_dir, data_ext, data_loader,
                                              base_name)
-        name_and_alias = [
-            ('data_loader', 'data_loader'), ('base_name', 'base_name'),
-            ('filenames', '_filenames',), ('filepaths', '_filepaths'),
-            ('data_ext', 'data_ext')]
-        [setattr(self, alias, info[name]) for name, alias in name_and_alias]
+        self.data_loader = info['data_loader']
+        self.base_name   = info['base_name']
+        self._filenames  = info['filenames']
+        self._filepaths  = info['filepaths']
+        self.data_ext    = info['data_ext']
 
         self._set_data_loader(self.data_loader)
         self._set_class_params(set_nums, superbatch_set_nums)
         self._set_preprocessor(preprocessor, self.preprocessor_configs)
 
-        if self.labels_path is not None:
+        if labels_preloader is not None:
+            self.labels_preloader(self)
+        elif labels_path is not None:
             self.preload_labels()
         else:
             self.all_labels = {}
@@ -83,7 +88,7 @@ class DataGenerator():
     def get(self, skip_validation=False):
         if not skip_validation:
             self._validate_batch()
-        return self.preprocessor.process(self.batch)
+        return self.preprocessor.process(self.batch, self.labels)
 
     def advance_batch(self, forced=False, is_recursive=False):
         def _handle_batch_size_mismatch(forced):

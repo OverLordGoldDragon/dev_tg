@@ -374,15 +374,11 @@ class TrainGenerator():
         datagen = self.val_datagen if val else self.datagen
         if datagen.batch_exhausted:
             datagen.advance_batch()
-            setattr(self, '_val_labels' if val else '_labels',
-                    datagen.labels)
-            setattr(self, '_val_set_name' if val else '_set_name',
-                    datagen.set_name)
 
-        x = datagen.get()
-        y = datagen.labels if not self.input_as_labels else x
+        x, labels = datagen.get()
+        y = labels if not self.input_as_labels else x
 
-        class_labels = _standardize_shape(datagen.labels)
+        class_labels = _standardize_shape(labels)
         slice_idx = getattr(datagen, 'slice_idx', None)
         sample_weight = _get_sample_weight(self, class_labels, val, slice_idx)
 
@@ -597,14 +593,12 @@ class TrainGenerator():
         if self.datagen.superbatch_set_nums != []:
             self.datagen.preload_superbatch()
         self.datagen.advance_batch()
-        self._labels = self.datagen.labels
         self._set_name = self.datagen.set_name
         print("Train initial data prepared")
 
         if self.val_datagen.superbatch_set_nums != []:
             self.val_datagen.preload_superbatch()
         self.val_datagen.advance_batch()
-        self._val_labels = self.val_datagen.labels
         self._val_set_name = self.val_datagen.set_name
         print("Val initial data prepared")
 

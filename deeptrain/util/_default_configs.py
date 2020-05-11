@@ -112,8 +112,6 @@ _DEFAULT_TRAINGEN_SAVE_LIST = [
     'val_epoch',
     'key_metric_history',
     'best_key_metric',
-    'labels',
-    '_val_labels',
     '_labels_cache',
     '_sw_cache',
     '_y_true',

@@ -64,7 +64,7 @@ def comparative_histogram_cb(cls):
     """Suited for binary classification sigmoid outputs"""
     comparative_histogram(cls.model,
                           layer_name=cls.model.layers[-1].name,
-                          data=cls.val_datagen.get(skip_validation=True),
+                          data=cls.val_datagen.get(skip_validation=True)[0],
                           vline=cls.predict_threshold,
                           xlims=(0, 1))
 
@@ -199,7 +199,7 @@ class TraingenLogger():
             if get_data_fn is not None:
                 self.get_data_fn = get_data_fn
                 return
-            data = self.tg.val_datagen.get()
+            data = self.tg.val_datagen.get()[0]
             self.get_data_fn = lambda: data
 
         def _process_get_labels_fn(get_labels_fn):
@@ -207,10 +207,10 @@ class TraingenLogger():
                 self.get_labels_fn = get_labels_fn
                 return
             if self.tg.input_as_labels:
-                labels = self.tg.val_datagen.get()
-                self.get_labels_fn = lambda: labels
+                labels = self.tg.val_datagen.get()[0]
             else:
-                self.get_labels_fn = lambda: self.tg.datagen.labels
+                labels = self.tg.val_datagen.get()[1]
+            self.get_labels_fn = lambda: labels
 
         def _process_init_log_id(init_log_id):
             assert isinstance(init_log_id, (int, type(None)))
