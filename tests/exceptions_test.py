@@ -112,6 +112,9 @@ def test_datagen():
                       data_loader="x")
         dg._infer_and_get_data_info(dg.data_dir, data_loader="hdf5")
 
+        C['datagen']['invalid_kwarg'] = 5
+        pass_on_error(DataGenerator, **C['datagen'])
+
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 

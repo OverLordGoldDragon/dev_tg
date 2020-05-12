@@ -6,7 +6,6 @@ import os
 import h5py
 import random
 import numpy as np
-import pandas as pd
 
 from pathlib import Path
 from copy import deepcopy
@@ -15,7 +14,7 @@ from types import LambdaType
 from .pp_dev import GenericPreprocessor, TimeseriesPreprocessor
 from .util.misc import ordered_shuffle
 from .util.configs import _DATAGEN_CFG
-from .util import data_loaders
+from .util import data_loaders, labels_preloaders
 from .util._backend import WARN, NOTE, IMPORTS
 from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
@@ -70,9 +69,7 @@ class DataGenerator():
         self._set_class_params(set_nums, superbatch_set_nums)
         self._set_preprocessor(preprocessor, self.preprocessor_configs)
 
-        if labels_preloader is not None:
-            self.labels_preloader(self)
-        elif labels_path is not None:
+        if labels_preloader is not None or labels_path is not None:
             self.preload_labels()
         else:
             self.all_labels = {}
@@ -321,19 +318,14 @@ class DataGenerator():
 
     def _set_preprocessor(self, preprocessor, preprocessor_configs):
         def _set(preprocessor, preprocessor_configs):
-            _builtins = DataGenerator.BUILTIN_PREPROCESSORS
             if preprocessor is None:
                 self.preprocessor = GenericPreprocessor(**preprocessor_configs)
-            elif isinstance(preprocessor, (_builtins, type)):
-                if isinstance(preprocessor, type):  # uninstantiated
-                    self.preprocessor = preprocessor(**preprocessor_configs)
-                else:
-                    self.preprocessor = preprocessor
+            elif isinstance(preprocessor, type):  # uninstantiated
+                self.preprocessor = preprocessor(**preprocessor_configs)
             elif preprocessor == 'timeseries':
                 self.preprocessor = TimeseriesPreprocessor(**preprocessor_configs)
             else:
-                raise ValueError("`preprocessor` must be either string, class, "
-                                 "or instantiated object - got: %s" % preprocessor)
+                self.preprocessor = preprocessor  # validate later
 
         def _validate_preprocessor_attributes():
             def raise_err(name):
@@ -342,7 +334,7 @@ class DataGenerator():
                     DataGenerator.BUILTIN_PREPROCESSORS)
                 raise AttributeError(
                     ("`{}` attribute not found in `preprocessor`; required "
-                     "are: {}\nSupported builtin preprocessors are: {}"
+                     "are: {}.\nSupported builtin preprocessors are: {}"
                      ).format(name, ', '.join(required),
                               "'timeseries', %s" % _builtins))
 
@@ -445,7 +437,8 @@ class DataGenerator():
         supported = DataGenerator.BUILTIN_DATA_LOADERS
         if data_loader is None:
             data_loader = _infer_data_loader(data_ext, filenames)
-        elif data_loader not in supported:
+        elif data_loader not in supported and not isinstance(
+                data_loader, LambdaType):
             msg = "unsupported data_loader '{}'; must be one of {}".format(
                     data_loader, ', '.join(supported))
             raise ValueError(msg)
@@ -474,15 +467,16 @@ class DataGenerator():
         print(" finished, w/", num_samples, "total samples")
 
     def preload_labels(self):
+        if self.labels_preloader is not None:
+            self.labels_preloader(self)
+            return
+
         ext = Path(self.labels_path).suffix
         if ext == '.csv':
-            df = pd.read_csv(self.labels_path)
-            self.all_labels = {}
-            for set_num in df:
-                self.all_labels[set_num] = df[set_num].to_numpy()
+            self.labels_preloader = labels_preloaders.csv_preloader
         elif ext == '.h5':
-            with h5py.File(self.labels_path, 'r') as f:
-                self.all_labels = {k:f[k][:] for k in list(f.keys())}
+            self.labels_preloader = labels_preloaders.hdf5_preloader
+        self.labels_preloader(self)
 
     def _init_and_validate_kwargs(self, kwargs):
         def _validate_kwarg_names(kwargs):

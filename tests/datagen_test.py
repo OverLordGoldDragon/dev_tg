@@ -7,7 +7,9 @@ from copy import deepcopy
 
 from tests.backend import BASEDIR, notify
 from deeptrain.util.misc import pass_on_error, ordered_shuffle
+from deeptrain.util import data_loaders, labels_preloaders
 from deeptrain import DataGenerator
+from deeptrain import TimeseriesPreprocessor
 
 
 datadir = os.path.join(BASEDIR, 'tests', 'data')
@@ -20,7 +22,7 @@ DATAGEN_CFG = dict(
 )
 
 tests_done = {name: None for name in ('advance_batch', 'shuffle',
-                                      'data_loaders',)}
+                                      'data_loaders', 'labels_preloaders')}
 
 
 @notify(tests_done)
@@ -56,14 +58,73 @@ def test_shuffle():
 
 @notify(tests_done)
 def test_data_loaders():
+    def _test_auto_hdf5(C):
+        dg = DataGenerator(**C)
+        dg.advance_batch()
+
+    def _test_hdf5(C):
+        C['data_loader'] = data_loaders.hdf5_loader
+        dg = DataGenerator(**C)
+        dg.advance_batch()
+
+    def _test_exception(C):
+        C['data_loader'] = 'invalid_loader'
+        pass_on_error(DataGenerator, **C)
+
     C = deepcopy(DATAGEN_CFG)
     C['data_dir'] = os.path.join(datadir, 'timeseries_split', 'train')
     C['labels_path'] = os.path.join(datadir, 'timeseries_split', 'train',
                                     'labels.h5')
     C['batch_size'] = 128
     C['base_name'] = 'batch32_'
-    dg = DataGenerator(**C)
-    dg.advance_batch()
+
+    _test_auto_hdf5(C)
+    _test_hdf5(C)
+    _test_exception(C)
+
+
+@notify(tests_done)
+def test_labels_preloaders():
+    def _test_no_preloader():
+        C = deepcopy(DATAGEN_CFG)
+        C['labels_preloader'] = None
+        C['labels_path'] = None
+        DataGenerator(**C)
+
+    def _test_hdf5_preloader():
+        C = deepcopy(DATAGEN_CFG)
+        C['labels_preloader'] = labels_preloaders.hdf5_preloader
+        DataGenerator(**C)
+
+    _test_no_preloader()
+    _test_hdf5_preloader()
+
+
+@notify(tests_done)
+def test_preprocessors():
+    def _test_uninstantiated():
+        C = deepcopy(DATAGEN_CFG)
+        C['preprocessor'] = TimeseriesPreprocessor
+        C['preprocessor_configs'] = dict(window_size=5, batch_timesteps=10)
+        DataGenerator(**C)
+
+    def _test_instantiated():
+        C = deepcopy(DATAGEN_CFG)
+        C['preprocessor'] = TimeseriesPreprocessor(window_size=5,
+                                                   batch_timesteps=10)
+
+    def _test_incomplete():
+        class IncompletePreprocessor():
+            def __init__(self):
+                pass
+
+        C = deepcopy(DATAGEN_CFG)
+        C['preprocessor'] = IncompletePreprocessor()
+        pass_on_error(DataGenerator, **C)
+
+    _test_uninstantiated()
+    _test_instantiated()
+    _test_incomplete()
 
 
 @notify(tests_done)
