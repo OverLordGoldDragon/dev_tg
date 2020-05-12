@@ -70,12 +70,12 @@ def _make_logger_cb(get_data_fn=None, get_labels_fn=None, gather_fns=None):
         'gradients-kw': dict(learning_phase=0),
     }
     callbacks_init = {
-        'logger': lambda cls: TraingenLogger(cls, logger_savedir, log_configs,
+        'logger': lambda self: TraingenLogger(self, logger_savedir, log_configs,
                                              get_data_fn=get_data_fn,
                                              get_labels_fn=get_labels_fn,
                                              gather_fns=gather_fns)
         }
-    save_fn = lambda cls: TraingenLogger.save(cls, _id=cls.tg.epoch)
+    save_fn = lambda self: TraingenLogger.save(self, _id=self.tg.epoch)
     callbacks = {
         'logger':
             {'save': (save_fn, TraingenLogger.clear),
@@ -102,7 +102,7 @@ def _make_2Dviz_cb():
             outs = list(lg.outputs[last_key][0].values())[0]
             return outs[0].T
 
-    callbacks_init = {'viz_2d': lambda cls: Viz2D(cls)}
+    callbacks_init = {'viz_2d': lambda self: Viz2D(self)}
     callbacks = {'viz_2d': {('val_end', 'train:epoch'): Viz2D.viz}}
     return callbacks, callbacks_init
 

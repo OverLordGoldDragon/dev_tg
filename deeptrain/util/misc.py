@@ -57,6 +57,26 @@ def nCk(n, k):  # n-Choose-k
     return numer / denom
 
 
+def get_module_methods(module):
+    output = {}
+    for name in dir(module):
+        obj = getattr(module, name)
+        obj_name = getattr(obj, '__name__', '')
+        if ((str(obj).startswith('<function')
+             and isinstance(obj, LambdaType)) # is a function
+            and module.__name__ == getattr(obj, '__module__', '')  # same module
+            and name == obj_name  # not a duplicate
+            and not (  # not a magic method
+                obj_name.startswith('__')
+                and obj_name.endswith('__')
+                and len(obj_name) >= 5
+            )
+            and '<lambda>' not in str(getattr(obj, '__code__'))  # not a lambda
+        ):
+            output[name] = obj
+    return output
+
+
 def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
                           alias_to_metric_name_fn=None):
     """Instantiates trainer & optimizer, but does NOT train (update weights)"""
@@ -112,7 +132,7 @@ def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
     model._make_train_function()
 
 
-def _make_plot_configs_from_metrics(cls):
+def _make_plot_configs_from_metrics(self):
     def _make_colors():
         train_defaults = plt.rcParams['axes.prop_cycle'].by_key()['color']
         train_defaults.pop(1)  # reserve 'orange' for {'val': 'loss'}
@@ -126,13 +146,13 @@ def _make_plot_configs_from_metrics(cls):
                            'tpr': 'red'}
 
         colors = []
-        for i, metric in enumerate(cls.train_metrics):
+        for i, metric in enumerate(self.train_metrics):
             if metric in train_customs_map:
                 colors.append(train_customs_map[metric])
             else:
                 colors.append(train_defaults[i])
 
-        for metric in cls.val_metrics:
+        for metric in self.val_metrics:
             if metric in val_customs_map:
                 colors.append(val_customs_map[metric])
             else:
@@ -140,22 +160,22 @@ def _make_plot_configs_from_metrics(cls):
         return colors
 
     plot_configs = {}
-    n_train = len(cls.train_metrics)
-    n_val = len(cls.val_metrics)
+    n_train = len(self.train_metrics)
+    n_val = len(self.val_metrics)
 
-    val_metrics_p1 = cls.val_metrics[:cls.plot_first_pane_max_vals]
+    val_metrics_p1 = self.val_metrics[:self.plot_first_pane_max_vals]
     n_val_p1 = len(val_metrics_p1)
     n_total_p1 = n_train + n_val_p1
 
     colors = _make_colors()
-    if cls.key_metric == 'loss':
+    if self.key_metric == 'loss':
         mark_best_cfg = {'val': 'loss'}
     else:
         mark_best_cfg = None
 
     plot_configs['1'] = {
         'metrics':
-            {'train': cls.train_metrics,
+            {'train': self.train_metrics,
              'val'  : val_metrics_p1},
         'x_ticks':
             {'train': ['_train_x_ticks'] * n_train,
@@ -169,19 +189,19 @@ def _make_plot_configs_from_metrics(cls):
         'linewidth': [1.5] * n_total_p1,
         'color'    : colors[:n_total_p1],
         }
-    if len(cls.val_metrics) <= cls.plot_first_pane_max_vals:
+    if len(self.val_metrics) <= self.plot_first_pane_max_vals:
         return plot_configs
 
     # dedicate separate pane to remainder val_metrics
-    if cls.key_metric != 'loss':
-        mark_best_cfg = {'val': cls.key_metric}
+    if self.key_metric != 'loss':
+        mark_best_cfg = {'val': self.key_metric}
     else:
         mark_best_cfg = None
     n_val_p2 = n_val - n_val_p1
 
     plot_configs['2'] = {
         'metrics':
-            {'val': cls.val_metrics[n_val_p1:]},
+            {'val': self.val_metrics[n_val_p1:]},
         'x_ticks':
             {'val': ['_val_x_ticks'] * n_val_p2},
         'vhlines'   :
@@ -196,60 +216,60 @@ def _make_plot_configs_from_metrics(cls):
     return plot_configs
 
 
-def _validate_traingen_configs(cls):
+def _validate_traingen_configs(self):
     def _validate_metrics():
         def _validate(metric, failmsg):
             try:
                 # check against alias since converted internally when computing
-                getattr(deeptrain.metrics, cls._alias_to_metric_name(metric))
+                getattr(deeptrain.metrics, self._alias_to_metric_name(metric))
             except:
                 raise ValueError(failmsg)
 
         for name in ('train_metrics', 'val_metrics'):
-            value = getattr(cls, name)
+            value = getattr(self, name)
             if not isinstance(value, list):
                 if isinstance(value, (str, type(None))):
-                    setattr(cls, name, [value])
+                    setattr(self, name, [value])
                 else:
-                    setattr(cls, name, list(value))
-            value = getattr(cls, name)
+                    setattr(self, name, list(value))
+            value = getattr(self, name)
             for i, maybe_alias in enumerate(value):
-                getattr(cls, name)[i] = cls._alias_to_metric_name(maybe_alias)
-        cls.key_metric = cls._alias_to_metric_name(cls.key_metric)
+                getattr(self, name)[i] = self._alias_to_metric_name(maybe_alias)
+        self.key_metric = self._alias_to_metric_name(self.key_metric)
 
-        model_metrics = cls.model.metrics_names
+        model_metrics = self.model.metrics_names
 
-        if cls.eval_fn_name == 'evaluate':
+        if self.eval_fn_name == 'evaluate':
             basemsg = ("must be in one of metrics returned by model, "
                        "when using `eval_fn_name='evaluate'`. "
                        "(model returns: %s)" % ', '.join(model_metrics))
-            for metric in cls.val_metrics:
+            for metric in self.val_metrics:
                 if metric not in model_metrics:
                     raise ValueError(f"val metric {metric} " + basemsg)
-            if cls.key_metric not in model_metrics:
-                raise ValueError(f"key_metric {cls.key_metric} " + basemsg)
+            if self.key_metric not in model_metrics:
+                raise ValueError(f"key_metric {self.key_metric} " + basemsg)
 
-        if cls.key_metric not in cls.val_metrics:
-            cls.val_metrics.append(cls.key_metric)
+        if self.key_metric not in self.val_metrics:
+            self.val_metrics.append(self.key_metric)
 
-        if cls.eval_fn_name == 'predict':
-            for metric in cls.val_metrics:
+        if self.eval_fn_name == 'predict':
+            for metric in self.val_metrics:
                 if metric == 'loss':
-                    metric = cls.model.loss
+                    metric = self.model.loss
                 _validate(metric, failmsg=("'{0}' metric is not supported; add "
                                            "a function to `custom_metrics` as "
                                            "'{0}': func.").format(metric))
-            _validate(cls.model.loss, failmsg=(
+            _validate(self.model.loss, failmsg=(
                 "'{0}' loss is not supported w/ `eval_fn_name = 'predict'`; "
                 "add a function to `custom_metrics` as '{0}': func, or set "
-                "`eval_fn_name = 'evaluate'`.").format(cls.model.loss))
+                "`eval_fn_name = 'evaluate'`.").format(self.model.loss))
 
-            km = cls.key_metric if cls.key_metric != 'loss' else cls.model.loss
-            if cls.key_metric_fn is None:
+            km = self.key_metric if self.key_metric != 'loss' else self.model.loss
+            if self.key_metric_fn is None:
                 _validate(km, failmsg=(f"`key_metric = '{km}'` is not supported; "
                                        "set `key_metric_fn = func`."))
 
-        if cls.max_is_best and cls.key_metric == 'loss':
+        if self.max_is_best and self.key_metric == 'loss':
             print(NOTE + "`max_is_best = True` and `key_metric = 'loss'`"
                   "; will consider higher loss to be better")
 
@@ -260,92 +280,92 @@ def _validate_traingen_configs(cls):
             _metrics = model_metrics.copy()
             target_name = 'val_metrics' if val else 'train_metrics'
 
-            for metric in getattr(cls, target_name, []):
+            for metric in getattr(self, target_name, []):
                 if metric not in _metrics:
                     _metrics.append(metric)
-            setattr(cls, target_name, _metrics.copy())
+            setattr(self, target_name, _metrics.copy())
 
-        model_metrics = cls.model.metrics_names.copy()
+        model_metrics = self.model.metrics_names.copy()
         # ensure api-compatibility, e.g. 'acc' -> 'accuracy'
-        model_metrics = [cls._alias_to_metric_name(metric)
+        model_metrics = [self._alias_to_metric_name(metric)
                          for metric in model_metrics]
 
         _set_in_matching_order(model_metrics, val=False)
 
-        if cls.eval_fn_name == 'evaluate':
-            if cls.val_metrics is not None:
-                for metric in cls.val_metrics:
+        if self.eval_fn_name == 'evaluate':
+            if self.val_metrics is not None:
+                for metric in self.val_metrics:
                     if metric not in model_metrics:
                         raise ValueError(
                             f"metric '{metric}' is not in model.metrics_names, "
                             "with `eval_fn_name='evaluate'`")
-            cls.val_metrics = model_metrics.copy()
+            self.val_metrics = model_metrics.copy()
         else:
             _set_in_matching_order(model_metrics, val=True)
 
     def _validate_directories():
-        if cls.logs_dir is None and cls.best_models_dir is None:
+        if self.logs_dir is None and self.best_models_dir is None:
             print(WARN, "`logs_dir = None` and `best_models_dir = None`; "
                   "logging is OFF")
-        elif cls.logs_dir is None:
+        elif self.logs_dir is None:
             print(NOTE, "`logs_dir = None`; will not checkpoint "
                   "periodically")
-        elif cls.best_models_dir is None:
+        elif self.best_models_dir is None:
             print(NOTE, "`best_models_dir = None`; best models will not "
                   "be checkpointed")
 
     def _validate_optimizer_saving_configs():
         for name in ('optimizer_save_configs', 'optimizer_load_configs'):
-            cfg = getattr(cls, name)
+            cfg = getattr(self, name)
             if cfg is not None and 'include' in cfg and 'exclude' in cfg:
                 raise ValueError("cannot have both 'include' and 'exclude' "
                                  f"in `{name}`")
 
     def _validate_visualizers():
-        if (cls.visualizers is not None and cls.eval_fn_name != 'predict'
+        if (self.visualizers is not None and self.eval_fn_name != 'predict'
             and not any([isinstance(x, LambdaType) for x in
-                           cls.visualizers])):
+                           self.visualizers])):
             print(WARN, "`eval_fn_name != 'predict'`, cannot use built-in "
                   "`visualizers`; include a custom function")
 
     def _validate_savelist():
-        if cls.input_as_labels and 'labels' in cls.savelist:
+        if self.input_as_labels and 'labels' in self.savelist:
             print(NOTE, "will exclude `labels` from saving when "
                   "`input_as_labels=True`; to override, "
                   "supply '{labels}' instead")
-            cls.savelist.pop(cls.savelist.index('labels'))
-        if '{labels}' in cls.savelist:
-            cls.savelist.pop(cls.savelist.index('{labels}'))
-            cls.savelist.append('labels')
+            self.savelist.pop(self.savelist.index('labels'))
+        if '{labels}' in self.savelist:
+            self.savelist.pop(self.savelist.index('{labels}'))
+            self.savelist.append('labels')
 
     def _validate_weighted_slices_range():
-        if cls.pred_weighted_slices_range is not None:
-            if cls.eval_fn_name != 'predict':
+        if self.pred_weighted_slices_range is not None:
+            if self.eval_fn_name != 'predict':
                 raise ValueError("`pred_weighted_slices_range` requires "
                                  "`eval_fn_name = 'predict'`")
-        if (cls.pred_weighted_slices_range is not None or
-            cls.loss_weighted_slices_range is not None):
-            if not (hasattr(cls.datagen, 'slices_per_batch') and
-                    hasattr(cls.val_datagen, 'slices_per_batch')):
+        if (self.pred_weighted_slices_range is not None or
+            self.loss_weighted_slices_range is not None):
+            if not (hasattr(self.datagen, 'slices_per_batch') and
+                    hasattr(self.val_datagen, 'slices_per_batch')):
                 raise ValueError("to use `loss_weighted_slices_range`, and/or "
                                  "`pred_weighted_slices_range`, "
                                  "`datagen` and `val_datagen` must have "
                                  "`slices_per_batch` attribute defined "
                                  "(via `preprocessor`).")
             for name in ('datagen', 'val_datagen'):
-                dg = getattr(cls, name)
+                dg = getattr(self, name)
                 no_slices = dg.slices_per_batch in {1, None}
 
                 if no_slices:
                     print(WARN, "`%s` uses no (or one) slices; " % name
                           + "setting `pred_weighted_slices_range=None`, "
                           "`loss_weighted_slices_range=None`")
-                    cls.pred_weighted_slices_range = None
-                    cls.loss_weighted_slices_range = None
+                    self.pred_weighted_slices_range = None
+                    self.loss_weighted_slices_range = None
 
     def _validate_class_weights():
         for name in ('class_weights', 'val_class_weights'):
-            cw = getattr(cls, name)
+            cw = getattr(self, name)
             if cw is not None:
                 assert all([isinstance(x, int) for x in cw.keys()]), (
                     "`{}` classes must be of type int (got {})"
@@ -354,36 +374,36 @@ def _validate_traingen_configs(cls):
                     "`{}` must contain classes 1 and 0, or greater "
                     "(got {})").format(name, cw)
 
-                if cls.model.loss in ('categorical_crossentropy',
+                if self.model.loss in ('categorical_crossentropy',
                                       'sparse_categorical_crossentropy'):
-                    n_classes = cls.model.output_shape[-1]
+                    n_classes = self.model.output_shape[-1]
                     for class_label in range(n_classes):
                         if class_label not in cw:
-                            getattr(cls, name)[name][class_label] = 1
+                            getattr(self, name)[name][class_label] = 1
 
 
     def _validate_best_subset_size():
-        if cls.best_subset_size is not None:
-            if cls.val_datagen.shuffle_group_samples:
+        if self.best_subset_size is not None:
+            if self.val_datagen.shuffle_group_samples:
                 raise ValueError("`val_datagen` cannot use `shuffle_group_"
                                  "samples` with `best_subset_size`")
 
     def _validate_dynamic_predict_threshold_min_max():
-        if cls.dynamic_predict_threshold_min_max is not None:
-            if cls.key_metric_fn is None:
+        if self.dynamic_predict_threshold_min_max is not None:
+            if self.key_metric_fn is None:
                 print(WARN, "`key_metric_fn=None` (likely per `eval_fn_name !="
                       " 'predict'`); setting "
                       "`dynamic_predict_threshold_min_max=None`")
-                cls.dynamic_predict_threshold_min_max = None
-            elif 'pred_threshold' not in cls.key_metric_fn.__code__.co_varnames:
+                self.dynamic_predict_threshold_min_max = None
+            elif 'pred_threshold' not in self.key_metric_fn.__code__.co_varnames:
                 print(WARN, "`pred_threshold` parameter missing from "
                       "`key_metric_fn`; setting "
                       "`dynamic_predict_threshold_min_max=None`")
-                cls.dynamic_predict_threshold_min_max = None
+                self.dynamic_predict_threshold_min_max = None
 
     def _validate_or_make_plot_configs():
-        if cls.plot_configs is not None:
-            cfg = cls.plot_configs
+        if self.plot_configs is not None:
+            cfg = self.plot_configs
             assert ('1' in cfg), ("`plot_configs` must number plot panes "
                                   "via strings; see util\configs.py")
             required = ('metrics', 'x_ticks')
@@ -391,15 +411,15 @@ def _validate_traingen_configs(cls):
                 assert all([name in pane_cfg for name in required]), (
                     "plot pane configs must contain %s" % ', '.join(required))
         else:
-            cls.plot_configs = _make_plot_configs_from_metrics(cls)
+            self.plot_configs = _make_plot_configs_from_metrics(self)
 
     def _validate_metric_printskip_configs():
-        for name, cfg in cls.metric_printskip_configs.items():
+        for name, cfg in self.metric_printskip_configs.items():
             if not isinstance(cfg, list):
                 if isinstance(cfg, tuple):
-                    cls.metric_printskip_configs[name] = list(cfg)
+                    self.metric_printskip_configs[name] = list(cfg)
                 else:
-                    cls.metric_printskip_configs[name] = [cfg]
+                    self.metric_printskip_configs[name] = [cfg]
 
     def _validate_callbacks():
         def _validate_types(cb, stage):
@@ -417,9 +437,9 @@ def _validate_traingen_configs(cls):
         supported = ('save', 'load', 'val_end',
                      'train:iter', 'train:batch', 'train:epoch',
                      'val:iter', 'val:batch', 'val:epoch')
-        assert isinstance(cls.callbacks, dict), ("`callbacks` must be "
+        assert isinstance(self.callbacks, dict), ("`callbacks` must be "
                                                  "of type dict")
-        for cb in cls.callbacks.values():
+        for cb in self.callbacks.values():
             assert isinstance(cb, dict), ("`callbacks` values must be "
                                           "of type dict")
             for stage in cb:

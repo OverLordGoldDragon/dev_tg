@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """TODO:
-    - label preloaders
     - profile batch.extend speed
-    - pp labels
 """
 import os
 import h5py

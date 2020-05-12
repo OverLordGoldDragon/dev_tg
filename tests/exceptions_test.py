@@ -147,26 +147,26 @@ def test_util():
         C['traingen']['input_as_labels'] = False
         return _init_session(C, _make_classifier)
 
-    def save_best_model(C):  # [util.saving]
+    def _save_best_model(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
         tg.train()
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            util.saving.save_best_model(tg, del_previous_best=True)
+            util.saving._save_best_model(tg, del_previous_best=True)
         with patch('deeptrain.util.saving.generate_report') as mock_report:
             mock_report.side_effect = Exception()
-            util.saving.save_best_model(tg)
+            util.saving._save_best_model(tg)
 
-    def _checkpoint_model_IF(C):  # [util.saving]
+    def checkpoint_model(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
         tg.train()
         tg.max_checkpoint_saves = -1
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            util.saving.checkpoint_model_IF(tg)
+            util.saving.checkpoint_model(tg)
 
         tg.logdir = None
-        pass_on_error(util.saving.checkpoint_model_IF, tg, forced=True)
+        pass_on_error(util.saving.checkpoint_model, tg)
 
     def save(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
@@ -371,8 +371,8 @@ def test_util():
         C['traingen']['train_metrics'] = ('loss',)
         pass_on_error(_util_make_autoencoder, C)
 
-    tests_all = [save_best_model,
-                  _checkpoint_model_IF,
+    tests_all = [_save_best_model,
+                  checkpoint_model,
                   save,
                   _get_sample_weight,
                   _get_api_metric_name,

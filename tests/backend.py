@@ -79,7 +79,7 @@ def notify(tests_done):
 
 
 class ModelDummy():
-    """Proxy model for testing (e.g. methods via `cls`)"""
+    """Proxy model for testing (e.g. methods via `self`)"""
     def __init__(self):
         self.loss = 'mse'
         self.output_shape = (8, 1)
@@ -93,7 +93,7 @@ class ModelDummy():
 
 
 class TraingenDummy():
-    """Proxy class for testing (e.g. methods via `cls`)"""
+    """Proxy class for testing (e.g. methods via `self`)"""
 
     class Datagen():
         def __init__(self):
@@ -141,3 +141,9 @@ class TraingenDummy():
         self._preds_cache = y_pred.copy()
         self._sw_cache = np.ones(y_true.shape)
         self._class_labels_cache = y_true.copy()
+
+
+for name in ('_transform_eval_data', '_validate_data_shapes',
+             '_validate_class_data_shapes', '_compute_metrics',
+             '_weighted_normalize_preds'):
+    setattr(TraingenDummy, name, getattr(util.training, name))

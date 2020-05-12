@@ -1,6 +1,3 @@
-"""TODO:
-    - variable windows_per_batch support
-"""
 
 class TimeseriesPreprocessor():
     # `slice_idx` == `window`
@@ -18,7 +15,7 @@ class TimeseriesPreprocessor():
         self.start_increment = 0
         self.reset_state()
         self._set_start_increment(epoch=0)
-        self._set_windows_per_batch()
+        self._set_slices_per_batch()
 
         self.loadskip_list=loadskip_list or [
             'start_increments', 'window_size', 'slide_size']
@@ -38,7 +35,7 @@ class TimeseriesPreprocessor():
 
     def on_epoch_end(self, epoch):
         self._set_start_increment(epoch)
-        self._set_windows_per_batch()
+        self._set_slices_per_batch()
 
     def update_state(self):
         self.slice_idx += 1
@@ -52,7 +49,7 @@ class TimeseriesPreprocessor():
             self.start_increment = self.start_increments[
                      epoch % len(self.start_increments)]
 
-    def _set_windows_per_batch(self):
+    def _set_slices_per_batch(self):
         self.slices_per_batch = 1 + (
             self.batch_timesteps - self.window_size - self.start_increment
             ) // self.slide_size

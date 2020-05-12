@@ -52,30 +52,30 @@ def make_callbacks(cb_makers):
     return callbacks, callbacks_init
 
 
-def predictions_per_iteration_cb(cls):
-    show_predictions_per_iteration(cls._labels_cache, cls._preds_cache)
+def predictions_per_iteration_cb(self):
+    show_predictions_per_iteration(self._labels_cache, self._preds_cache)
 
 
-def predictions_distribution_cb(cls):
-    show_predictions_distribution(cls._labels_cache, cls._preds_cache,
-                                  cls.predict_threshold)
+def predictions_distribution_cb(self):
+    show_predictions_distribution(self._labels_cache, self._preds_cache,
+                                  self.predict_threshold)
 
-def comparative_histogram_cb(cls):
+def comparative_histogram_cb(self):
     """Suited for binary classification sigmoid outputs"""
-    comparative_histogram(cls.model,
-                          layer_name=cls.model.layers[-1].name,
-                          data=cls.val_datagen.get(skip_validation=True)[0],
-                          vline=cls.predict_threshold,
+    comparative_histogram(self.model,
+                          layer_name=self.model.layers[-1].name,
+                          data=self.val_datagen.get(skip_validation=True)[0],
+                          vline=self.predict_threshold,
                           xlims=(0, 1))
 
 
 def make_layer_hists_cb(_id='*', mode='weights', x=None, y=None,
                         omit_names='bias', share_xy=(0, 0),
                         configs=None, **kw):
-    def layer_hists_cb(cls):
-        _x = x or cls.val_datagen.batch
-        _y = y or (cls.val_datagen.labels if not cls.input_as_labels else x)
-        layer_hists(cls.model, _id, mode, _x, _y, omit_names, share_xy,
+    def layer_hists_cb(self):
+        _x = x or self.val_datagen.batch
+        _y = y or (self.val_datagen.labels if not self.input_as_labels else x)
+        layer_hists(self.model, _id, mode, _x, _y, omit_names, share_xy,
                     configs, **kw)
     return layer_hists_cb
 

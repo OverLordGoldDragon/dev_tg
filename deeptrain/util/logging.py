@@ -11,7 +11,7 @@ from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
 from .misc import _dict_filter_keys, deeplen
 
 
-def generate_report(cls, savepath):
+def generate_report(self, savepath):
     def _write_text_image(text, savepath, fontpath, fontsize=15,
                           width=1, height=1):
         img = Image.new('RGB', color='white',
@@ -23,13 +23,13 @@ def generate_report(cls, savepath):
 
         img.save(savepath)
 
-    text = get_report_text(cls)
+    text = get_report_text(self)
     longest_line = max(map(len, text.split('\n')))
     num_newlines = len(text.split('\n'))
 
-    savepath = savepath or os.path.join(cls.logdir, '_temp_model__report.png')
+    savepath = savepath or os.path.join(self.logdir, '_temp_model__report.png')
     try:
-        _write_text_image(text, savepath, cls.report_fontpath,
+        _write_text_image(text, savepath, self.report_fontpath,
                           width=longest_line / 80,
                           height=num_newlines / 16)
         print("Model report generated and saved")
@@ -38,7 +38,7 @@ def generate_report(cls, savepath):
         print("Errmsg:", e)
 
 
-def get_report_text(cls):
+def get_report_text(self):
     def list_to_str_side_by_side_by_side(_list, space_between_cols=0):
         def _split_in_three(_list):
             L = len(_list) // 3
@@ -153,8 +153,8 @@ def get_report_text(cls):
         cfg = _validate_report_configs(report_configs)
 
         txt_dicts = dict(model={}, traingen={}, datagen={}, val_datagen={})
-        obj_dicts = (cls.model_configs,
-                     *map(vars, (cls, cls.datagen, cls.val_datagen)))
+        obj_dicts = (self.model_configs,
+                     *map(vars, (self, self.datagen, self.val_datagen)))
 
         for name, obj_dict in zip(txt_dicts, obj_dicts):
             if obj_dict is not None and (name not in cfg or not cfg[name]):
@@ -194,7 +194,7 @@ def get_report_text(cls):
                                     "000,", "k,").replace("000)", "k)")
         return _all_txt
 
-    txt_dicts = _process_attributes_to_text_dicts(cls.report_configs)
+    txt_dicts = _process_attributes_to_text_dicts(self.report_configs)
 
     titles = (">>HYPERPARAMETERS", ">>TRAINGEN STATE", ">>TRAIN DATAGEN STATE",
               ">>VAL DATAGEN STATE")
@@ -207,73 +207,73 @@ def get_report_text(cls):
     return _all_txt
 
 
-def _get_unique_model_name(cls):
+def get_unique_model_name(self):
     def _get_model_num():
         filenames = ['M0']
-        if cls.logs_dir is not None:
-            filenames = [name for name in sorted(os.listdir(cls.logs_dir))
+        if self.logs_dir is not None:
+            filenames = [name for name in sorted(os.listdir(self.logs_dir))
                          if 'M' in name]
-        if cls.model_num_continue_from_max:
+        if self.model_num_continue_from_max:
             if len(filenames) != 0:
                 model_num = np.max([int(name.split('__')[0].replace('M', ''))
                                     for name in filenames ]) + 1
             else:
                 print(NOTE, "no existing models detected in",
-                      cls.logs_dir + "; starting model_num from '0'")
+                      self.logs_dir + "; starting model_num from '0'")
 
-        if not cls.model_num_continue_from_max or len(filenames) == 0:
+        if not self.model_num_continue_from_max or len(filenames) == 0:
             model_num = 0; _name='M0'
             while any([(_name in filename) for filename in
-                       os.listdir(cls.logs_dir)]):
+                       os.listdir(self.logs_dir)]):
                 model_num += 1
                 _name = 'M%s' % model_num
         return model_num
 
-    model_name = "M{}__{}".format(_get_model_num(), cls.model_base_name)
+    model_name = "M{}__{}".format(_get_model_num(), self.model_base_name)
 
-    if cls.model_name_configs:
-        configs = cls.__dict__.copy()
-        if cls.model_configs:
-            configs.update(cls.model_configs.copy())
+    if self.model_name_configs:
+        configs = self.__dict__.copy()
+        if self.model_configs:
+            configs.update(self.model_configs.copy())
 
-        for key, alias in cls.model_name_configs.items():
+        for key, alias in self.model_name_configs.items():
             if '.' in key:
                 key = key.split('.')
                 dict_config = vars(configs[key[0]])
                 if key[1] in dict_config:
-                    model_name += cls.name_process_key_fn(
+                    model_name += self.name_process_key_fn(
                         key[1], alias, dict_config)
             elif key in configs:
-                model_name += cls.name_process_key_fn(key, alias, configs)
+                model_name += self.name_process_key_fn(key, alias, configs)
     return model_name
 
 
-def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
+def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     to_exclude=[], verbose=0):
-    """Extract `cls` __dict__ key-value pairs as string, ignoring funcs/methods
+    """Extract `self` __dict__ key-value pairs as string, ignoring funcs/methods
     or getting their source codes. May include kwargs passed to __init__ via
     `kwargs`, and __main__ via `source_lognames`.
 
     Arguments:
-        kwargs: kwargs passed to cls's __init__.
-        source_lognames: str/list of str. Names of cls methoda attributes
+        kwargs: kwargs passed to self's __init__.
+        source_lognames: str/list of str. Names of self methoda attributes
             to get source code of.
         savedir: str. Path to directory where to save logs. Saves a .json of
-               cls dict, and .txt of source codes (if any).
+               self dict, and .txt of source codes (if any).
     """
     def _save_logs(state, source, savedir, verbose):
         path = os.path.join(savedir, "init_state.h5")
         with open(path, 'wb') as f:
             pickle.dump(state, f)
         if verbose:
-            print(str(cls), "initial state saved to", path)
+            print(str(self), "initial state saved to", path)
 
         if source != '':
             path = os.path.join(savedir, "init_source.txt")
             with open(path, 'w') as f:
                 f.write(source)
             if verbose:
-                print(str(cls), "source codes saved to", path)
+                print(str(self), "source codes saved to", path)
 
     def is_builtin_or_numpy_scalar(x):
         return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
@@ -322,7 +322,7 @@ def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
                 if k in to_skip:
                     continue
                 elif k not in state_full:
-                    print(WARN, f"{k} not found in cls.__dict__ - will skip")
+                    print(WARN, f"{k} not found in self.__dict__ - will skip")
                     continue
                 v = state_full[k]
                 if (not is_builtin_or_numpy_scalar(v) and
@@ -366,7 +366,7 @@ def _log_init_state(cls, kwargs={}, source_lognames='__main__', savedir=None,
     if not isinstance(to_exclude, (list, tuple)):
         to_exclude = [to_exclude]
 
-    state_full = vars(cls)
+    state_full = vars(self)
     for k, v in kwargs.items():
         if k not in state_full:
             state_full[k] = v

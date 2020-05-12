@@ -14,7 +14,7 @@ def compute_gradients_norm(model, input_data, labels, sample_weight=None,
     return np.sqrt(np.sum([np.sum(norm_fn(g)) for g in grads]))
 
 
-def gradient_norm_over_dataset(cls, val=False, learning_phase=0, mode='weights',
+def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights',
                                norm_fn=np.square, w=1, h=1, n_iters=None,
                                prog_freq=10):
     def _init_notify(learning_phase, val):
@@ -51,7 +51,7 @@ def gradient_norm_over_dataset(cls, val=False, learning_phase=0, mode='weights',
     _init_notify(learning_phase, val)
 
     grad_norms, batches_processed, iters_processed = _gather_over_dataset(
-        cls, gather_fn, val, n_iters, prog_freq)
+        self, gather_fn, val, n_iters, prog_freq)
     grad_norms = np.array(grad_norms)
 
     _print_results(grad_norms, batches_processed, iters_processed, val)
@@ -60,7 +60,7 @@ def gradient_norm_over_dataset(cls, val=False, learning_phase=0, mode='weights',
     return grad_norms, batches_processed, iters_processed
 
 
-def gradients_sum_over_dataset(cls, val=False, learning_phase=0, mode='weights',
+def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights',
                                n_iters=None, prog_freq=10, plot_kw={}):
     def _init_notify(learning_phase, val):
         dg_name = 'val_datagen' if val else 'datagen'
@@ -100,7 +100,7 @@ def gradients_sum_over_dataset(cls, val=False, learning_phase=0, mode='weights',
     _init_notify(learning_phase, val)
 
     grads_sum, batches_processed, iters_processed = _gather_over_dataset(
-        cls, gather_fn, val, n_iters, prog_freq)
+        self, gather_fn, val, n_iters, prog_freq)
 
     _print_results(grads_sum, batches_processed, iters_processed, val)
     _try_plot(grads_sum, plot_kw)
@@ -108,7 +108,7 @@ def gradients_sum_over_dataset(cls, val=False, learning_phase=0, mode='weights',
     return grads_sum, batches_processed, iters_processed
 
 
-def _gather_over_dataset(cls, gather_fn, val=False, n_iters=None, prog_freq=10):
+def _gather_over_dataset(self, gather_fn, val=False, n_iters=None, prog_freq=10):
     def _init_notify(val):
         dg_name = "val_datagen" if val else "datagen"
         print(WARN, dg_name, "states will be reset")
@@ -138,14 +138,14 @@ def _gather_over_dataset(cls, gather_fn, val=False, n_iters=None, prog_freq=10):
 
         while cond(iters_processed, n_iters, dg):
             dg.advance_batch()
-            x, y, sw = cls.get_data(val=val)
-            gathered = gather_fn(gathered, cls.model, x, y, sw)
+            x, y, sw = self.get_data(val=val)
+            gathered = gather_fn(gathered, self.model, x, y, sw)
             dg.update_state()
             batches_processed = _print_progress(dg, batches_processed, prog_freq)
             iters_processed += 1
         return gathered, batches_processed, iters_processed
 
-    dg = cls.val_datagen if val else cls.datagen
+    dg = self.val_datagen if val else self.datagen
     _init_notify(val)
 
     dg.reset_state()

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from pathlib import Path
+from types import LambdaType
 from time import time
 
 from deeptrain.util import searching
@@ -17,6 +18,7 @@ from deeptrain.util import _default_configs
 from deeptrain.util.misc import pass_on_error, deeplen
 from deeptrain import metrics
 from deeptrain import preprocessing
+from tests import _methods_dummy
 from tests.backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
 
 
@@ -76,19 +78,25 @@ def test_misc():
         tg.key_metric = 'f1_score'
         misc._make_plot_configs_from_metrics(tg)
 
+    def _test_get_module_methods():
+        mm = misc.get_module_methods(_methods_dummy)
+        assert len(mm) == 1 and 'fn1' in mm
+        assert isinstance(mm['fn1'], LambdaType)
+
     _test_nCk()
     _test_ordered_shuffle()
     _test_train_on_batch_dummy()
     _test_make_plot_configs_from_metrics()
+    _test_get_module_methods()
 
 
 @notify(tests_done)
 def test_logging():
-    def _test_get_unique_model_name():
+    def _testget_unique_model_name():
         tg = TraingenDummy()
         tg.model_name_configs = {'datagen.shuffle': ''}
         os.mkdir(os.path.join(tg.logs_dir, 'M0'))
-        logging._get_unique_model_name(tg)
+        logging.get_unique_model_name(tg)
 
     def _test_log_init_state():
         class SUV():
@@ -124,7 +132,7 @@ def test_logging():
     logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
     best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_models')
     with tempdir(logs_dir), tempdir(best_models_dir):
-        _test_get_unique_model_name()
+        _testget_unique_model_name()
 
     _test_log_init_state()
     _test_get_report_text()

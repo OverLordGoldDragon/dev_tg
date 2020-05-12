@@ -3,7 +3,7 @@
     - replace metrics= w/ history=?
     - logging.py ideas:
        - dedicate 'long column'
-    - Utils classes (@staticmethod def fn(cls, ..))
+    - Utils classes (@staticmethod def fn(self, ..))
     - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer
 """
@@ -33,14 +33,11 @@ from copy import deepcopy
 
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.configs  import _TRAINGEN_CFG
-from .util.training import _update_temp_history, _get_val_history
-from .util.training import _get_sample_weight, _get_api_metric_name
-from .util.logging  import _get_unique_model_name, _log_init_state
-from .util.saving   import save, load, _save_history
-from .util.saving   import save_best_model, checkpoint_model_IF
-from .util.misc     import pass_on_error, _validate_traingen_configs
+from .util._traingen_utils import TraingenUtils
+from .util.logging  import _log_init_state
+from .util.training import _get_api_metric_name
+from .util.misc     import pass_on_error
 from .introspection import print_dead_weights, print_nan_weights
-from .visuals       import _get_history_fig
 from .              import metrics as metrics_fns
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 
@@ -48,7 +45,7 @@ from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 sys.stdout = Unbuffered(sys.stdout)
 
 
-class TrainGenerator():
+class TrainGenerator(TraingenUtils):
     def __init__(self, model, datagen, val_datagen,
                  epochs=1,
                  logs_dir=None,
@@ -83,6 +80,8 @@ class TrainGenerator():
                  visualizers=None,
                  model_configs=None,
                  **kwargs):
+        super().__init__()
+
         self.model=model
         self.datagen=datagen
         self.val_datagen=val_datagen
@@ -194,7 +193,7 @@ class TrainGenerator():
     ######################### MAIN METHOD HELPERS ########################
     def _train_postiter_processing(self, metrics):
         def _on_iter_end(metrics):
-            _update_temp_history(self, metrics)
+            self._update_temp_history(metrics)
             self._fit_iters += 1
             self.datagen.update_state()
             self._apply_callbacks(stage='train:iter')
@@ -246,7 +245,7 @@ class TrainGenerator():
                                  batch_size=None):
         def _on_iter_end(metrics=None, batch_size=None):
             if metrics is not None:
-                _update_temp_history(self, metrics, val=True)
+                self._update_temp_history(metrics, val=True)
             self._val_iters += 1
             if self.eval_fn_name == 'predict':
                 self._update_val_iter_cache()
@@ -287,6 +286,19 @@ class TrainGenerator():
 
     def _on_val_end(self, record_progress, clear_cache):
         def _record_progress():
+            def _do_checkpoint(forced):
+                do_temp = self._should_do(self.temp_checkpoint_freq)
+                do_unique = self._should_do(self.unique_checkpoint_freq)
+
+                if not (do_temp or do_unique or forced):
+                    return False
+                if self.logdir is None:
+                    if forced:
+                        raise Exception("unable to `force_checkpoint` without "
+                                        "`logdir`")
+                    return False
+                return do_temp, do_unique
+
             self._times_validated += 1
             self.val_epoch = self.val_datagen.on_epoch_end()
             self._val_x_ticks += [self._times_validated]
@@ -298,7 +310,12 @@ class TrainGenerator():
 
             if new_best and self.best_models_dir is not None:
                 self._save_best_model(del_previous_best=self.max_one_best_save)
-            self._checkpoint_model_IF()
+
+            if self.logdir:
+                do_temp = self._should_do(self.temp_checkpoint_freq)
+                do_unique = self._should_do(self.unique_checkpoint_freq)
+                if do_temp or do_unique:
+                    self.checkpoint_model()
 
         def _clear_cache():
             attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',
@@ -380,7 +397,7 @@ class TrainGenerator():
 
         class_labels = _standardize_shape(labels)
         slice_idx = getattr(datagen, 'slice_idx', None)
-        sample_weight = _get_sample_weight(self, class_labels, val, slice_idx)
+        sample_weight = self._get_sample_weight(class_labels, val, slice_idx)
 
         return x, y, sample_weight
 
@@ -416,9 +433,6 @@ class TrainGenerator():
         self._class_labels_cache[-1].append(class_labels)
         if self.eval_fn_name == 'predict':
             self._preds_cache[-1].append(self._y_preds)
-
-    def _get_val_history(self, for_current_iter=False):
-        return _get_val_history(self, for_current_iter)
 
     def _update_val_history(self):
         for name, metric in self._get_val_history().items():
@@ -487,23 +501,6 @@ class TrainGenerator():
         if self.iter_verbosity >= 2:
             print(end='.')
 
-
-    ########################## SAVE/LOAD METHODS ##########################
-    def _save_best_model(self, del_previous_best=False):
-        save_best_model(self, del_previous_best)
-
-    def _checkpoint_model_IF(self, forced=False):
-        checkpoint_model_IF(self, forced)
-
-    def save(self, savepath=None):
-        save(self, savepath)
-
-    def load(self):
-        load(self)
-
-    def _save_history(self, savepath=None):
-        _save_history(self, savepath)
-
     ########################## VISUAL/CALC METHODS ##########################
     def plot_history(self, update_fig=True, w=1, h=1):
         def _show_closed_fig(fig):
@@ -513,7 +510,7 @@ class TrainGenerator():
             fig.set_canvas(manager.canvas)
             plt.show()
 
-        fig = _get_history_fig(self, self.plot_configs, w, h)
+        fig = self._get_history_fig(self.plot_configs, w, h)
         if update_fig:
             self._history_fig = fig
         _show_closed_fig(fig)
@@ -571,12 +568,9 @@ class TrainGenerator():
     # very fast, inexpensive
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
                      notify_detected_only=True):
-        print_dead_weights(self.model,dead_threshold, dead_notify_above_frac,
+        print_dead_weights(self.model, dead_threshold, dead_notify_above_frac,
                            notify_detected_only)
         print_nan_weights(self.model, notify_detected_only)
-
-    def get_unique_model_name(self):
-        return _get_unique_model_name(self)
 
     def _alias_to_metric_name(self, alias):
         if alias in self.alias_to_metric:
@@ -644,7 +638,7 @@ class TrainGenerator():
         _validate_kwarg_names(kwargs)
         _set_kwargs(kwargs)
         _maybe_set_key_metric_fn()
-        _validate_traingen_configs(self)
+        self._validate_traingen_configs()
 
     def _init_fit_and_pred_fns(self):
         self.fit_fn_name = self.fit_fn_name or 'train_on_batch'

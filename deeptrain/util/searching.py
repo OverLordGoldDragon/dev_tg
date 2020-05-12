@@ -4,13 +4,13 @@ import numpy as np
 
 
 def find_best_predict_threshold(labels, preds, metric_fn, search_interval=.01,
-                               search_min_max=(0, 1), return_best_metric=False,
-                               verbosity=0, threshold_preference=0.5):
-    _min    = search_min_max[0] if search_min_max[0] != 0 else search_interval
-    _max    = search_min_max[1] if search_min_max[1] != 1 else .9999
+                                search_min_max=(0, 1), return_best_metric=False,
+                                verbosity=0, threshold_preference=0.5):
+    _min = search_min_max[0] if search_min_max[0] != 0 else search_interval
+    _max = search_min_max[1] if search_min_max[1] != 1 else .9999
     th_pref = threshold_preference
 
-    th       = _min
+    th= _min
     best_th  = th
     best_acc = 0
     if verbosity == 2:
@@ -101,7 +101,6 @@ def find_best_subset(labels_all, preds_all, metric_fn, search_interval=.01,
     return best_batch_idxs, best_th, best_metric
 
 
-# TODO collapse slices as means, since searching per batch not per slice
 def find_best_subset_from_history(metric, subset_size=5, max_is_best=False):
     def _find_best(metric, subset_size):
         indices = list(range(len(metric)))
@@ -111,6 +110,7 @@ def find_best_subset_from_history(metric, subset_size=5, max_is_best=False):
 
     metric = np.asarray(metric)
     if metric.ndim > 1:  # (batches, slices)
+        # collapse slices as means, since searching per batch not per slice
         metric = metric.mean(axis=1)
 
     return _find_best(metric, subset_size)

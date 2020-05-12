@@ -59,7 +59,7 @@ def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
     _plot(preds_flat, pred_th, alignment_arr, colors)
 
 
-def _get_history_fig(cls, plot_configs=None, w=1, h=1):
+def _get_history_fig(self, plot_configs=None, w=1, h=1):
     def _unpack_plot_kws(config):
         reserved_keys = ('metrics', 'x_ticks', 'vhlines',
                          'mark_best_cfg', 'ylims')
@@ -92,10 +92,10 @@ def _get_history_fig(cls, plot_configs=None, w=1, h=1):
 
         if 'train' in metrics:
             for idx, name in enumerate(metrics['train']):
-                metrics['train'][idx] = cls._alias_to_metric_name(name)
+                metrics['train'][idx] = self._alias_to_metric_name(name)
         if 'val'   in metrics:
             for idx, name in enumerate(metrics['val']):
-                metrics['val'][idx]   = cls._alias_to_metric_name(name)
+                metrics['val'][idx]   = self._alias_to_metric_name(name)
         return config
 
     def _unpack_vhlines(config):
@@ -105,9 +105,9 @@ def _get_history_fig(cls, plot_configs=None, w=1, h=1):
             if isinstance(vhline, (float, int, list, tuple, np.ndarray)):
                 vhlines[vh] = vhline
             elif 'val_hist_vlines' in vhline:
-                vhlines[vh] = cls._val_hist_vlines or None
-            elif   'hist_vlines' in vhline:
-                vhlines[vh] = cls._hist_vlines     or None
+                vhlines[vh] = self._val_hist_vlines or None
+            elif 'hist_vlines' in vhline:
+                vhlines[vh] = self._hist_vlines or None
             else:
                 raise ValueError("unsupported `vhlines` in `plot_configs`:",
                                  vhline)
@@ -131,22 +131,22 @@ def _get_history_fig(cls, plot_configs=None, w=1, h=1):
 
         if 'train' in config['metrics']:
             for i, name in enumerate(config['metrics']['train']):
-                metrics.append(cls.history[name])
-                x_ticks.append(getattr(cls, config['x_ticks']['train'][i]))
+                metrics.append(self.history[name])
+                x_ticks.append(getattr(self, config['x_ticks']['train'][i]))
                 if mark_best_cfg is not None and mark_best_idx is None:
                     mark_best_idx = _get_mark_best_idx(metrics, name,
                                                        mark_best_cfg, val=False)
         if 'val' in config['metrics']:
             for i, name in enumerate(config['metrics']['val']):
-                metrics.append(cls.val_history[name])
-                x_ticks.append(getattr(cls, config['x_ticks']['val'][i]))
+                metrics.append(self.val_history[name])
+                x_ticks.append(getattr(self, config['x_ticks']['val'][i]))
                 if mark_best_cfg is not None and mark_best_idx is None:
                     mark_best_idx = _get_mark_best_idx(metrics, name,
                                                        mark_best_cfg, val=True)
         return x_ticks, metrics, mark_best_idx
 
     if plot_configs is None:
-        plot_configs = cls.plot_configs
+        plot_configs = self.plot_configs
 
     fig, axes = plt.subplots(len(plot_configs), 1)
     axes = np.atleast_1d(axes)
@@ -163,7 +163,7 @@ def _get_history_fig(cls, plot_configs=None, w=1, h=1):
 
         _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx,
                       axis=axis, vhlines=vhlines, ylims=ylims,
-                      key_metric=cls.key_metric)
+                      key_metric=self.key_metric)
 
     subplot_scaler = .5 * len(axes)
     fig.set_size_inches(14 * w, 11 * h * subplot_scaler)
