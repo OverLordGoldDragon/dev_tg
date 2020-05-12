@@ -105,7 +105,7 @@ def test_logging():
         tg = TraingenDummy()
         tg.SUV = SUV()
         logging._log_init_state(tg, source_lognames=['swordfish', 'SUV'])
-        logging._log_init_state(tg, source_lognames='*')
+        logging._log_init_state(tg, source_lognames='*', verbose=1)
         logging._log_init_state(tg, source_lognames=None)
 
     def _test_get_report_text():

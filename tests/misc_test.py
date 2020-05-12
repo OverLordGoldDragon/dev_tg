@@ -81,6 +81,11 @@ def test_main():
             ))
         _test_main(C)
 
+        tg = _init_session(C)
+        tg.train()
+        tg._has_trained = True
+        tg.train()
+
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 

@@ -62,8 +62,8 @@ def test_gather_over_dataset():
     tg = _init_session(C)
     tg.train()
 
-    introspection.gradient_norm_over_dataset(tg, n_iters=5)
-    introspection.gradients_sum_over_dataset(tg, n_iters=5)
+    introspection.gradient_norm_over_dataset(tg, n_iters=5, prog_freq=3)
+    introspection.gradients_sum_over_dataset(tg, n_iters=5, prog_freq=3)
 
 
 @notify(tests_done)

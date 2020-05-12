@@ -101,6 +101,7 @@ def test_predict():
                                   plot_first_pane_max_vals=1,
                                   metric_printskip_configs={'val': 'f1_score'},
                                   class_weights={0: 1, 1: 5},
+                                  iter_verbosity=2,
                                   ))
         tg = _init_session(C)
         tg.train()

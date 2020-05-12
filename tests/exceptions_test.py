@@ -153,7 +153,7 @@ def test_util():
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             util.saving._save_best_model(tg, del_previous_best=True)
-        with patch('deeptrain.util.saving.generate_report') as mock_report:
+        with patch('deeptrain.tg_dev.TrainGenerator.generate_report') as mock_report:
             mock_report.side_effect = Exception()
             util.saving._save_best_model(tg)
 

@@ -329,11 +329,8 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     not isinstance(v, np.ndarray)):
                     if not_func(v):
                         v = v.__class__
-                    try:
-                        source[_name(v)] = getsource(v)
-                    except Exception as e:
-                        print("Failed to log:", k, v, "-- skipping. "
-                              "Errmsg: %s" % e)
+                source[_name(v)] = getsource(v)
+
             return source
 
         def _to_text(source):

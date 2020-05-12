@@ -9,7 +9,6 @@ from pathlib import Path
 from ._backend import K, WARN, NOTE
 from ..visuals import _get_history_fig
 from .misc import pass_on_error, _train_on_batch_dummy
-from .logging import generate_report
 
 
 def _save_best_model(self, del_previous_best=False):
@@ -44,7 +43,7 @@ def _save_best_model(self, del_previous_best=False):
 
     self.save(savepath + '__state.h5')
 
-    if self._pil_imported:
+    if self._imports.get('PIL', False):
         try:
             self.generate_report(savepath + '__report.png')
         except BaseException as e:

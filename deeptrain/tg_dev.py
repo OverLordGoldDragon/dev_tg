@@ -286,19 +286,6 @@ class TrainGenerator(TraingenUtils):
 
     def _on_val_end(self, record_progress, clear_cache):
         def _record_progress():
-            def _do_checkpoint(forced):
-                do_temp = self._should_do(self.temp_checkpoint_freq)
-                do_unique = self._should_do(self.unique_checkpoint_freq)
-
-                if not (do_temp or do_unique or forced):
-                    return False
-                if self.logdir is None:
-                    if forced:
-                        raise Exception("unable to `force_checkpoint` without "
-                                        "`logdir`")
-                    return False
-                return do_temp, do_unique
-
             self._times_validated += 1
             self.val_epoch = self.val_datagen.on_epoch_end()
             self._val_x_ticks += [self._times_validated]
@@ -391,6 +378,8 @@ class TrainGenerator(TraingenUtils):
         datagen = self.val_datagen if val else self.datagen
         if datagen.batch_exhausted:
             datagen.advance_batch()
+            setattr(self, '_val_set_name' if val else '_set_name',
+                    datagen.set_name)
 
         x, labels = datagen.get()
         y = labels if not self.input_as_labels else x
@@ -656,6 +645,7 @@ class TrainGenerator(TraingenUtils):
             self._val_set_name=None
             self.model_name=self.get_unique_model_name()
             self.model_num=int(self.model_name.split('__')[0].replace('M', ''))
+            self._imports = IMPORTS.copy()
 
             self._history_fig=None
             self._times_validated=0
@@ -690,22 +680,5 @@ class TrainGenerator(TraingenUtils):
             self._temp_history_empty     = deepcopy(self.temp_history)
             self._val_temp_history_empty = deepcopy(self.val_temp_history)
 
-        def _init_max_set_name_chars():
-            set_names = getattr(self.datagen, 'set_nams_original', None)
-            val_set_names = getattr(self.val_datagen, 'set_names_original', None)
-            if set_names is not None:
-                names_str = map(str, set_names)
-                self._max_set_name_chars = max(map(len, names_str))
-            else:
-                self._max_set_name_chars = 3  # guess
-            if val_set_names is not None:
-                names_str = map(str, val_set_names)
-                self._val_max_set_name_chars = max(map(len, names_str))
-            else:
-                self._val_max_set_name_chars = 2  # guess
-
         _init_misc()
         _init_histories()
-        _init_max_set_name_chars()
-
-        self._pil_imported = IMPORTS['PIL']

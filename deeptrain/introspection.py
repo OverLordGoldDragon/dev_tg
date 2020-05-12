@@ -30,17 +30,11 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
         		   grad_norms.mean(), grad_norms.max(), batches_processed,
         		   iters_processed, dg_name))
 
-    def _try_plot(grad_norms, w=1, h=1):
-        def _plot(grad_norms, w, h):
-            bins = min(600, len(grad_norms))
-            plt.hist(grad_norms.ravel(), bins=bins)
-            plt.gcf().set_size_inches(9 * w, 4 * h)
-            plt.show()
-
-        try:
-            _plot(grad_norms, w, h)
-        except Exception as e:
-            print("Could not plot data; skipping.\nErrmsg:", e)
+    def _plot(grad_norms, w=1, h=1):
+        bins = min(600, len(grad_norms))
+        plt.hist(grad_norms.ravel(), bins=bins)
+        plt.gcf().set_size_inches(9 * w, 4 * h)
+        plt.show()
 
     def gather_fn(data, model, x, y, sw):
         newdata = compute_gradients_norm(model, x, y, sw, learning_phase,
@@ -55,7 +49,7 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
     grad_norms = np.array(grad_norms)
 
     _print_results(grad_norms, batches_processed, iters_processed, val)
-    _try_plot(grad_norms, w, h)
+    _plot(grad_norms, w, h)
 
     return grad_norms, batches_processed, iters_processed
 
@@ -73,19 +67,14 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
         print(("\nGRADIENTS SUM computed over {} batches, {} {} updates:").format(
             batches_processed, iters_processed, dg_name))
 
-    def _try_plot(grads_sum, plot_kw):
-        def _plot(grads_sum, plot_kw):
-            defaults = {'share_xy': False, 'center_zero': True}
-            for k, v in defaults.items():
-                if k not in plot_kw:
-                    plot_kw[k] = v
-            data = list(grads_sum.values())
-            features_hist(data, annotations=list(grads_sum), **plot_kw)
+    def _plot(grads_sum, plot_kw):
+        defaults = {'share_xy': False, 'center_zero': True}
+        for k, v in defaults.items():
+            if k not in plot_kw:
+                plot_kw[k] = v
+        data = list(grads_sum.values())
+        features_hist(data, annotations=list(grads_sum), **plot_kw)
 
-        try:
-            _plot(grads_sum, plot_kw)
-        except Exception as e:
-            print("Could not plot data; skipping.\nErrmsg:", e)
 
     def gather_fn(data, model, x, y, sw):
         newdata = get_gradients(model, '*', x, y, sw, learning_phase,
@@ -103,7 +92,7 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
         self, gather_fn, val, n_iters, prog_freq)
 
     _print_results(grads_sum, batches_processed, iters_processed, val)
-    _try_plot(grads_sum, plot_kw)
+    _plot(grads_sum, plot_kw)
 
     return grads_sum, batches_processed, iters_processed
 
