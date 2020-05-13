@@ -5,6 +5,7 @@ import deeptrain.metrics
 
 from types import LambdaType
 from functools import reduce
+from inspect import getfullargspec
 from ._backend import WARN, NOTE
 
 
@@ -16,6 +17,10 @@ def pass_on_error(fn, *args, **kwargs):
         if fail_msg is not None:
             print(fail_msg)
         print("Errmsg:", e)
+
+
+def argspec(obj):
+    return getfullargspec(obj).args
 
 
 def _dict_filter_keys(dc, keys, exclude=True, filter_substr=False):
@@ -330,6 +335,11 @@ def _validate_traingen_configs(self):
         if '{labels}' in self.savelist:
             self.savelist.pop(self.savelist.index('{labels}'))
             self.savelist.append('labels')
+        for required_key in ('datagen', 'val_datagen'):
+            if required_key not in self.savelist:
+                print(WARN, ("'{}' must be included in `savelist`; will append"
+                             ).format(required_key))
+                self.savelist.append(required_key)
 
     def _validate_weighted_slices_range():
         if self.pred_weighted_slices_range is not None:
@@ -374,7 +384,6 @@ def _validate_traingen_configs(self):
                         if class_label not in cw:
                             getattr(self, name)[name][class_label] = 1
 
-
     def _validate_best_subset_size():
         if self.best_subset_size is not None:
             if self.val_datagen.shuffle_group_samples:
@@ -388,7 +397,7 @@ def _validate_traingen_configs(self):
                       " 'predict'`); setting "
                       "`dynamic_predict_threshold_min_max=None`")
                 self.dynamic_predict_threshold_min_max = None
-            elif 'pred_threshold' not in self.key_metric_fn.__code__.co_varnames:
+            elif 'pred_threshold' not in argspec(self.key_metric_fn):
                 print(WARN, "`pred_threshold` parameter missing from "
                       "`key_metric_fn`; setting "
                       "`dynamic_predict_threshold_min_max=None`")

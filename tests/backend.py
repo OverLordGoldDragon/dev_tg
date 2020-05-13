@@ -58,8 +58,7 @@ def notify(tests_done):
                 is_mp = monkeypatch.__class__.__name__ == 'MonkeyPatch'
             except:
                 test_fn(*args, **kwargs)
-            if ('monkeypatch' in test_fn.__code__.co_varnames and is_mp) or (
-                    not is_mp):
+            if ('monkeypatch' in util.argspec(test_fn) and is_mp) or not is_mp:
                 test_fn(monkeypatch, *args, **kwargs)
             elif is_mp:
                 test_fn(*args, **kwargs)

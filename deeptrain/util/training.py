@@ -5,6 +5,7 @@ from see_rnn import weight_loss
 from .searching import find_best_predict_threshold, find_best_subset
 from .searching import find_best_subset_from_history
 from ._backend import NOTE, WARN
+from .misc import argspec
 from .. import metrics as metric_fns
 
 
@@ -206,7 +207,7 @@ def _get_best_subset_val_history(self):
                                     *x.shape[3:]))
             return ls
 
-        if 'pred_threshold' not in self.key_metric_fn.__code__.co_varnames:
+        if 'pred_threshold' not in argspec(self.key_metric_fn):
             search_min_max = None
         elif self.dynamic_predict_threshold_min_max is None:
             search_min_max = (self.predict_threshold, self.predict_threshold)
@@ -282,7 +283,7 @@ def _get_api_metric_name(name, loss_name, alias_to_metric_name_fn=None):
 
 def _compute_metric(data, metric_name=None, metric_fn=None):
     def _del_if_not_in_metric_fn(name, data, metric_fn):
-        if name in data and name not in metric_fn.__code__.co_varnames:
+        if name in data and name not in argspec(metric_fn):
             del data[name]
 
     if metric_name is not None:

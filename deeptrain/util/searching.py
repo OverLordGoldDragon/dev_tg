@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import metrics
+from .misc import argspec
 import numpy as np
 
 
@@ -80,7 +81,7 @@ def find_best_subset(labels_all, preds_all, metric_fn, search_interval=.01,
     best_labels, best_preds, best_batch_idxs = [], [], []
 
     while len(best_batch_idxs) < subset_size:
-        if 'pred_threshold' in metric_fn.__code__.co_varnames:
+        if 'pred_threshold' in argspec(metric_fn):
             best_batch_idx = _best_batch_idx_thresholded(
                 labels_all, preds_all, metric_fn,
                 search_interval, search_min_max)

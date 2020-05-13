@@ -8,6 +8,7 @@ from .visuals import show_predictions_per_iteration
 from .visuals import show_predictions_distribution
 from .visuals import comparative_histogram, layer_hists
 from .util._backend import NOTE
+from .util import argspec
 
 
 def make_callbacks(cb_makers):
@@ -115,9 +116,9 @@ class TraingenLogger():
                 kw['model'] = self.m
                 kw['_id'] = name_or_idx
                 kw['as_dict'] = True
-                if 'input_data' in self.gather_fns[key].__code__.co_varnames:
+                if 'input_data' in argspec(self.gather_fns[key]):
                     kw['input_data'] = self.get_data_fn()
-                if 'labels' in self.gather_fns[key].__code__.co_varnames:
+                if 'labels' in argspec(self.gather_fns[key]):
                     kw['labels'] = self.get_labels_fn()
                 return kw
 
