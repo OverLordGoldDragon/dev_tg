@@ -70,7 +70,7 @@ _REPORT_CFG = {
         {
         'exclude':
             ['model', 'model_configs', 'model_name', 'logs_use_full_model_name',
-             'history_fig', 'plot_configs', 'max_checkpoint_saves',
+             'history_fig', 'plot_configs', 'max_checkpoints',
              'history', 'val_history', 'temp_history', 'val_temp_history',
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
              'report_configs', 'datagen', 'val_datagen',
@@ -233,6 +233,7 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
 
 _TRAINGEN_CFG = dict(
     dynamic_predict_threshold_min_max = None,
+    checkpoints_overwrite_duplicates  = True,
     loss_weighted_slices_range  = None,
     pred_weighted_slices_range  = None,
     use_passed_dirs_over_loaded = False,
@@ -248,7 +249,7 @@ _TRAINGEN_CFG = dict(
     best_subset_size     = 0,
     check_model_health   = True,
     outputs_visualizer   = 'comparative_histogram',
-    max_checkpoint_saves = 5,
+    max_checkpoints = 5,
     max_one_best_save    = None,
     report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",

@@ -22,7 +22,7 @@ from tests import _methods_dummy
 from tests.backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
 
 
-tests_done = {name: None for name in ('searching', 'misc', 'configs',
+tests_done = {name: None for name in ('searching', 'misc', 'configs', 'saving',
                                       'training', 'preprocessing', 'logging',
                                       'deeplen', 'introspection')}
 
@@ -235,6 +235,11 @@ def test_configs():
             name = [x for x in vars(config) if name in x][0]
             _ = getattr(config, name)
             assert True
+
+
+@notify(tests_done)
+def test_saving():
+    pass
 
 
 @notify(tests_done)

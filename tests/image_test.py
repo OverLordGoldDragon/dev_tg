@@ -23,10 +23,10 @@ MODEL_CFG = dict(
     metrics=['accuracy'],
     optimizer='adam',
     num_classes=10,
-    filters=[32, 64],
+    filters=[8, 16],
     kernel_size=[(3, 3), (3, 3)],
     dropout=[.25, .5],
-    dense_units=128,
+    dense_units=32,
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),

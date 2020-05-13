@@ -161,16 +161,16 @@ def test_util():
             mock_report.side_effect = Exception()
             util.saving._save_best_model(tg)
 
-    def checkpoint_model(C):  # [util.saving]
+    def checkpoint(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
         tg.train()
-        tg.max_checkpoint_saves = -1
+        tg.max_checkpoints = -1
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            util.saving.checkpoint_model(tg)
+            util.saving.checkpoint(tg)
 
         tg.logdir = None
-        pass_on_error(util.saving.checkpoint_model, tg)
+        pass_on_error(util.saving.checkpoint, tg)
 
     def save(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
@@ -376,7 +376,7 @@ def test_util():
         pass_on_error(_util_make_autoencoder, C)
 
     tests_all = [_save_best_model,
-                  checkpoint_model,
+                  checkpoint,
                   save,
                   _get_sample_weight,
                   _get_api_metric_name,

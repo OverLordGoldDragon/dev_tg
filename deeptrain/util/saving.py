@@ -52,7 +52,10 @@ def _save_best_model(self, del_previous_best=False):
     print("Best model saved to " + savepath)
 
 
-def checkpoint_model(self):
+def checkpoint(self, forced=False, overwrite=None):
+    """overwrite: bool/None. If None, set from `checkpoints_overwrite_duplicates`
+                             (else, override it).
+    """
     def _get_savename(do_temp, do_unique):
         if do_temp and not do_unique:  # give latter precedence
             return "_temp_model"
@@ -63,26 +66,71 @@ def checkpoint_model(self):
             return "max_{:.3f}_{}vals__".format(self.best_key_metric,
                                                 self._times_validated)
 
+    def _save(basepath, overwrite):
+        def _maybe_save(save_fn, path, overwrite):
+            def _make_unique_path(path):
+                _dir = Path(path).parent
+                stem = Path(path).stem
+                ext = Path(path).suffix
+
+                existing_names = [x.name for x in Path(_dir).iterdir()
+                                  if x.is_file()]
+                new_name = stem + '_v2' + ext
+                i = 2
+                while new_name in existing_names:
+                    i += 1
+                    new_name = stem + f'_v{i}' + ext
+                return os.path.join(_dir, new_name)
+
+            path_exists = Path(path).is_file()
+            if not path_exists or (path_exists and overwrite):
+                save_fn(path)
+            elif path_exists and not overwrite:
+                path = _make_unique_path(path)
+                save_fn(path)
+
+        if overwrite not in (None, True, False):
+            raise ValueError("`overwrite` must be one of: None, True, False")
+        if overwrite is None:
+            overwrite = bool(self.checkpoints_overwrite_duplicates)
+
+        save_fns = [(basepath + 'weights.h5', self.model.save_weights),
+                    (basepath + 'state.h5',   self.save),
+                    (basepath + 'hist.png',   self._save_history),
+                    (basepath + 'report.png', self.generate_report)]
+
+        for path, save_fn in save_fns:
+            _maybe_save(save_fn, path, overwrite)
+
     def _clear_logs_IF():
-        _paths = [str(x) for x in Path(self.logdir).iterdir() if x.is_file()]
-        # (model weights, traingen state, report, history img)
-        # TODO infer actual number, do not hard-code
-        paths_per_checkpoint = 4
-        while len(_paths) / paths_per_checkpoint > self.max_checkpoint_saves:
-            [os.remove(_paths.pop(0)) for _ in range(paths_per_checkpoint)]
+        def _filter_varying(string):
+            """Omit changing chars to infer uniques per checkpoint"""
+            # omit digits, which change across `max`, `vals`, etc
+            filtered = ''.join(s for s in string if not s.isdigit())
+
+            # omit versions, e.g. _v2, _v3, introduced w/ overwrite=True
+            stem, ext = Path(filtered).stem, Path(filtered).suffix
+            if stem[-2:] == '_v':  # digit already filtered
+                stem = stem[:-2]
+            return stem + ext
+
+        paths = [f for f in Path(self.logdir).iterdir() if f.is_file()]
+        files_per_checkpoint = len(set(_filter_varying(p.name) for p in paths))
+        paths = sorted(paths, key=os.path.getmtime)
+        paths = list(map(str, paths))
+
+        while len(paths) / files_per_checkpoint > max(1, self.max_checkpoints):
+            # remove oldest first (by creation time)
+            [os.remove(paths.pop(0)) for _ in range(files_per_checkpoint)]
 
     do_temp = self._should_do(self.temp_checkpoint_freq)
     do_unique = self._should_do(self.unique_checkpoint_freq)
-    if not (do_temp or do_unique):
-        return False
+    if not (do_temp or do_unique) and not forced:
+        return
 
     savename = _get_savename(do_temp, do_unique)
-    _path = os.path.join(self.logdir, savename)
-
-    self.model.save_weights(_path + 'weights.h5')
-    self.save(_path + 'state.h5')
-    self._save_history(_path + 'hist.png')
-    self.generate_report(_path + 'report.png')
+    basepath = os.path.join(self.logdir, savename)
+    _save(basepath, overwrite)
 
     try:
         _clear_logs_IF()
@@ -375,9 +423,10 @@ def _save_history(self, savepath=None):
     _path = savepath or os.path.join(self.logdir, '_temp_model__hist.png')
     if self._history_fig:
         try:
-            self._history_fig.savefig(_path + '.png')
-        except:
-            print(WARN,  "Model history could not be saved; skipping")
+            self._history_fig.savefig(_path)
+        except Exception as e:
+            print(WARN, "Model history could not be saved; skipping",
+                  "\nErrmsg:", e)
 
     # TODO: rename `final_fig_dir`?
     if self.final_fig_dir:  # keep at most one per model_num

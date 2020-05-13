@@ -296,7 +296,7 @@ class TrainGenerator(TraingenUtils):
                 do_temp = self._should_do(self.temp_checkpoint_freq)
                 do_unique = self._should_do(self.unique_checkpoint_freq)
                 if do_temp or do_unique:
-                    self.checkpoint_model()
+                    self.checkpoint()
 
         def _clear_cache():
             attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',

@@ -23,10 +23,10 @@ MODEL_CFG = dict(
     metrics=['accuracy'],
     optimizer='adam',
     num_classes=10,
-    filters=[32, 64],
+    filters=[8, 16],
     kernel_size=[(3, 3), (3, 3)],
     dropout=[.25, .5],
-    dense_units=128,
+    dense_units=32,
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
@@ -54,7 +54,7 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load')}
+tests_done = {name: None for name in ('main', 'load', 'checkpoint')}
 
 
 @notify(tests_done)
@@ -69,9 +69,11 @@ def test_main():
             unique_checkpoint_freq={'val': 2},
             optimizer_save_configs={'include': ['updates', 'crowbar']},
             max_one_best_save=True,
-            max_checkpoint_saves=3,
+            max_checkpoints=3,
             ))
-        _test_main(C)
+        tg = _init_session(C)
+        tg.train()
+        _test_load(tg, C)
 
         C['traingen'].update(dict(
             val_freq={'iter': 20},
@@ -79,7 +81,9 @@ def test_main():
             optimizer_save_configs={'exclude': ['iterations']},
             optimizer_load_configs={'include': ['momentum', 'momentam']},
             ))
-        _test_main(C)
+        tg = _init_session(C)
+        tg.train()
+        _test_load(tg, C)
 
         tg = _init_session(C)
         tg.train()
@@ -87,12 +91,6 @@ def test_main():
         tg.train()
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-
-
-def _test_main(C):
-    tg = _init_session(C)
-    tg.train()
-    _test_load(tg, C)
 
 
 @notify(tests_done)
@@ -108,6 +106,50 @@ def _test_load(tg, C):
 
     weights_path, loadpath = _get_latest_paths(logdir)
     tg = _init_session(C, weights_path, loadpath)
+
+
+@notify(tests_done)
+def test_checkpoint():
+    def _get_nfiles(logdir):
+        return len([f for f in Path(logdir).iterdir()
+                    if f.is_file() and not f.name[0] == '.'])  # omit dir & hidden
+
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']
+                 ), tempdir(C['traingen']['best_models_dir']):
+        C['traingen']['max_checkpoints'] = 2
+        tg = _init_session(C)
+        tg.train()
+
+        nfiles_1 = _get_nfiles(tg.logdir)
+        tg.checkpoint(forced=True, overwrite=True)
+        nfiles_2 = _get_nfiles(tg.logdir)
+        assert (nfiles_2 == nfiles_1), (
+            "Number of files in `logdir` changed with `overwrite`==True on "
+            "second checkpoint w/ `max_checkpoints`==2 ({} -> {})".format(
+                nfiles_1, nfiles_2))
+
+        tg.checkpoint(forced=True, overwrite=False)
+        nfiles_3 = _get_nfiles(tg.logdir)
+        assert (nfiles_3 == 2 * nfiles_2), (
+            "Number of files didn't double in `logdir` after checkpointing "
+            "below `max_checkpoints` checkpoints ({} -> {})".format(
+                nfiles_2, nfiles_3))
+
+        tg.checkpoint(forced=True, overwrite=False)
+        nfiles_4 = _get_nfiles(tg.logdir)
+        assert (nfiles_3 == nfiles_4), (
+            "Number of files changed in `logdir` after checkpointing at "
+            "`max_checkpoints` checkpoints ({} -> {})".format(
+                nfiles_3, nfiles_4))
+
+        tg.max_checkpoints = 0
+        tg.checkpoint(forced=True, overwrite=False)
+        nfiles_5 = _get_nfiles(tg.logdir)
+        assert (nfiles_5 == nfiles_1), (
+            "`max_checkpoints`==0 should behave like ==1, but number of "
+            "files in `logdir` differs from that in first checkpoint "
+            "({} -> {})".format(nfiles_1, nfiles_5))
 
 
 def _make_model(weights_path=None, **kw):
