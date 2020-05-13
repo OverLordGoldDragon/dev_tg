@@ -73,7 +73,6 @@ class TrainGenerator(TraingenUtils):
                  optimizer_save_configs=None,
                  optimizer_load_configs=None,
                  plot_configs=None,
-                 visualizers=None,
                  model_configs=None,
                  **kwargs):
         super().__init__()
@@ -117,7 +116,6 @@ class TrainGenerator(TraingenUtils):
         self.optimizer_save_configs=optimizer_save_configs
         self.optimizer_load_configs=optimizer_load_configs
         self.plot_configs=plot_configs
-        self.visualizers=visualizers
         self.model_configs = model_configs
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
 

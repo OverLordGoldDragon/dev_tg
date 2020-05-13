@@ -8,7 +8,6 @@ from tests.backend import Input, Conv2D, UpSampling2D
 from tests.backend import Model
 from tests.backend import Adam
 from tests.backend import BASEDIR, notify
-from deeptrain import introspection
 from deeptrain import TrainGenerator, DataGenerator
 
 
@@ -62,8 +61,11 @@ def test_gather_over_dataset():
     tg = _init_session(C)
     tg.train()
 
-    introspection.gradient_norm_over_dataset(tg, n_iters=5, prog_freq=3)
-    introspection.gradients_sum_over_dataset(tg, n_iters=5, prog_freq=3)
+    tg.gradient_norm_over_dataset(n_iters=None, prog_freq=3)
+    tg.gradients_sum_over_dataset(n_iters=5, prog_freq=3)
+
+    x, y, sw = tg.get_data()
+    tg.compute_gradients_norm(x, y, sw)  # not gather, but test anyway
 
 
 @notify(tests_done)
@@ -82,6 +84,8 @@ def test_print_dead_nan():
         tg.train()
         tg.check_health(dead_threshold=.1)
         tg.check_health(notify_detected_only=False)
+        tg.check_health(notify_detected_only=False, dead_threshold=.5,
+                        dead_notify_above_frac=2)
 
     _test_print_nan_weights()
     _test_print_dead_weights()

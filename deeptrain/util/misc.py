@@ -321,13 +321,6 @@ def _validate_traingen_configs(self):
                 raise ValueError("cannot have both 'include' and 'exclude' "
                                  f"in `{name}`")
 
-    def _validate_visualizers():
-        if (self.visualizers is not None and self.eval_fn_name != 'predict'
-            and not any([isinstance(x, LambdaType) for x in
-                           self.visualizers])):
-            print(WARN, "`eval_fn_name != 'predict'`, cannot use built-in "
-                  "`visualizers`; include a custom function")
-
     def _validate_savelist():
         if self.input_as_labels and 'labels' in self.savelist:
             print(NOTE, "will exclude `labels` from saving when "
@@ -454,7 +447,6 @@ def _validate_traingen_configs(self):
     _validate_model_metrics_match()
     _validate_directories()
     _validate_optimizer_saving_configs()
-    _validate_visualizers()
     _validate_savelist()
     _validate_weighted_slices_range()
     _validate_class_weights()

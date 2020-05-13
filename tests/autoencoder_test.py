@@ -49,6 +49,7 @@ TRAINGEN_CFG = dict(
     input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
+    savelist=['labels'],  # misc
     model_configs=MODEL_CFG,
 )
 
@@ -96,6 +97,7 @@ def test_predict():
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['savelist'] = ['{labels}']
         _test_main(C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))

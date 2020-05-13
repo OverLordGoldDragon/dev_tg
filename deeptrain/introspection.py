@@ -9,9 +9,9 @@ from see_rnn.inspect_gen import _make_grads_fn, _get_grads
 from .util._backend import K, WARN
 
 
-def compute_gradients_norm(model, input_data, labels, sample_weight=None,
+def compute_gradients_norm(self, input_data, labels, sample_weight=None,
                            learning_phase=0, mode='weights', norm_fn=np.square):
-    grads = get_gradients(model, '*', input_data, labels, sample_weight,
+    grads = get_gradients(self.model, '*', input_data, labels, sample_weight,
                           learning_phase, mode=mode, as_dict=False)
     return np.sqrt(np.sum([np.sum(norm_fn(g)) for g in grads]))
 
