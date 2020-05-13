@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 """TODO:
-    - replace metrics= w/ history=?
     - logging.py ideas:
        - dedicate 'long column'
-    - Utils classes (@staticmethod def fn(self, ..))
-    - profiling, configurable (train time, val time, data load time, viz time)
     - MetaTrainer
 """
 

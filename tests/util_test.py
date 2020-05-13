@@ -80,8 +80,9 @@ def test_misc():
 
     def _test_get_module_methods():
         mm = misc.get_module_methods(_methods_dummy)
-        assert len(mm) == 1 and 'fn1' in mm
+        assert len(mm) == 2 and 'fn1' in mm and 'not_lambda' in mm
         assert isinstance(mm['fn1'], LambdaType)
+        assert isinstance(mm['not_lambda'], LambdaType)
 
     _test_nCk()
     _test_ordered_shuffle()

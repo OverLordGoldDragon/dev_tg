@@ -65,7 +65,7 @@ def get_module_methods(module):
         if ((str(obj).startswith('<function')
              and isinstance(obj, LambdaType)) # is a function
             and module.__name__ == getattr(obj, '__module__', '')  # same module
-            and name == obj_name  # not a duplicate
+            and name in str(getattr(obj, '__code__'))  # not a duplicate
             and not (  # not a magic method
                 obj_name.startswith('__')
                 and obj_name.endswith('__')
