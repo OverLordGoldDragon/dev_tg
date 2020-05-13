@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """TODO:
+    - Clean up warnings & notes on init
     - MetaTrainer
 """
 

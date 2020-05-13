@@ -4,13 +4,15 @@ import matplotlib.pyplot as plt
 
 from termcolor import cprint
 from see_rnn import get_gradients, features_hist, detect_nans
+from see_rnn import get_layer
+from see_rnn.inspect_gen import _make_grads_fn, _get_grads
 from .util._backend import K, WARN
 
 
 def compute_gradients_norm(model, input_data, labels, sample_weight=None,
                            learning_phase=0, mode='weights', norm_fn=np.square):
     grads = get_gradients(model, '*', input_data, labels, sample_weight,
-                          learning_phase, mode=mode)
+                          learning_phase, mode=mode, as_dict=False)
     return np.sqrt(np.sum([np.sum(norm_fn(g)) for g in grads]))
 
 
@@ -36,13 +38,32 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
         plt.gcf().set_size_inches(9 * w, 4 * h)
         plt.show()
 
+    def _make_gradients_fn(model, learning_phase, mode):
+        # make grads_fn only once instead of repeatedly calling `get_gradients`
+        # for potentially massive speedup due to not rebuilding graph
+        attr = 'output' if mode == 'outputs' else 'trainable_weights'
+        _id = []
+        for l in model.layers[1:]:  # exclude input
+            params = getattr(l, attr, [])
+            if (isinstance(params, list) and len(params) > 0) or (
+                    not isinstance(params, list)):
+                _id.append(l.name)
+        layers = get_layer(model, _id)
+        _grads_fn, names = _make_grads_fn(model, layers, mode=mode,
+                                         return_names=True)
+        return lambda x, y, sw: _get_grads(_grads_fn, x, y, sw, learning_phase)
+
+    def _compute_gradients_norm(model, x, y, sw):
+        grads = grads_fn(x, y, sw)
+        return np.sqrt(np.sum([np.sum(norm_fn(g)) for g in grads]))
+
     def gather_fn(data, model, x, y, sw):
-        newdata = compute_gradients_norm(model, x, y, sw, learning_phase,
-                                         mode=mode, norm_fn=norm_fn)
+        newdata = _compute_gradients_norm(model, x, y, sw)
         data.append(newdata)
         return data
 
     _init_notify(learning_phase, val)
+    grads_fn = _make_gradients_fn(self.model, learning_phase, mode)
 
     grad_norms, batches_processed, iters_processed = _gather_over_dataset(
         self, gather_fn, val, n_iters, prog_freq)
@@ -75,10 +96,27 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
         data = list(grads_sum.values())
         features_hist(data, annotations=list(grads_sum), **plot_kw)
 
+    def _make_gradients_fn(model, learning_phase, mode):
+        # make grads_fn only once instead of repeatedly calling `get_gradients`
+        # for potentially massive speedup due to not rebuilding graph
+        attr = 'output' if mode == 'outputs' else 'trainable_weights'
+        _id = []
+        for l in model.layers[1:]:  # exclude input
+            params = getattr(l, attr, [])
+            if (isinstance(params, list) and len(params) > 0) or (
+                    not isinstance(params, list)):
+                _id.append(l.name)
+        layers = get_layer(model, _id)
+        _grads_fn, names = _make_grads_fn(model, layers, mode=mode,
+                                         return_names=True)
+        def grads_fn(x, y, sw):
+            grads = _get_grads(_grads_fn, x, y, sw, learning_phase)
+            return {name: x for name, x in zip(names, grads)}
+        return grads_fn
 
     def gather_fn(data, model, x, y, sw):
-        newdata = get_gradients(model, '*', x, y, sw, learning_phase,
-                                mode=mode, as_dict=True)
+        newdata = grads_fn(x, y, sw)
+
         if not data:
             return newdata
         for k, v in newdata.items():
@@ -87,6 +125,7 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
         return data
 
     _init_notify(learning_phase, val)
+    grads_fn = _make_gradients_fn(self.model, learning_phase, mode)
 
     grads_sum, batches_processed, iters_processed = _gather_over_dataset(
         self, gather_fn, val, n_iters, prog_freq)
