@@ -2,14 +2,15 @@
 import os
 import pytest
 import numpy as np
+import matplotlib.pyplot as plt
 
 from copy import deepcopy
 
-from tests.backend import BASEDIR, notify
+from tests.backend import BASEDIR, tempdir, notify
 from deeptrain.util.misc import pass_on_error, ordered_shuffle
 from deeptrain.util import data_loaders, labels_preloaders
+from deeptrain.util import TimeseriesPreprocessor
 from deeptrain import DataGenerator
-from deeptrain import TimeseriesPreprocessor
 
 
 datadir = os.path.join(BASEDIR, 'tests', 'data')
@@ -21,8 +22,9 @@ DATAGEN_CFG = dict(
     shuffle=True,
 )
 
-tests_done = {name: None for name in ('advance_batch', 'shuffle',
-                                      'data_loaders', 'labels_preloaders')}
+tests_done = {name: None for name in ('advance_batch', 'shuffle', 'kwargs',
+                                      'data_loaders', 'labels_preloaders',
+                                      'infer_data_info')}
 
 
 @notify(tests_done)
@@ -57,6 +59,14 @@ def test_shuffle():
 
 
 @notify(tests_done)
+def test_kwargs():
+    C = deepcopy(DATAGEN_CFG)
+    C['shuffle_group_batches'] = True
+    C['shuffle_group_samples'] = True
+    DataGenerator(**C)
+
+
+@notify(tests_done)
 def test_data_loaders():
     def _test_auto_hdf5(C):
         dg = DataGenerator(**C)
@@ -67,9 +77,14 @@ def test_data_loaders():
         dg = DataGenerator(**C)
         dg.advance_batch()
 
-    def _test_exception(C):
+    def _test_exceptions(C):
         C['data_loader'] = 'invalid_loader'
         pass_on_error(DataGenerator, **C)
+
+        C['data_loader'] = None
+        dg = DataGenerator(**C)
+        pass_on_error(dg._set_data_loader, 'invalid_loader')
+
 
     C = deepcopy(DATAGEN_CFG)
     C['data_dir'] = os.path.join(datadir, 'timeseries_split', 'train')
@@ -80,7 +95,7 @@ def test_data_loaders():
 
     _test_auto_hdf5(C)
     _test_hdf5(C)
-    _test_exception(C)
+    _test_exceptions(C)
 
 
 @notify(tests_done)
@@ -153,6 +168,26 @@ def test_shuffle_group_batches():
     gb, lb = ordered_shuffle(gb, lb)
     gb, lb = gb.reshape(*gb_shape), lb.reshape(*lb_shape)
     assert (gb.shape == gb_shape) and (lb.shape == lb_shape)
+
+
+@notify(tests_done)
+def test_infer_data_info():
+    def _test_empty_data_dir():
+        C = deepcopy(DATAGEN_CFG)
+        with tempdir() as dirpath:
+            C['data_dir'] = dirpath
+            pass_on_error(DataGenerator, **C)
+
+    def _test_no_supported_file_ext():
+        C = deepcopy(DATAGEN_CFG)
+        with tempdir() as dirpath:
+            plt.plot([0, 1])
+            plt.gcf().savefig(os.path.join(dirpath, "img.png"))
+            C['data_dir'] = dirpath
+            pass_on_error(DataGenerator, **C)
+
+    _test_empty_data_dir()
+    _test_no_supported_file_ext()
 
 
 if __name__ == '__main__':

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """TODO:
-    - logging.py ideas:
-       - dedicate 'long column'
     - MetaTrainer
 """
 

@@ -108,9 +108,9 @@ def test_datagen():
         dg._set_preprocessor(None, {})
         pass_on_error(dg._set_preprocessor, "x", {})
 
-        pass_on_error(dg._infer_and_get_data_info, dg.data_dir,
+        pass_on_error(dg._infer_data_info, dg.data_dir,
                       data_loader="x")
-        dg._infer_and_get_data_info(dg.data_dir, data_loader="hdf5")
+        dg._infer_data_info(dg.data_dir, data_loader="hdf5")
 
         C['datagen']['invalid_kwarg'] = 5
         pass_on_error(DataGenerator, **C['datagen'])
@@ -156,7 +156,8 @@ def test_util():
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             util.saving._save_best_model(tg, del_previous_best=True)
-        with patch('deeptrain.tg_dev.TrainGenerator.generate_report') as mock_report:
+        with patch('deeptrain.train_generator.TrainGenerator.generate_report'
+                   ) as mock_report:
             mock_report.side_effect = Exception()
             util.saving._save_best_model(tg)
 

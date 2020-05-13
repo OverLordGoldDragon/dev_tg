@@ -52,15 +52,7 @@ def _save_best_model(self, del_previous_best=False):
     print("Best model saved to " + savepath)
 
 
-def checkpoint_model(self):  # TODO maybe clear
-    def _checkpoint_type():
-        do_temp = self._should_do(self.temp_checkpoint_freq)
-        do_unique = self._should_do(self.unique_checkpoint_freq)
-
-        if not (do_temp or do_unique):
-            return False
-        return do_temp, do_unique
-
+def checkpoint_model(self):
     def _get_savename(do_temp, do_unique):
         if do_temp and not do_unique:  # give latter precedence
             return "_temp_model"
@@ -79,10 +71,10 @@ def checkpoint_model(self):  # TODO maybe clear
         while len(_paths) / paths_per_checkpoint > self.max_checkpoint_saves:
             [os.remove(_paths.pop(0)) for _ in range(paths_per_checkpoint)]
 
-    do_checkpoint = _checkpoint_type()
-    if not do_checkpoint:
-        return
-    do_temp, do_unique = do_checkpoint
+    do_temp = self._should_do(self.temp_checkpoint_freq)
+    do_unique = self._should_do(self.unique_checkpoint_freq)
+    if not (do_temp or do_unique):
+        return False
 
     savename = _get_savename(do_temp, do_unique)
     _path = os.path.join(self.logdir, savename)

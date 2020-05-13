@@ -11,10 +11,10 @@ from pathlib import Path
 from copy import deepcopy
 from types import LambdaType
 
-from .pp_dev import GenericPreprocessor, TimeseriesPreprocessor
-from .util.misc import ordered_shuffle
-from .util.configs import _DATAGEN_CFG
+from .util import GenericPreprocessor, TimeseriesPreprocessor
 from .util import data_loaders, labels_preloaders
+from .util.configs import _DATAGEN_CFG
+from .util.misc import ordered_shuffle
 from .util._backend import WARN, NOTE, IMPORTS
 from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
@@ -57,7 +57,7 @@ class DataGenerator():
         else:
             self.superbatch_dir = superbatch_dir
 
-        info = self._infer_and_get_data_info(data_dir, data_ext, data_loader,
+        info = self._infer_data_info(data_dir, data_ext, data_loader,
                                              base_name)
         self.data_loader = info['data_loader']
         self.base_name   = info['base_name']
@@ -314,7 +314,10 @@ class DataGenerator():
         elif data_loader == 'hdf5-dataset':
             self.data_loader = data_loaders.hdf5_dataset_loader
         else:
-            raise Exception("unsupported data_loader: '%s'" % data_loader)
+            supported = DataGenerator.BUILTIN_DATA_LOADERS
+            raise ValueError(("unsupported data_loader '{}'; must be a custom "
+                             "function, or one of {}").format(
+                                 data_loader, ', '.join(supported)))
 
     def _set_preprocessor(self, preprocessor, preprocessor_configs):
         def _set(preprocessor, preprocessor_configs):
@@ -363,8 +366,15 @@ class DataGenerator():
     def _synch_to_preprocessor(self, attrs):
         [setattr(self.preprocessor, x, getattr(self, x)) for x in attrs]
 
-    def _infer_and_get_data_info(self, data_dir, data_ext=None,
-                                 data_loader=None, base_name=None):
+    def _infer_data_info(self, data_dir, data_ext=None, data_loader=None,
+                         base_name=None):
+        def _validate_directory(data_dir):
+            # not guaranteed to catch hidden files
+            nonhidden_files_names = [x for x in os.listdir(data_dir)
+                                     if not x.startswith('.')]
+            if len(nonhidden_files_names) == 0:
+                raise Exception("`data_dir` is empty (%s)" % data_dir)
+
         def _infer_data_loader(extension, filenames):
             data_loader = {'.npy': 'numpy',
                            '.h5': 'hdf5'}[extension]
@@ -412,12 +422,16 @@ class DataGenerator():
             def _infer_extension(data_dir, supported_extensions):
                 extensions = [x.suffix for x in Path(data_dir).iterdir()
                                if x.suffix in supported_extensions]
+                if len(extensions) == 0:
+                    raise Exception("No files found with supported extensions: "
+                                    + ', '.join(supported_extensions)
+                                    + " in `data_dir` ", data_dir)
                 data_ext = max(set(extensions), key=extensions.count)
 
                 if len(set(extensions)) > 1:
                     print(WARN, "multiple file extensions found in "
-                           "`data_dir`; only", data_ext, "will be used "
-                           "(specify `data_ext` if this is false)")
+                          "`data_dir`; only", data_ext, "will be used "
+                          "(specify `data_ext` if this is false)")
                 return data_ext
 
             supported_extensions = DataGenerator.SUPPORTED_DATA_EXTENSIONS
@@ -426,12 +440,9 @@ class DataGenerator():
 
             filenames = [x for x in os.listdir(data_dir)
                          if Path(x).suffix == data_ext]
-            if filenames == []:
-                raise Exception("No files found with supported extensions: "
-                                + ', '.join(supported_extensions)
-                                + " in `data_dir` ", data_dir)
             return filenames, data_ext
 
+        _validate_directory(data_dir)
         filenames, data_ext = _get_filenames_and_data_ext(data_dir, data_ext)
 
         supported = DataGenerator.BUILTIN_DATA_LOADERS
@@ -439,9 +450,9 @@ class DataGenerator():
             data_loader = _infer_data_loader(data_ext, filenames)
         elif data_loader not in supported and not isinstance(
                 data_loader, LambdaType):
-            msg = "unsupported data_loader '{}'; must be one of {}".format(
-                    data_loader, ', '.join(supported))
-            raise ValueError(msg)
+            raise ValueError(("unsupported data_loader '{}'; must be a custom "
+                             "function, or one of {}").format(
+                                 data_loader, ', '.join(supported)))
 
         base_name = base_name or _get_base_name(data_ext, filenames)
         filepaths = _get_filepaths(data_dir, filenames)
@@ -453,7 +464,7 @@ class DataGenerator():
     def preload_superbatch(self):
         print(end='Preloading superbatch ... ')
 
-        info = self._infer_and_get_data_info(self.superbatch_dir,
+        info = self._infer_data_info(self.superbatch_dir,
                                              self.data_ext)
         name_and_alias = [(name, '_superbatch_' + name) for name in info]
         [setattr(self, alias, info[name]) for name, alias in name_and_alias]
