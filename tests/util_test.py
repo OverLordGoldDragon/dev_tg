@@ -238,11 +238,6 @@ def test_configs():
 
 
 @notify(tests_done)
-def test_saving():
-    pass
-
-
-@notify(tests_done)
 def test_preprocessing(monkeypatch):
     def _test_numpy_data_to_numpy_sets(datadir):
         with tempdir(datadir):
@@ -271,6 +266,12 @@ def test_preprocessing(monkeypatch):
 
         return paths
 
+    def _test_numpy_to_lz4f(datadir, paths):
+        data = np.load(paths[0])
+        savepath = os.path.join(datadir, "data_lz4f.npy")
+        preprocessing.numpy_to_lz4f(data, savepath=savepath)
+        os.remove(savepath)  # will error in to_hdf5
+
     def _test_data_to_hdf5(datadir, paths):
         X = np.array([np.load(path) for path in paths])
         kw = dict(savepath=os.path.join(datadir, "data.h5"), batch_size=32,
@@ -282,8 +283,6 @@ def test_preprocessing(monkeypatch):
 
         kw.update(**dict(overwrite=True, load_fn=lambda x: x))
         preprocessing.data_to_hdf5(data=X, **kw)
-
-        shutil.rmtree(datadir)
 
     def _test_numpy2D_to_csv(datadir):
         def _batches_from_df(savepath):
@@ -313,13 +312,16 @@ def test_preprocessing(monkeypatch):
         savepath = os.path.join(datadir, "labels.csv")
         _test_batch_dim_0(savepath)
         _test_batch_dim_1(savepath)
-        shutil.rmtree(datadir)
 
     datadir = os.path.join(BASEDIR, "_data")
 
     paths = _test_numpy_data_to_numpy_sets(datadir)
+    _test_numpy_to_lz4f(datadir, paths)
     _test_data_to_hdf5(datadir, paths)
+    shutil.rmtree(datadir)
+
     _test_numpy2D_to_csv(datadir)
+    shutil.rmtree(datadir)
 
 
 if __name__ == '__main__':

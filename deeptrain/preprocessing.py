@@ -205,7 +205,6 @@ def numpy_to_lz4f(data, savepath=None, level=9, overwrite=None):
     if lz4f is None:
         raise Exception("cannot convert to lz4f without `lz4framed` installed; "
                         "run `pip install py-lz4framed`")
-
     data = data.tobytes()
     data = lz4f.compress(data, level=level)
 
@@ -216,7 +215,6 @@ def numpy_to_lz4f(data, savepath=None, level=9, overwrite=None):
         _validate_savepath(savepath, overwrite)
         np.save(savepath, data)
         print("lz4f-compressed data saved to", savepath)
-
     return data
 
 
