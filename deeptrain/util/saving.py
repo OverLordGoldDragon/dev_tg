@@ -2,7 +2,6 @@
 import os
 import pickle
 import types
-import h5py
 import tensorflow as tf
 
 from pathlib import Path
