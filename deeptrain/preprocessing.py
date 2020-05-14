@@ -119,12 +119,6 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
                                   "that takes paths & index as arguments"
                                   ).format(extensions[0], ', '.join(supported)))
 
-        def _validate_savepath(savepath, overwrite):
-            if Path(savepath).suffix != '.h5':
-                print(WARN, "`savepath` extension must be '.h5'; will append")
-                savepath += '.h5'
-            _validate_savepath(savepath, overwrite)
-
         if loaddir is None and data is None:
             raise ValueError("one of `loaddir` or `data` must be not None")
         if loaddir is not None and data is not None:
@@ -132,7 +126,11 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
         if data is not None and load_fn is not None:
             print(WARN, "`load_fn` ignored with `data != None`")
 
+        if Path(savepath).suffix != '.h5':
+            print(WARN, "`savepath` extension must be '.h5'; will append")
+            savepath += '.h5'
         _validate_savepath(savepath, overwrite)
+
         if loaddir is not None:
             _validate_extensions(loaddir)
 

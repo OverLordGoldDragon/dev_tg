@@ -249,7 +249,7 @@ def test_preprocessing(monkeypatch):
             data = np.random.randn(161, 2)
             labels = np.random.randint(0, 2, (161,))
             preprocessing.numpy_data_to_numpy_sets(
-                datadir, data, labels, batch_size=32, shuffle=True,
+                data, labels, datadir, batch_size=32, shuffle=True,
                 data_basename='ex', oversample_remainder=True)
 
             paths = [str(x) for x in Path(datadir).iterdir() if
@@ -261,7 +261,7 @@ def test_preprocessing(monkeypatch):
         labels = np.random.randint(0, 2, (161,))
 
         preprocessing.numpy_data_to_numpy_sets(
-            datadir, data, labels, batch_size=32, shuffle=True,
+            data, labels, datadir, batch_size=32, shuffle=True,
             data_basename='ex', oversample_remainder=False)
         os.remove(os.path.join(datadir, "labels.h5"))
 
