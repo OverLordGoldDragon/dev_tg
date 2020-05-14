@@ -71,7 +71,8 @@ TRAINGEN_CFG = dict(
 CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {f'{name}_exceptions': None for name in (
-    'datagen', 'visuals', 'util', 'data_to_hdf5', 'preprocessing')}
+    'datagen', 'visuals', 'util', 'data_to_hdf5', 'preprocessing',
+    'callbacks')}
 
 
 @notify(tests_done)
@@ -130,7 +131,6 @@ def test_visuals():
             C['traingen']['best_models_dir']):
         tg = _init_session(C, _make_autoencoder)
         model = tg.model
-
         _layer_hists(model)
 
 
@@ -155,11 +155,11 @@ def test_util():
         tg.train()
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            util.saving._save_best_model(tg, del_previous_best=True)
+            tg._save_best_model(del_previous_best=True)
         with patch('deeptrain.train_generator.TrainGenerator.generate_report'
                    ) as mock_report:
             mock_report.side_effect = Exception()
-            util.saving._save_best_model(tg)
+            tg._save_best_model()
 
     def checkpoint(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
@@ -167,10 +167,10 @@ def test_util():
         tg.max_checkpoints = -1
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            util.saving.checkpoint(tg)
+            tg.checkpoint(forced=True, overwrite=False)
 
         tg.logdir = None
-        pass_on_error(util.saving.checkpoint, tg)
+        pass_on_error(tg.checkpoint)
 
     def save(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
@@ -214,7 +214,7 @@ def test_util():
         tg = _util_make_autoencoder(C)
         labels = np.random.randint(0, 2, (32, 3))
         tg.class_weights = {0: 1, 1: 2, 2: 3}
-        util.training._get_sample_weight(tg, labels)
+        tg._get_sample_weight(labels)
 
     def _get_api_metric_name(C):  # [util.training]
         util.training._get_api_metric_name(
@@ -234,7 +234,7 @@ def test_util():
         tg.eval_fn_name = 'predict'
         tg.datagen.slices_per_batch = None
         tg.val_datagen.slices_per_batch = None
-        pass_on_error(util.misc._validate_traingen_configs, tg)
+        pass_on_error(tg._validate_traingen_configs)
 
         C['traingen']['max_is_best'] = True
         C['traingen']['eval_fn_name'] = 'evaluate'
@@ -264,35 +264,33 @@ def test_util():
         tg.eval_fn_name = 'predict'
         tg.dynamic_predict_threshold_min_max = None
 
-        util.training._get_best_subset_val_history(tg)
+        tg._get_best_subset_val_history()
 
         tg.eval_fn_name = 'superfit'
-        pass_on_error(util.training._get_best_subset_val_history, tg)
+        pass_on_error(tg._get_best_subset_val_history)
 
     def _update_temp_history(C):  # [util.training]
         tg = _util_make_classifier(C)
 
         tg.val_temp_history['loss'] = (1, 2, 3)
-        util.training._update_temp_history(tg, metrics=(4,), val=True)
+        tg._update_temp_history(metrics=(4,), val=True)
         tg.val_temp_history['loss'] = []
-        util.training._update_temp_history(tg, metrics=(4,), val=True)
+        tg._update_temp_history(metrics=(4,), val=True)
 
         tg.datagen.slice_idx = 1
         tg.datagen.slices_per_batch = 2
         tg.temp_history = {'binary_accuracy': []}
         tg.train_metrics = ['binary_accuracy']
-        pass_on_error(util.training._update_temp_history,
-                      tg, metrics=[1], val=False)
+        pass_on_error(tg._update_temp_history, metrics=[1], val=False)
 
-        pass_on_error(util.training._update_temp_history,
-                      tg, metrics=[dict(a=1, b=2)], val=False)
+        pass_on_error(tg._update_temp_history,
+                      metrics=[dict(a=1, b=2)], val=False)
 
-        util.training._update_temp_history(tg, [[1]], val=False)
+        tg._update_temp_history([[1]], val=False)
 
         tg.temp_history = {'f1_score': []}
         tg.train_metrics = ['f1_score']
-        pass_on_error(util.training._update_temp_history,
-                      tg, metrics=[[1, 2]], val=False)
+        pass_on_error(tg._update_temp_history, metrics=[[1, 2]], val=False)
 
     def _validate_metrics(C):  # [util.misc]
         C['traingen']['eval_fn_name'] = 'evaluate'
@@ -325,12 +323,12 @@ def test_util():
         C['traingen']['eval_fn_name'] = 'predict'
         tg = _util_make_autoencoder(C)
         tg.model.loss = 'hl2'
-        pass_on_error(util.misc._validate_traingen_configs, tg)
+        pass_on_error(tg._validate_traingen_configs)
 
         tg.train_metrics = ['tnr', 'tpr']
         tg.val_metrics = ['tnr', 'tpr']
         tg.key_metric = 'tnr'
-        pass_on_error(util.misc._validate_traingen_configs, tg)
+        pass_on_error(tg._validate_traingen_configs)
 
     def _validate_directories(C):  # [util.misc]
         C['traingen']['best_models_dir'] = None
@@ -361,7 +359,7 @@ def test_util():
         tg = _util_make_classifier(C)
         tg.model.loss = 'categorical_crossentropy'
         tg.class_weights = {0: 1, 2: 5, 3: 6}
-        util.misc._validate_traingen_configs(tg)
+        tg._validate_traingen_configs()
 
     def _validate_best_subset_size(C):  # [util.misc]
         C['traingen']['best_subset_size'] = 5

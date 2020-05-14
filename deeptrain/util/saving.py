@@ -102,7 +102,7 @@ def checkpoint(self, forced=False, overwrite=None):
         for path, save_fn in save_fns:
             _maybe_save(save_fn, path, overwrite)
 
-    def _clear_logs_IF():
+    def _clear_checkpoints_IF():
         def _filter_varying(string):
             """Omit changing chars to infer uniques per checkpoint"""
             # omit digits, which change across `max`, `vals`, etc
@@ -133,9 +133,9 @@ def checkpoint(self, forced=False, overwrite=None):
     _save(basepath, overwrite)
 
     try:
-        _clear_logs_IF()
+        _clear_checkpoints_IF()
     except BaseException as e:
-        print(WARN,  "Model logs could not be cleared; skipping")
+        print(WARN,  "Checkpoint files could not be cleared; skipping")
         print("Errmsg:", e)
 
 
@@ -220,9 +220,6 @@ def save(self, savepath=None):
                     to_exclude.append(key)
                 elif key == 'group_batch':
                     to_exclude.append('group_batch')
-                elif key == 'hdf5_dataset':
-                    dg.hdf5_dataset.close()
-                    dg.hdf5_dataset = []
             cached_attrs.update(_cache_then_del_attrs(self, dg_name, to_exclude))
         return cached_attrs
 
@@ -249,10 +246,6 @@ def save(self, savepath=None):
         print("Errmsg:", e)
 
     _restore_cached_attributes(self, cached_attrs)
-
-    for dg in (self.datagen, self.val_datagen):
-        if 'hdf5_dataset' in vars(dg):
-            dg.hdf5_dataset = h5py.File(dg.data_dir, 'r')  # re-open
 
 
 def load(self, filepath=None):
@@ -359,8 +352,6 @@ def load(self, filepath=None):
         dg = getattr(self, dg_name)
         dg.batch_loaded = False
 
-        if 'hdf5_dataset' in vars(dg):
-            dg.hdf5_dataset = h5py.File(dg.data_dir, 'r')
         if dg.superbatch_set_nums != []:
             dg.preload_superbatch()
         dg.preload_labels()
