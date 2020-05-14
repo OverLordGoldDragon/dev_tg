@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import numpy as np
 from pathlib import Path
 from deeptrain.preprocessing import data_to_hdf5, numpy2D_to_csv
@@ -13,6 +14,14 @@ labels_format = 'csv'  # 'h5' or 'csv'
 ###############################################################
 join = lambda *args: str(Path(*args))
 basedir = join(Path(__file__).parent, "data", "timeseries")
+
+def make_dir_if_absent(_dir):
+    if not os.path.isdir(_dir):
+        os.mkdir(_dir)
+
+make_dir_if_absent(basedir)
+make_dir_if_absent(join(basedir, "train"))
+make_dir_if_absent(join(basedir, "val"))
 
 def make_data(batch_shape, n_batches):
     X = np.random.randn(n_batches, *batch_shape)

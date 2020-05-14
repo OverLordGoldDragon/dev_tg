@@ -10,12 +10,13 @@ def _path(self, set_num):
 
 
 def numpy_loader(self, set_num):
-    return np.load(_path(self, set_num)).astype(self.dtype)
+    return np.load(_path(self, set_num)).astype(self.data_loader_dtype)
 
 
 def numpy_lz4f_loader(self, set_num):
+    """self.data_loader_dtype must be original (save) dtype"""
     bytes_npy = lz4f.decompress(np.load(_path(self, set_num)))
-    return np.frombuffer(bytes_npy, dtype=self.dtype).reshape(
+    return np.frombuffer(bytes_npy, dtype=self.data_loader_dtype).reshape(
         *self.full_batch_shape)
 
 

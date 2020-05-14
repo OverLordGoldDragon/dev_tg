@@ -15,10 +15,11 @@ from deeptrain import TrainGenerator, DataGenerator
 batch_size = 128
 width, height = 28, 28
 channels = 1
-datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
+batch_shape = (batch_size, width, height, channels)
+datadir = os.path.join(BASEDIR, 'tests', 'data', 'image_lz4f')
 
 MODEL_CFG = dict(
-    batch_shape=(batch_size, width, height, channels),
+    batch_shape=batch_shape,
     loss='mse',
     metrics=None,
     optimizer='adam',
@@ -31,16 +32,22 @@ MODEL_CFG = dict(
 )
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
-    superbatch_dir=os.path.join(datadir, 'train'),
+    data_loader='numpy-lz4f',
+    data_loader_dtype='float64',
+    superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
+    full_batch_shape=batch_shape,
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
-    superbatch_dir=os.path.join(datadir, 'val'),
+    data_loader='numpy-lz4f',
+    data_loader_dtype='float64',
+    superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
+    full_batch_shape=batch_shape,
     shuffle=False,
 )
 TRAINGEN_CFG = dict(

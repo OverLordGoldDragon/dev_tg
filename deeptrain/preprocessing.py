@@ -7,8 +7,14 @@ import pandas as pd
 from pathlib import Path
 from .util._backend import WARN, NOTE
 
+try:
+    import lz4framed as lz4f
+except:
+    lz4f = None
 
-def numpy2D_to_csv(data, savepath, batch_size=None, columns=None, batch_dim=1):
+
+def numpy2D_to_csv(data, savepath, batch_size=None, columns=None, batch_dim=1,
+                   overwrite=None):
     def _process_data(data, batch_size, batch_dim):
         assert data.ndim == 2, "`data` must be 2D"
 
@@ -30,13 +36,18 @@ def numpy2D_to_csv(data, savepath, batch_size=None, columns=None, batch_dim=1):
         columns = list(map(str, range(data.shape[1])))
 
     df = pd.DataFrame(data, columns=columns)
-    df.to_csv(savepath, index=False)
-    print(len(df.columns), "batch labels saved to", savepath)
+
+    if savepath is not None:
+        _validate_savepath(savepath, overwrite)
+        df.to_csv(savepath, index=False)
+        print(len(df.columns), "batch labels saved to", savepath)
+    return df
 
 
-def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
+def numpy_data_to_numpy_sets(data, labels, savedir=None, batch_size=32,
                              shuffle=True, data_basename='batch',
-                             oversample_remainder=True, verbose=1):
+                             oversample_remainder=True, overwrite=None,
+                             verbose=1):
     def _process_remainder(remainder, data, labels, oversample_remainder,
                            batch_size):
         action = "will" if oversample_remainder else "will not"
@@ -77,7 +88,10 @@ def numpy_data_to_numpy_sets(savedir, data, labels, batch_size=32,
     for set_num, (x, y) in enumerate(zip(data, labels)):
         set_num = str(set_num + 1)
         name = "{}__{}.npy".format(data_basename, set_num)
-        np.save(os.path.join(savedir, name), x)
+        savepath = os.path.join(savedir, name)
+
+        _validate_savepath(savepath, overwrite)
+        np.save(savepath, x)
 
         labels_hdf5.create_dataset(set_num, data=y, dtype=data.dtype)
         if verbose:
@@ -105,24 +119,11 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
                                   "that takes paths & index as arguments"
                                   ).format(extensions[0], ', '.join(supported)))
 
-        def _validate_savepath(savepath):
+        def _validate_savepath(savepath, overwrite):
             if Path(savepath).suffix != '.h5':
                 print(WARN, "`savepath` extension must be '.h5'; will append")
                 savepath += '.h5'
-            if Path(savepath).is_file():
-                if overwrite is None:
-                    response = input(("Found existing file in `savepath`; "
-                                      "overwrite?' [y/n]\n"))
-                    if response == 'y':
-                        os.remove(savepath)
-                    else:
-                        raise SystemExit("program terminated.")
-                elif overwrite is True:
-                    os.remove(savepath)
-                    print(NOTE, "removed existing file from `savepath`")
-                else:
-                    raise SystemExit(("program terminated. (existing file in "
-                                      "`savepath` and `overwrite=False`)"))
+            _validate_savepath(savepath, overwrite)
 
         if loaddir is None and data is None:
             raise ValueError("one of `loaddir` or `data` must be not None")
@@ -131,7 +132,7 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
         if data is not None and load_fn is not None:
             print(WARN, "`load_fn` ignored with `data != None`")
 
-        _validate_savepath(savepath)
+        _validate_savepath(savepath, overwrite)
         if loaddir is not None:
             _validate_extensions(loaddir)
 
@@ -200,3 +201,41 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
     if verbose:
         print(last_set_num + 1, "batches converted & saved as .hdf5 to",
               savepath)
+
+
+def numpy_to_lz4f(data, savepath=None, level=9, overwrite=None):
+    if lz4f is None:
+        raise Exception("cannot convert to lz4f without `lz4framed` installed; "
+                        "run `pip install py-lz4framed`")
+
+    data = data.tobytes()
+    data = lz4f.compress(data, level=level)
+
+    if savepath is not None:
+        if Path(savepath).suffix != '.npy':
+            print(WARN, "`savepath` extension must be '.npy'; will append")
+            savepath += '.npy'
+        _validate_savepath(savepath, overwrite)
+        np.save(savepath, data)
+        print("lz4f-compressed data saved to", savepath)
+
+    return data
+
+
+def _validate_savepath(savepath, overwrite):
+    if not Path(savepath).is_file():
+        return
+
+    if overwrite is None:
+        response = input(("Found existing file in `savepath`; "
+                          "overwrite?' [y/n]\n"))
+        if response == 'y':
+            os.remove(savepath)
+        else:
+            raise SystemExit("program terminated.")
+    elif overwrite is True:
+        os.remove(savepath)
+        print(NOTE, "removed existing file from `savepath`")
+    else:
+        raise SystemExit(("program terminated. (existing file in "
+                          "`savepath` and `overwrite=False`)"))

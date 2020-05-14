@@ -8,3 +8,4 @@ pycode
 pandas
 pillow
 sklearn
+py-lz4framed

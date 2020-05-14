@@ -34,11 +34,11 @@ class DataGenerator():
                  labels_preloader=None,
                  base_name=None,
                  shuffle=False,
-                 dtype='float32',
-                 data_ext=None,
                  superbatch_dir=None,
                  set_nums=None,
                  superbatch_set_nums=None,
+                 data_loader_dtype='float32',
+                 data_ext=None,
                  **kwargs):
         self.data_dir=data_dir
         self.batch_size=batch_size
@@ -49,7 +49,7 @@ class DataGenerator():
         self.labels_preloader=labels_preloader
         self.base_name=base_name
         self.shuffle=shuffle
-        self.dtype=dtype
+        self.data_loader_dtype=data_loader_dtype
         self.data_ext=data_ext
 
         if superbatch_set_nums == 'all':
@@ -65,6 +65,8 @@ class DataGenerator():
         self._filepaths  = info['filepaths']
         self.data_ext    = info['data_ext']
 
+        self._init_and_validate_kwargs(kwargs)
+
         self._set_data_loader(self.data_loader)
         self._set_class_params(set_nums, superbatch_set_nums)
         self._set_preprocessor(preprocessor, self.preprocessor_configs)
@@ -74,7 +76,6 @@ class DataGenerator():
         else:
             self.all_labels = {}
             self.labels = []
-        self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
         print("DataGenerator initiated")
 

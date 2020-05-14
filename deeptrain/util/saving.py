@@ -428,7 +428,6 @@ def _save_history(self, savepath=None):
             print(WARN, "Model history could not be saved; skipping",
                   "\nErrmsg:", e)
 
-    # TODO: rename `final_fig_dir`?
     if self.final_fig_dir:  # keep at most one per model_num
         pass_on_error(_save_epoch_fig, fail_msg=("Epoch fig could not be "
                                                  "saved; skipping"))

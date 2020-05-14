@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import numpy as np
 import keras.utils
 from pathlib import Path
@@ -7,7 +8,15 @@ from deeptrain.preprocessing import numpy_data_to_numpy_sets
 
 ###############################################################
 join = lambda *args: str(Path(*args))
-basedir = join(Path(__file__).parent, "data", "image")
+basedir = join(Path(__file__).parent, "data", "mnist")
+
+def make_dir_if_absent(_dir):
+    if not os.path.isdir(_dir):
+        os.mkdir(_dir)
+
+make_dir_if_absent(basedir)
+make_dir_if_absent(join(basedir, "train"))
+make_dir_if_absent(join(basedir, "val"))
 
 ###############################################################
 (x_train, y_train), (x_test, y_test) = mnist.load_data()

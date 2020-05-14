@@ -31,6 +31,7 @@ before_install:
   - pip install -r requirements-dev.txt
   - conda install matplotlib
   - pip install see_rnn
+  - pip install py-lz4framed
   - pip install coveralls
   
 install:
