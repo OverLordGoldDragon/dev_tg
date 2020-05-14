@@ -231,10 +231,6 @@ class TraingenLogger():
                 for name in gather_fns_default:
                     if name not in gather_fns:
                         gather_fns[name] = gather_fns_default[name]
-
-            if all(fn is None for fn in gather_fns):
-                raise Exception("all `gather_fns` are None due missing "
-                                "optional dependency (see-rnn) to default from")
             self.gather_fns = gather_fns
 
         _process_configs(args['configs'])

@@ -13,8 +13,8 @@ except:
     lz4f = None
 
 
-def numpy2D_to_csv(data, savepath, batch_size=None, columns=None, batch_dim=1,
-                   overwrite=None):
+def numpy2D_to_csv(data, savepath=None, batch_size=None, columns=None,
+                   batch_dim=1, overwrite=None):
     def _process_data(data, batch_size, batch_dim):
         assert data.ndim == 2, "`data` must be 2D"
 

@@ -1,5 +1,4 @@
 import os
-import pytest
 import contextlib
 import shutil
 import tempfile

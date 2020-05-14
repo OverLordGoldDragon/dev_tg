@@ -268,9 +268,9 @@ def test_preprocessing(monkeypatch):
 
     def _test_numpy_to_lz4f(datadir, paths):
         data = np.load(paths[0])
-        savepath = os.path.join(datadir, "data_lz4f.npy")
+        savepath = os.path.join(datadir, "data_lz4f")
         preprocessing.numpy_to_lz4f(data, savepath=savepath)
-        os.remove(savepath)  # will error in to_hdf5
+        os.remove(savepath + '.npy')  # will error in to_hdf5
 
     def _test_data_to_hdf5(datadir, paths):
         X = np.array([np.load(path) for path in paths])

@@ -230,6 +230,15 @@ def _validate_traingen_configs(self):
             except:
                 raise ValueError(failmsg)
 
+        model_metrics = self.model.metrics_names
+
+        vm_set_and_evaluate = self.val_metrics and self.eval_fn_name == 'evaluate'
+        if self.val_metrics is None or vm_set_and_evaluate:
+            if vm_set_and_evaluate:
+                print(WARN, "will override `val_metrics` with model metrics "
+                      "for `eval_fn_name` == 'evaluate'")
+            self.val_metrics = model_metrics.copy()
+
         for name in ('train_metrics', 'val_metrics'):
             value = getattr(self, name)
             if not isinstance(value, list):
@@ -242,15 +251,10 @@ def _validate_traingen_configs(self):
                 getattr(self, name)[i] = self._alias_to_metric_name(maybe_alias)
         self.key_metric = self._alias_to_metric_name(self.key_metric)
 
-        model_metrics = self.model.metrics_names
-
         if self.eval_fn_name == 'evaluate':
             basemsg = ("must be in one of metrics returned by model, "
                        "when using `eval_fn_name='evaluate'`. "
                        "(model returns: %s)" % ', '.join(model_metrics))
-            for metric in self.val_metrics:
-                if metric not in model_metrics:
-                    raise ValueError(f"val metric {metric} " + basemsg)
             if self.key_metric not in model_metrics:
                 raise ValueError(f"key_metric {self.key_metric} " + basemsg)
 
@@ -277,36 +281,6 @@ def _validate_traingen_configs(self):
         if self.max_is_best and self.key_metric == 'loss':
             print(NOTE + "`max_is_best = True` and `key_metric = 'loss'`"
                   "; will consider higher loss to be better")
-
-    def _validate_model_metrics_match():
-        def _set_in_matching_order(model_metrics, val):
-            """Need metrics in matching order w/ model's to collect history
-            """
-            _metrics = model_metrics.copy()
-            target_name = 'val_metrics' if val else 'train_metrics'
-
-            for metric in getattr(self, target_name, []):
-                if metric not in _metrics:
-                    _metrics.append(metric)
-            setattr(self, target_name, _metrics.copy())
-
-        model_metrics = self.model.metrics_names.copy()
-        # ensure api-compatibility, e.g. 'acc' -> 'accuracy'
-        model_metrics = [self._alias_to_metric_name(metric)
-                         for metric in model_metrics]
-
-        _set_in_matching_order(model_metrics, val=False)
-
-        if self.eval_fn_name == 'evaluate':
-            if self.val_metrics is not None:
-                for metric in self.val_metrics:
-                    if metric not in model_metrics:
-                        raise ValueError(
-                            f"metric '{metric}' is not in model.metrics_names, "
-                            "with `eval_fn_name='evaluate'`")
-            self.val_metrics = model_metrics.copy()
-        else:
-            _set_in_matching_order(model_metrics, val=True)
 
     def _validate_directories():
         if self.logs_dir is None and self.best_models_dir is None:
@@ -378,7 +352,7 @@ def _validate_traingen_configs(self):
                     "(got {})").format(name, cw)
 
                 if self.model.loss in ('categorical_crossentropy',
-                                      'sparse_categorical_crossentropy'):
+                                       'sparse_categorical_crossentropy'):
                     n_classes = self.model.output_shape[-1]
                     for class_label in range(n_classes):
                         if class_label not in cw:
@@ -425,16 +399,13 @@ def _validate_traingen_configs(self):
 
     def _validate_callbacks():
         def _validate_types(cb, stage):
-            errmsg = ("`callbacks` stage values types must be callable, "
-                      "or list or tuple of callables")
+            errmsg = ("`callbacks` stage values must be functions, or list "
+                      "or tuple of functions")
             if not isinstance(cb[stage], (list, tuple)):
-                if not isinstance(cb[stage], LambdaType):
-                    raise ValueError(errmsg)
                 cb[stage] = (cb[stage],)
-            else:
-                for fn in cb[stage]:
-                    if not isinstance(fn, LambdaType):
-                        raise ValueError(errmsg)
+            for fn in cb[stage]:
+                if not isinstance(fn, LambdaType):
+                    raise ValueError(errmsg)
 
         supported = ('save', 'load', 'val_end',
                      'train:iter', 'train:batch', 'train:epoch',
@@ -453,7 +424,6 @@ def _validate_traingen_configs(self):
                 _validate_types(cb, stage)
 
     _validate_metrics()
-    _validate_model_metrics_match()
     _validate_directories()
     _validate_optimizer_saving_configs()
     _validate_savelist()

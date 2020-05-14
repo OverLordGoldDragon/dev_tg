@@ -127,8 +127,10 @@ def test_main():
         cb_makers = [_make_logger_cb, _make_2Dviz_cb]
         callbacks, callbacks_init = make_callbacks(cb_makers)
         callbacks.update(layer_hists_cbs)
-        C['traingen'].update({'callbacks': callbacks,
-                              'callbacks_init': callbacks_init})
+
+        C['traingen']['callbacks'] = callbacks
+        C['traingen']['callbacks_init'] = callbacks_init
+
         tg = _init_session(C)
         tg.train()
         _test_load(tg, C)

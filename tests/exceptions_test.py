@@ -16,6 +16,7 @@ from tests.backend import BASEDIR, tempdir, notify
 from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
+from deeptrain import callbacks
 from deeptrain.util.misc import pass_on_error
 from deeptrain.visuals import layer_hists
 from deeptrain import TrainGenerator, DataGenerator
@@ -68,9 +69,9 @@ TRAINGEN_CFG = dict(
 )
 
 CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
-          'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
+           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {f'{name}_exceptions': None for name in (
-    'datagen', 'visuals', 'util', 'data_to_hdf5')}
+    'datagen', 'visuals', 'util', 'data_to_hdf5', 'preprocessing')}
 
 
 @notify(tests_done)
@@ -307,13 +308,16 @@ def test_util():
         C['traingen']['eval_fn_name'] = 'predict'
         pass_on_error(_util_make_autoencoder, C)
 
+        C = deepcopy(CONFIGS)
+        C['traingen']['val_metrics'] = None
+        pass_on_error(_util_make_autoencoder, C)
+
         C['traingen']['key_metric'] = 'loss'
         C['traingen']['max_is_best'] = True
         _util_make_autoencoder(C)
 
         C = deepcopy(CONFIGS)
         C['traingen']['eval_fn_name'] = 'predict'
-        C['traingen']['train_metrics'] = None
         C['traingen']['val_metrics'] = 'cosine_proximity'
         pass_on_error(_util_make_autoencoder, C)
 
@@ -327,7 +331,6 @@ def test_util():
         tg.val_metrics = ['tnr', 'tpr']
         tg.key_metric = 'tnr'
         pass_on_error(util.misc._validate_traingen_configs, tg)
-
 
     def _validate_directories(C):  # [util.misc]
         C['traingen']['best_models_dir'] = None
@@ -374,6 +377,13 @@ def test_util():
         C['traingen']['train_metrics'] = ('loss',)
         pass_on_error(_util_make_autoencoder, C)
 
+    def _validate_callbacks(C):  # [util.misc]
+        C['traingen']['callbacks'] = {'.': {'invalid_stage': 1}}
+        pass_on_error(_util_make_autoencoder, C)
+
+        C['traingen']['callbacks'] = {'.': {'save': 1}}
+        pass_on_error(_util_make_autoencoder, C)
+
     tests_all = [_save_best_model,
                   checkpoint,
                   save,
@@ -389,6 +399,7 @@ def test_util():
                   _validate_best_subset_size,
                   _validate_metric_printskip_configs,
                   _validate_savelist_and_metrics,
+                  _validate_callbacks,
                   ]
     for _test in tests_all:
         with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
@@ -401,7 +412,7 @@ def test_util():
 
 
 @notify(tests_done)
-def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
+def test_data_to_hdf5(monkeypatch):  # [deeptrain.preprocessing]
     """Dedicated test since it uses monkeypatch"""
     C = deepcopy(CONFIGS)
     # set preemptively in case data.h5 somehow found in dir
@@ -448,6 +459,23 @@ def test_data_to_hdf5(monkeypatch):  # [util.preprocessing]
         _data = [np.vstack([data[0], data[0]])]
         pass_on_error(preprocessing.data_to_hdf5, kw['savepath'],
                       kw['batch_size'], data=_data, overwrite=True)
+
+
+@notify(tests_done)
+def test_preprocessing():  # [deeptrain.preprocessing]
+    data = np.random.randn(15, 2)
+    pass_on_error(preprocessing.numpy2D_to_csv, data, batch_size=16)
+
+    lz4f_cache = preprocessing.lz4f
+    preprocessing.lz4f = None
+    pass_on_error(preprocessing.numpy_to_lz4f, data)
+    preprocessing.lz4f = lz4f_cache
+
+
+@notify(tests_done)
+def test_callbacks():  # [deeptrain.callbacks]
+    pass_on_error(callbacks.make_callbacks, [lambda: []])
+    pass_on_error(callbacks.make_callbacks, [lambda: 'a'])
 
 
 @notify(tests_done)

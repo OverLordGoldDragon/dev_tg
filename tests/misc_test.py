@@ -9,6 +9,7 @@ from copy import deepcopy
 from tests.backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir, notify
+from deeptrain.util.logging import _log_init_state
 from deeptrain import TrainGenerator, DataGenerator
 
 
@@ -82,6 +83,8 @@ def test_main():
             optimizer_load_configs={'include': ['momentum', 'momentam']},
             ))
         tg = _init_session(C)
+        with tempdir() as savedir:
+            _log_init_state(tg, savedir=savedir, verbose=1)
         tg.train()
         _test_load(tg, C)
 
