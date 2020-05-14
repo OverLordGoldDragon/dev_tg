@@ -76,13 +76,6 @@ def _get_history_fig(self, plot_configs=None, w=1, h=1):
     def _equalize_ticks_range(x_ticks, metrics):
         max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks) > 0])
 
-        for idx, ticks, metric in zip(range(len(x_ticks)), x_ticks, metrics):
-            if (len(ticks) == 0) or (ticks[-1] < max_value):
-                if len(metric) == 1:
-                    x_ticks[idx] = [max_value]
-                else:
-                    x_ticks[idx] = list(np.linspace(1, max_value, len(metric)))
-
         assert all([ticks[-1] == max_value for ticks in x_ticks])
         assert all([len(t) == len(m)       for t, m in zip(x_ticks, metrics)])
         return x_ticks
@@ -104,9 +97,9 @@ def _get_history_fig(self, plot_configs=None, w=1, h=1):
             vhline = config['vhlines'][vh]
             if isinstance(vhline, (float, int, list, tuple, np.ndarray)):
                 vhlines[vh] = vhline
-            elif 'val_hist_vlines' in vhline:
+            elif vhline == '_val_hist_vlines':
                 vhlines[vh] = self._val_hist_vlines or None
-            elif 'hist_vlines' in vhline:
+            elif vhline == '_hist_vlines':
                 vhlines[vh] = self._hist_vlines or None
             else:
                 raise ValueError("unsupported `vhlines` in `plot_configs`:",

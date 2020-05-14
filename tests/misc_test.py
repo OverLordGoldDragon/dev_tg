@@ -10,6 +10,7 @@ from tests.backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from tests.backend import Model
 from tests.backend import BASEDIR, tempdir, notify
 from deeptrain.util.logging import _log_init_state
+from deeptrain.util.misc import pass_on_error
 from deeptrain import TrainGenerator, DataGenerator
 
 
@@ -92,6 +93,9 @@ def test_main():
         tg.train()
         tg._has_trained = True
         tg.train()
+
+        tg.plot_configs['1']['vhlines']['v'] = 'invalid_vlines'
+        pass_on_error(tg._get_history_fig)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
