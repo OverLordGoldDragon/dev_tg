@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import deeptrain.metrics
 
 from types import LambdaType
-from functools import reduce
 from inspect import getfullargspec
 from ._backend import WARN, NOTE
 
@@ -34,32 +33,6 @@ def _dict_filter_keys(dc, keys, exclude=True, filter_substr=False):
     keys = keys if isinstance(keys, (list, tuple)) else [keys]
     return {k:v for k,v in dc.items()
             if condition(k, keys, exclude, filter_substr)}
-
-
-def ordered_shuffle(*args):
-    zipped_args = list(zip(*(a.items() if isinstance(a, dict)
-                             else a for a in args)))
-    np.random.shuffle(zipped_args)
-    return [(_type(data) if _type != np.ndarray else np.asarray(data))
-            for _type, data in zip(map(type, args), zip(*zipped_args))]
-
-
-def deeplen(item, iterables=(list, tuple, dict, np.ndarray)):
-    # return 1 and terminate recursion when `item` is no longer iterable
-    if isinstance(item, iterables):
-        if isinstance(item, dict):
-            item = item.values()
-        return sum(deeplen(subitem) for subitem in item)
-    else:
-        return 1
-
-
-def nCk(n, k):  # n-Choose-k
-    mul = lambda a, b: a * b
-    r = min(k, n - k)
-    numer = reduce(mul, range(n, n - r, -1), 1)
-    denom = reduce(mul, range(1, r + 1), 1)
-    return numer / denom
 
 
 def get_module_methods(module):
@@ -315,6 +288,12 @@ def _validate_traingen_configs(self):
                              ).format(required_key))
                 self.savelist.append(required_key)
 
+    def _validate_loadskip_list():
+        lsl = self.loadskip_list
+        if not isinstance(lsl, list) and lsl not in ('auto', 'none', None):
+            raise ValueError("`loadskip_list` must be a list, None, 'auto', "
+                             "or 'none'")
+
     def _validate_weighted_slices_range():
         if self.pred_weighted_slices_range is not None:
             if self.eval_fn_name != 'predict':
@@ -427,6 +406,7 @@ def _validate_traingen_configs(self):
     _validate_directories()
     _validate_optimizer_saving_configs()
     _validate_savelist()
+    _validate_loadskip_list()
     _validate_weighted_slices_range()
     _validate_class_weights()
     _validate_best_subset_size()

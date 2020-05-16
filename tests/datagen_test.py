@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 
 from tests.backend import BASEDIR, tempdir, notify
-from deeptrain.util.misc import pass_on_error, ordered_shuffle
+from deeptrain.util.misc import pass_on_error
+from deeptrain.util.algorithms import ordered_shuffle
 from deeptrain.util import data_loaders, labels_preloaders
 from deeptrain.util import TimeseriesPreprocessor
 from deeptrain import DataGenerator

@@ -375,6 +375,10 @@ def test_util():
         C['traingen']['train_metrics'] = ('loss',)
         pass_on_error(_util_make_autoencoder, C)
 
+    def _validate_loadskip_list(C):  # [util.misc]
+        C['traingen']['loadskip_list'] = 'invalid'
+        pass_on_error(_util_make_autoencoder, C)
+
     def _validate_callbacks(C):  # [util.misc]
         C['traingen']['callbacks'] = {'.': {'invalid_stage': 1}}
         pass_on_error(_util_make_autoencoder, C)
@@ -397,6 +401,7 @@ def test_util():
                   _validate_best_subset_size,
                   _validate_metric_printskip_configs,
                   _validate_savelist_and_metrics,
+                  _validate_loadskip_list,
                   _validate_callbacks,
                   ]
     for _test in tests_all:

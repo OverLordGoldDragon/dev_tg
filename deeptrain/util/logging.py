@@ -7,8 +7,9 @@ import pickle
 import builtins
 
 from inspect import getsource
+from .algorithms import deeplen
+from .misc import _dict_filter_keys
 from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
-from .misc import _dict_filter_keys, deeplen
 
 
 def generate_report(self, savepath):
@@ -41,7 +42,23 @@ def generate_report(self, savepath):
 def get_report_text(self):
     def list_to_str_side_by_side_by_side(_list, space_between_cols=0):
         def _split_in_three(_list):
+            def _pad_column_bottom(_list):
+                l = len(_list) // 3
+                to_fill = 3 - len(_list) % 3
+
+                if to_fill == 1:
+                    _list.insert(l, '')
+                elif to_fill == 2:
+                    _list.insert(l, '')
+                    _list.insert(2 * l + 1, '')
+                return _list
+
+            L = len(_list) / 3
+            if not L.is_integer():
+                # L must be integer to preserve all rows
+                _list = _pad_column_bottom(_list)
             L = len(_list) // 3
+
             return _list[:L], _list[L:2*L], _list[2*L:]
 
         def _exclude_chars(_str, chars):

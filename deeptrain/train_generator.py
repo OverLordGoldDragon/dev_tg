@@ -41,7 +41,30 @@ from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 sys.stdout = Unbuffered(sys.stdout)
 
 
+# import builtins
+# from deeptrain.util.algorithms import deepmap
+
+
+# def get_passed_args(fn):
+#     def is_builtin_or_numpy_scalar(x):
+#         return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
+#                 isinstance(x, np.generic))
+
+#     def wrap(self, model, datagen, val_datagen, **kwargs):
+#         # convert to string to prevent storing objects
+#         # & trim in case long lists / arrays are passed
+#         def objs_to_str(x, key):
+#             return x if is_builtin_or_numpy_scalar(x) else str(x)[:200]
+#         kwargs['passed_args'] = deepmap(deepcopy(kwargs), objs_to_str)
+#         # kwargs['passed_args'] = {k: (v if is_builtin_or_numpy_scalar(v) else
+#         #                              str(v)[:200])
+#         #                          for k, v in kwargs.items()}
+#         fn(self, model, datagen, val_datagen, **kwargs)
+#     return wrap
+
+
 class TrainGenerator(TraingenUtils):
+    # @get_passed_args
     def __init__(self, model, datagen, val_datagen,
                  epochs=1,
                  logs_dir=None,
@@ -61,7 +84,6 @@ class TrainGenerator(TraingenUtils):
 
                  val_freq={'epoch': 1},
                  plot_history_freq={'epoch': 1},
-                 viz_freq=None,
                  unique_checkpoint_freq={'epoch': 1},
                  temp_checkpoint_freq=None,
 
@@ -97,14 +119,12 @@ class TrainGenerator(TraingenUtils):
         self.input_as_labels=input_as_labels
         if max_is_best is None:
             value = False if self.key_metric == 'loss' else True
-            print(NOTE, "`max_is_best` not set; defaulting to", value)
             self.max_is_best = value
         else:
             self.max_is_best = max_is_best
 
         self.val_freq=val_freq
         self.plot_history_freq=plot_history_freq
-        self.viz_freq=viz_freq or plot_history_freq
         self.unique_checkpoint_freq=unique_checkpoint_freq
         self.temp_checkpoint_freq=temp_checkpoint_freq
 
@@ -122,12 +142,7 @@ class TrainGenerator(TraingenUtils):
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
         self._init_fit_and_pred_fns()
-        self._init_callbacks()
 
-        if self.loadpath:
-            self.load()  # overwrites model_num, model_name, & others
-        else:
-            self._prepare_initial_data()
         if self.logs_dir:
             self._init_logger()
             savedir = os.path.join(self.logdir, "misc")
@@ -139,6 +154,13 @@ class TrainGenerator(TraingenUtils):
         else:
             print(NOTE, "logging OFF")
             self.logdir = None
+
+        self._init_callbacks()
+        if self.loadpath:
+            self.load(passed_args=kwargs)
+            # self.load(passed_args=kwargs.pop('passed_args', []))
+        else:
+            self._prepare_initial_data()
 
     ########################## MAIN METHODS ##########################
     def train(self):

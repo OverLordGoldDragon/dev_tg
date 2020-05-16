@@ -14,7 +14,7 @@ from types import LambdaType
 from .util import GenericPreprocessor, TimeseriesPreprocessor
 from .util import data_loaders, labels_preloaders
 from .util.configs import _DATAGEN_CFG
-from .util.misc import ordered_shuffle
+from .util.algorithms import ordered_shuffle
 from .util._backend import WARN, NOTE, IMPORTS
 from .util._default_configs import _DEFAULT_DATAGEN_CFG
 

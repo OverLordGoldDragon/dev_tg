@@ -7,7 +7,6 @@ import pandas as pd
 
 from pathlib import Path
 from types import LambdaType
-from time import time
 
 from deeptrain.util import searching
 from deeptrain.util import misc
@@ -15,7 +14,7 @@ from deeptrain.util import logging
 from deeptrain.util import training
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
-from deeptrain.util.misc import pass_on_error, deeplen
+from deeptrain.util.misc import pass_on_error
 from deeptrain import metrics
 from deeptrain import preprocessing
 from tests import _methods_dummy
@@ -39,21 +38,6 @@ def test_searching():
 
 @notify(tests_done)
 def test_misc():
-    def _test_nCk():
-        assert misc.nCk(10, 2) == 45
-        assert misc.nCk(4, 5) == 1
-
-    def _test_ordered_shuffle():
-        ls = [1, 2, 3, 4, 'a']
-        x = np.array([5, 6, 7, 8, 9])
-        dc = {'a': 1, 5: ls, (2, 3): x, '4': None, None: {1: 2}}
-        ls, x, dc = misc.ordered_shuffle(ls, x, dc)
-
-        assert len(ls) == len(x) == len(dc) == 5
-        assert isinstance(ls, list)
-        assert isinstance(x, np.ndarray)
-        assert isinstance(dc, dict)
-
     def _test_train_on_batch_dummy():
         model = ModelDummy()
         model.loss = 'sparse_categorical_crossentropy'
@@ -84,8 +68,6 @@ def test_misc():
         assert isinstance(mm['fn1'], LambdaType)
         assert isinstance(mm['not_lambda'], LambdaType)
 
-    _test_nCk()
-    _test_ordered_shuffle()
     _test_train_on_batch_dummy()
     _test_make_plot_configs_from_metrics()
     _test_get_module_methods()
@@ -138,35 +120,6 @@ def test_logging():
     _test_log_init_state()
     _test_get_report_text()
     _test_generate_report()
-
-
-@notify(tests_done)
-def test_deeplen():
-    def _make_bignest():
-        arrays = [np.random.randn(100, 100), np.random.uniform(30, 40, 10)]
-        lists = [[1, 2, '3', '4', 5, [6, 7]] * 555, {'a': 1, 'b': arrays[0]}]
-        dicts = {'x': [1, {2: [3, 4]}, [5, '6', {'7': 8}]*99] * 55,
-                 'b': [{'a': 5, 'b': 3}] * 333, ('k', 'g'): (5, 9, [1, 2])}
-        tuples = (1, (2, {3: np.array([4., 5.])}, (6, 7, 8, 9) * 21) * 99,
-                  (10, (11,) * 5) * 666)
-        return {'arrays': arrays, 'lists': lists,
-                'dicts': dicts, 'tuples': tuples}
-
-    def _print_report(bignest, t0):
-        t = time() - t0
-        print("{:.5f} / iter ({} iter avg, total time: {:.3f}); sizes:".format(
-            t / iters, iters, t))
-        print("bignest:", deeplen(bignest))
-        print(("{} {}\n" * len(bignest)).format(
-            *[x for k, v in bignest.items()
-              for x in ((k + ':').ljust(8), deeplen(v))]))
-
-    iters = 2
-    bignest = _make_bignest()
-    t0 = time()
-    for _    in range(iters):
-        deeplen(bignest)
-    _print_report(bignest, t0)
 
 
 @notify(tests_done)

@@ -247,25 +247,33 @@ def save(self, savepath=None):
     _restore_cached_attributes(self, cached_attrs)
 
 
-def load(self, filepath=None):
+def load(self, filepath=None, passed_args=None):
+    def _get_loadskip_list(passed_args):
+        if self.loadskip_list == 'auto' or not self.loadskip_list:
+            return list(passed_args) if passed_args else []
+        elif self.loadskip_list == 'none':
+            return []
+        else:
+            return self.loadskip_list
+
     def _get_filepath(filepath):
         filepath = filepath or self.loadpath
         if filepath is not None:
             return filepath
 
-        basetxt = ("`loadpath` and passed in `filepath` are None")
         txt = None
         if self.logdir is None:
-            txt = basetxt + ", and `logdir` is None"
+            txt = "`filepath` and `logdir` are None,"
         elif not Path(self.logdir).is_dir():
-            txt = basetxt + f", and `logdir` is not a folder ({self.logdir})"
+            txt = ("`filepath` is None, and `logdir` is not a folder"
+                   "(%s)" % self.logdir)
         if txt is not None:
             raise ValueError(txt)
 
         tempname = '_temp_model__state.h5'
         if tempname not in os.listdir(self.logdir):
-            raise ValueError(basetxt + f" and tempfile default {tempname} not "
-                             f"found in `logdir` ({self.logdir})")
+            raise ValueError("`filepath` is None, and tempfile default "
+                             f"{tempname} not found in `logdir` ({self.logdir})")
 
         filepath = os.path.join(self.logdir, '_temp_model__state.h5')
         return filepath
@@ -332,6 +340,11 @@ def load(self, filepath=None):
         for dg_name in ('datagen', 'val_datagen'):
             for key, value in loadfile_parsed.pop(dg_name).__dict__.items():
                 setattr(getattr(self, dg_name), key, value)
+
+        # drop items in loadskip_list (e.g. to avoid overriding passed kwargs)
+        loadskip_list = _get_loadskip_list(passed_args)
+        for name in loadskip_list:
+            loadfile_parsed.pop(name, None)
 
         # assign loaded/cached attributes
         self.__dict__.update(loadfile_parsed)

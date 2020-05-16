@@ -73,10 +73,13 @@ _REPORT_CFG = {
              'history_fig', 'plot_configs', 'max_checkpoints',
              'history', 'val_history', 'temp_history', 'val_temp_history',
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
-             'report_configs', 'datagen', 'val_datagen',
-             'logdir', 'logs_dir', 'best_models_dir', 'fit_fn', 'eval_fn',
+             'report_configs', 'datagen', 'val_datagen', 'logdir', 'logs_dir',
+             'best_models_dir', 'fit_fn', 'eval_fn',
+             'callbacks', 'callbacks_init', 'callback_objs',
              '_history_fig', 'metric_printskip_configs', '_inferred_batch_size',
-             'plot_first_pane_max_vals',
+             'plot_first_pane_max_vals', '_imports', 'iter_verbosity',
+             '_max_set_name_chars', '_val_max_set_name_chars',
+             'metric_to_alias', 'alias_to_metric',
              '*_has_', '*temp_history_empty',
              ],
         'exclude_types':
@@ -141,6 +144,8 @@ _TRAINGEN_SAVE_LIST = [
     '_hist_vlines',
     '_val_hist_vlines',
 ]
+
+_TRAINGEN_LOADSKIP_LIST = 'auto'
 
 _METRIC_PRINTSKIP_CFG = {
     'train': [],
@@ -237,8 +242,6 @@ _TRAINGEN_CFG = dict(
     loss_weighted_slices_range  = None,
     pred_weighted_slices_range  = None,
     use_passed_dirs_over_loaded = False,
-    visual_outputs_layer_names  = None,
-    visual_weights_layer_names  = None,
     logs_use_full_model_name    = True,
     model_num_continue_from_max = True,
     dynamic_predict_threshold   = 0.5,  # initial
@@ -248,7 +251,6 @@ _TRAINGEN_CFG = dict(
     predict_threshold    = 0.5,
     best_subset_size     = 0,
     check_model_health   = True,
-    outputs_visualizer   = 'comparative_histogram',
     max_checkpoints = 5,
     max_one_best_save    = None,
     report_fontpath = fontsdir + "consola.ttf",
@@ -256,7 +258,8 @@ _TRAINGEN_CFG = dict(
     make_new_logdir = True,
     final_fig_dir   = None,
 
-    savelist = _TRAINGEN_SAVE_LIST,
+    savelist      = _TRAINGEN_SAVE_LIST,
+    loadskip_list = _TRAINGEN_LOADSKIP_LIST,
     metric_to_alias     = _METRIC_TO_ALIAS,
     alias_to_metric     = _ALIAS_TO_METRIC,
     report_configs      = _REPORT_CFG,
