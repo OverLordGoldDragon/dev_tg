@@ -3,19 +3,17 @@ import os
 import pytest
 import numpy as np
 
-from pathlib import Path
 from time import time
 from copy import deepcopy
 from see_rnn import get_weights, features_2D
 
-from tests.backend import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten
-from tests.backend import Model
-from tests.backend import BASEDIR, tempdir, notify
-from deeptrain import TrainGenerator, DataGenerator
+from tests.backend import BASEDIR, tempdir, notify, make_classifier
+from tests.backend import _init_session, _do_test_load
 from deeptrain.callbacks import TraingenLogger, make_callbacks
 from deeptrain.callbacks import make_layer_hists_cb
 
 
+#### CONFIGURE TESTING #######################################################
 batch_size = 128
 width, height = 28, 28
 channels = 1
@@ -59,6 +57,11 @@ VAL_DATAGEN_CFG = dict(
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in ('main', 'load')}
+model = make_classifier(**CONFIGS['model'])
+
+def init_session(C, weights_path=None, loadpath=None, model=None):
+    return _init_session(C, weights_path=weights_path, loadpath=loadpath,
+                         model=model, model_fn=make_classifier)
 
 
 def _make_logger_cb(get_data_fn=None, get_labels_fn=None, gather_fns=None):
@@ -116,7 +119,7 @@ layer_hists_cbs = {
                                                      'plot': dict(annot_kw=None)},
                                             )},
 }
-
+###############################################################################
 
 @notify(tests_done)
 def test_main():
@@ -131,7 +134,7 @@ def test_main():
         C['traingen']['callbacks'] = callbacks
         C['traingen']['callbacks_init'] = callbacks_init
 
-        tg = _init_session(C)
+        tg = init_session(C, model=model)
         tg.train()
         _test_load(tg, C)
 
@@ -140,17 +143,7 @@ def test_main():
 
 @notify(tests_done)
 def _test_load(tg, C):
-    def _get_latest_paths(logdir):
-        paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
-        paths.sort(key=os.path.getmtime)
-        return ([p for p in paths if '__weights' in Path(p).stem][-1],
-                [p for p in paths if '__state' in Path(p).stem][-1])
-
-    logdir = tg.logdir
-    _destroy_session(tg)
-
-    weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(C, weights_path, loadpath)
+    _do_test_load(tg, C, init_session)
 
 
 @notify(tests_done)
@@ -170,60 +163,8 @@ def test_traingen_logger():
 
         C['traingen'].update({'callbacks': callbacks,
                               'callbacks_init': callbacks_init})
-        tg = _init_session(C)
+        tg = init_session(C, model=model)
         tg.train()
-
-
-def _make_model(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'num_classes', 'filters', 'kernel_size',
-                       'dropout', 'dense_units')
-        return [kw[key] for key in expected_kw]
-
-    (batch_shape, loss, metrics, optimizer, num_classes, filters,
-     kernel_size, dropout, dense_units) = _unpack_configs(kw)
-
-    ipt = Input(batch_shape=batch_shape)
-    x   = ipt
-
-    for f, ks in zip(filters, kernel_size):
-        x = Conv2D(f, ks, activation='relu', padding='same')(x)
-
-    x   = MaxPooling2D(pool_size=(2, 2))(x)
-    x   = Dropout(dropout[0])(x)
-    x   = Flatten()(x)
-    x   = Dense(dense_units, activation='relu')(x)
-
-    x   = Dropout(dropout[1])(x)
-    out = Dense(num_classes, activation='softmax')(x)
-
-    model = Model(ipt, out)
-    model.compile(optimizer, loss, metrics=metrics)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
-    return model
-
-
-def _init_session(C, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **C['model'])
-    dg  = DataGenerator(**C['datagen'])
-    vdg = DataGenerator(**C['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
-    return tg
-
-
-def _destroy_session(tg):
-    def _clear_data(tg):
-        tg.datagen.batch = []
-        tg.datagen.superbatch = {}
-        tg.val_datagen.batch = []
-        tg.val_datagen.superbatch = {}
-
-    _clear_data(tg)
-    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
-    del tg
 
 
 if __name__ == '__main__':

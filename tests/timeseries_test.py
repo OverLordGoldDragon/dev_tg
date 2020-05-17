@@ -2,20 +2,17 @@
 import os
 import pytest
 
-from pathlib import Path
 from time import time
 from copy import deepcopy
 
-from tests.backend import Input, Dense, LSTM
-from tests.backend import l2
-from tests.backend import Model
-from tests.backend import BASEDIR, tempdir, notify
+from tests.backend import BASEDIR, tempdir, notify, make_timeseries_classifier
+from tests.backend import _init_session, _do_test_load, destroy_session
 from deeptrain.callbacks import predictions_per_iteration_cb
 from deeptrain.callbacks import predictions_distribution_cb
 from deeptrain.callbacks import comparative_histogram_cb
-from deeptrain import TrainGenerator, DataGenerator
 
 
+#### CONFIGURE TESTING #######################################################
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'timeseries')
 batch_size = 32
 
@@ -60,7 +57,12 @@ CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in ('main', 'load', 'weighted_slices',
                                       'predict')}
+model = make_timeseries_classifier(**CONFIGS['model'])
 
+def init_session(C, weights_path=None, loadpath=None, model=None):
+    return _init_session(C, weights_path=weights_path, loadpath=loadpath,
+                         model=model, model_fn=make_timeseries_classifier)
+###############################################################################
 
 @notify(tests_done)
 def test_main():
@@ -68,7 +70,7 @@ def test_main():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        tg = _init_session(C)
+        tg = init_session(C, model=model)
         tg.train()
         _test_load(tg, C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
@@ -83,9 +85,9 @@ def test_weighted_slices():
                               pred_weighted_slices_range=(.5, 1.5)))
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        tg = _init_session(C)
+        tg = init_session(C, model=model)
         tg.train()
-        _destroy_session(tg)
+        destroy_session(tg)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 
@@ -103,68 +105,15 @@ def test_predict():
                                   class_weights={0: 1, 1: 5},
                                   iter_verbosity=2,
                                   ))
-        tg = _init_session(C)
+        tg = init_session(C, model=model)
         tg.train()
         _test_load(tg, C)
-
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 
 @notify(tests_done)
 def _test_load(tg, C):
-    def _get_latest_paths(logdir):
-        paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
-        paths.sort(key=os.path.getmtime)
-        return ([p for p in paths if '__weights' in Path(p).stem][-1],
-                [p for p in paths if '__state' in Path(p).stem][-1])
-
-    logdir = tg.logdir
-    _destroy_session(tg)
-
-    weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(C, weights_path, loadpath)
-
-
-def _make_model(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'units', 'optimizer')
-        return [kw[key] for key in expected_kw]
-
-    batch_shape, loss, units, optimizer = _unpack_configs(kw)
-
-    ipt = Input(batch_shape=batch_shape)
-    x   = LSTM(units, return_sequences=False, stateful=True,
-               kernel_regularizer=l2(1e-4), recurrent_regularizer=l2(1e-4),
-               bias_regularizer=l2(1e-4))(ipt)
-    out = Dense(1, activation='sigmoid')(x)
-
-    model = Model(ipt, out)
-    model.compile(optimizer, loss)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
-    return model
-
-
-def _init_session(C, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **C['model'])
-    dg  = DataGenerator(**C['datagen'])
-    vdg = DataGenerator(**C['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
-                         **C['traingen'])
-    return tg
-
-
-def _destroy_session(tg):
-    def _clear_data(tg):
-        tg.datagen.batch = []
-        tg.datagen.superbatch = {}
-        tg.val_datagen.batch = []
-        tg.val_datagen.superbatch = {}
-
-    _clear_data(tg)
-    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
-    del tg
+    _do_test_load(tg, C, init_session)
 
 
 if __name__ == '__main__':

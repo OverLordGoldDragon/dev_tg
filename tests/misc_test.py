@@ -6,14 +6,13 @@ from pathlib import Path
 from time import time
 from copy import deepcopy
 
-from tests.backend import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
-from tests.backend import Model
-from tests.backend import BASEDIR, tempdir, notify
+from tests.backend import BASEDIR, tempdir, notify, make_classifier
+from tests.backend import _init_session, _do_test_load
 from deeptrain.util.logging import _log_init_state
 from deeptrain.util.misc import pass_on_error
-from deeptrain import TrainGenerator, DataGenerator
 
 
+#### CONFIGURE TESTING #######################################################
 batch_size = None
 width, height = 28, 28
 channels = 1
@@ -57,7 +56,12 @@ TRAINGEN_CFG = dict(
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in ('main', 'load', 'checkpoint')}
+classifier = make_classifier(**CONFIGS['model'])
 
+def init_session(C, weights_path=None, loadpath=None, model=None):
+    return _init_session(C, weights_path=weights_path, loadpath=loadpath,
+                         model=model, model_fn=make_classifier)
+###############################################################################
 
 @notify(tests_done)
 def test_main():
@@ -73,7 +77,7 @@ def test_main():
             max_one_best_save=True,
             max_checkpoints=3,
             ))
-        tg = _init_session(C)
+        tg = init_session(C, model=classifier)
         tg.train()
         _test_load(tg, C)
 
@@ -83,13 +87,13 @@ def test_main():
             optimizer_save_configs={'exclude': ['iterations']},
             optimizer_load_configs={'include': ['momentum', 'momentam']},
             ))
-        tg = _init_session(C)
+        tg = init_session(C, model=classifier)
         with tempdir() as savedir:
             _log_init_state(tg, savedir=savedir, verbose=1)
         tg.train()
         _test_load(tg, C)
 
-        tg = _init_session(C)
+        tg = init_session(C, model=classifier)
         tg.train()
         tg._has_trained = True
         tg.train()
@@ -102,17 +106,7 @@ def test_main():
 
 @notify(tests_done)
 def _test_load(tg, C):
-    def _get_latest_paths(logdir):
-        paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
-        paths.sort(key=os.path.getmtime)
-        return ([p for p in paths if '__weights' in Path(p).stem][-1],
-                [p for p in paths if '__state' in Path(p).stem][-1])
-
-    logdir = tg.logdir
-    _destroy_session(tg)
-
-    weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(C, weights_path, loadpath)
+    _do_test_load(tg, C, init_session)
 
 
 @notify(tests_done)
@@ -125,7 +119,7 @@ def test_checkpoint():
     with tempdir(C['traingen']['logs_dir']
                  ), tempdir(C['traingen']['best_models_dir']):
         C['traingen']['max_checkpoints'] = 2
-        tg = _init_session(C)
+        tg = init_session(C, model=classifier)
         tg.train()
 
         nfiles_1 = _get_nfiles(tg.logdir)
@@ -157,58 +151,6 @@ def test_checkpoint():
             "`max_checkpoints`==0 should behave like ==1, but number of "
             "files in `logdir` differs from that in first checkpoint "
             "({} -> {})".format(nfiles_1, nfiles_5))
-
-
-def _make_model(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'num_classes', 'filters', 'kernel_size',
-                       'dropout', 'dense_units')
-        return [kw[key] for key in expected_kw]
-
-    (batch_shape, loss, metrics, optimizer, num_classes, filters,
-     kernel_size, dropout, dense_units) = _unpack_configs(kw)
-
-    ipt = Input(batch_shape=batch_shape)
-    x   = ipt
-
-    for f, ks in zip(filters, kernel_size):
-        x = Conv2D(f, ks, activation='relu', padding='same')(x)
-
-    x   = MaxPooling2D(pool_size=(2, 2))(x)
-    x   = Dropout(dropout[0])(x)
-    x   = Flatten()(x)
-    x   = Dense(dense_units, activation='relu')(x)
-
-    x   = Dropout(dropout[1])(x)
-    out = Dense(num_classes, activation='softmax')(x)
-
-    model = Model(ipt, out)
-    model.compile(optimizer, loss, metrics=metrics)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
-    return model
-
-
-def _init_session(C, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **C['model'])
-    dg  = DataGenerator(**C['datagen'])
-    vdg = DataGenerator(**C['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
-    return tg
-
-
-def _destroy_session(tg):
-    def _clear_data(tg):
-        tg.datagen.batch = []
-        tg.datagen.superbatch = {}
-        tg.val_datagen.batch = []
-        tg.val_datagen.superbatch = {}
-
-    _clear_data(tg)
-    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
-    del tg
 
 
 if __name__ == '__main__':

@@ -4,24 +4,22 @@ import pytest
 import numpy as np
 
 from unittest.mock import patch
-from pathlib import Path
 from time import time
 from copy import deepcopy
 
-from tests.backend import Input, Conv2D, UpSampling2D
-from tests.backend import Dense, LSTM
-from tests.backend import l2
-from tests.backend import Model
 from tests.backend import BASEDIR, tempdir, notify
+from tests.backend import _init_session
+from tests.backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
 from deeptrain import callbacks
-from deeptrain.util.misc import pass_on_error
+from deeptrain import DataGenerator
 from deeptrain.visuals import layer_hists
-from deeptrain import TrainGenerator, DataGenerator
+from deeptrain.util.misc import pass_on_error
 
 
+#### CONFIGURE TESTING #######################################################
 batch_size = 128
 width, height = 28, 28
 channels = 1
@@ -33,7 +31,7 @@ AE_CFG = dict(
     metrics=None,
     optimizer='adam',
     num_classes=10,
-    activation=['relu']*4 + ['sigmoid'],
+    activation=['relu'] * 4 + ['sigmoid'],
     filters=[2, 2, 1, 2, 1],
     kernel_size=[(3, 3)]*5,
     strides=[(2, 2), (2, 2), 1, 1, 1],
@@ -70,10 +68,14 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {f'{name}_exceptions': None for name in (
+tests_done = {name: None for name in (
     'datagen', 'visuals', 'util', 'data_to_hdf5', 'preprocessing',
     'callbacks')}
+classifier  = make_timeseries_classifier(**CL_CFG)
+autoencoder = make_autoencoder(**AE_CFG)
 
+init_session = _init_session
+###############################################################################
 
 @notify(tests_done)
 def test_datagen():
@@ -81,7 +83,7 @@ def test_datagen():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        tg = _init_session(C, _make_autoencoder)
+        tg = init_session(C, model=autoencoder)
         tg.train()
 
         dg = tg.datagen
@@ -129,7 +131,7 @@ def test_visuals():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        tg = _init_session(C, _make_autoencoder)
+        tg = init_session(C, model=autoencoder)
         model = tg.model
         _layer_hists(model)
 
@@ -138,17 +140,25 @@ def test_visuals():
 def test_util():
     t0 = time()
 
-    def _util_make_autoencoder(C):
+    def _util_make_autoencoder(C, new_model=False):
         C['model'] = AE_CFG
         C['traingen']['model_configs'] = AE_CFG
         C['traingen']['input_as_labels'] = True
-        return _init_session(C, _make_autoencoder)
+        if new_model:
+            return init_session(C, model_fn=make_autoencoder)
+        else:
+            autoencoder.loss = 'mse'  # reset changed configs
+            return init_session(C, model=autoencoder)
 
-    def _util_make_classifier(C):
+    def _util_make_classifier(C, new_model=False):
         C['model'] = CL_CFG
         C['traingen']['model_configs'] = CL_CFG
         C['traingen']['input_as_labels'] = False
-        return _init_session(C, _make_classifier)
+        if new_model:
+            return init_session(C, model_fn=make_timeseries_classifier)
+        else:
+            classifier.loss = 'binary_crossentropy'  # reset changed configs
+            return init_session(C, model=classifier)
 
     def _save_best_model(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
@@ -479,91 +489,6 @@ def test_preprocessing():  # [deeptrain.preprocessing]
 def test_callbacks():  # [deeptrain.callbacks]
     pass_on_error(callbacks.make_callbacks, [lambda: []])
     pass_on_error(callbacks.make_callbacks, [lambda: 'a'])
-
-
-@notify(tests_done)
-def _test_load(tg, C, make_model_fn):
-    def _get_latest_paths(logdir):
-        paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
-        paths.sort(key=os.path.getmtime)
-        return ([p for p in paths if '__weights' in Path(p).stem][-1],
-                [p for p in paths if '__state' in Path(p).stem][-1])
-
-    logdir = tg.logdir
-    _destroy_session(tg)
-
-    weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(C, make_model_fn, weights_path, loadpath)
-
-
-def _make_autoencoder(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'activation', 'filters', 'kernel_size', 'strides',
-                       'up_sampling_2d')
-        return [kw[key] for key in expected_kw]
-
-    (batch_shape, loss, metrics, optimizer, activation, filters, kernel_size,
-     strides, up_sampling_2d) = _unpack_configs(kw)
-
-    ipt = Input(batch_shape=batch_shape)
-    x   = ipt
-
-    configs = (activation, filters, kernel_size, strides, up_sampling_2d)
-    for act, f, ks, s, ups in zip(*configs):
-        if ups is not None:
-            x = UpSampling2D(ups)(x)
-        x = Conv2D(f, ks, strides=s, activation=act, padding='same')(x)
-    out = x
-
-    model = Model(ipt, out)
-    model.compile(optimizer, loss, metrics=metrics)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
-    return model
-
-
-def _make_classifier(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'units', 'optimizer')
-        return [kw[key] for key in expected_kw]
-
-    batch_shape, loss, units, optimizer = _unpack_configs(kw)
-
-    ipt = Input(batch_shape=batch_shape)
-    x   = LSTM(units, return_sequences=False, stateful=True,
-               kernel_regularizer=l2(1e-4), recurrent_regularizer=l2(1e-4),
-               bias_regularizer=l2(1e-4))(ipt)
-    out = Dense(1, activation='sigmoid')(x)
-
-    model = Model(ipt, out)
-    model.compile(optimizer, loss)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
-    return model
-
-
-def _init_session(C, make_model_fn, weights_path=None, loadpath=None):
-    model = make_model_fn(weights_path, **C['model'])
-    dg  = DataGenerator(**C['datagen'])
-    vdg = DataGenerator(**C['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath,
-                         **C['traingen'])
-    return tg
-
-
-def _destroy_session(tg):
-    def _clear_data(tg):
-        tg.datagen.batch = []
-        tg.datagen.superbatch = {}
-        tg.val_datagen.batch = []
-        tg.val_datagen.superbatch = {}
-
-    _clear_data(tg)
-    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
-    del tg
 
 
 if __name__ == '__main__':

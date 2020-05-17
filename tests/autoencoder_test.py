@@ -2,16 +2,14 @@
 import os
 import pytest
 
-from pathlib import Path
 from time import time
 from copy import deepcopy
 
-from tests.backend import Input, Conv2D, UpSampling2D
-from tests.backend import Model
-from tests.backend import BASEDIR, tempdir, notify
-from deeptrain import TrainGenerator, DataGenerator
+from tests.backend import BASEDIR, tempdir, notify, make_autoencoder
+from tests.backend import _init_session, _do_test_load
 
 
+#### CONFIGURE TESTING #######################################################
 batch_size = 128
 width, height = 28, 28
 channels = 1
@@ -56,14 +54,19 @@ TRAINGEN_CFG = dict(
     input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    savelist=['labels'],  # misc
+    savelist=['labels'],  # .misc test
     model_configs=MODEL_CFG,
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {name: None for name in ('main', 'load', 'predict')}
+autoencoder = make_autoencoder(**CONFIGS['model'])
 
+def init_session(C, weights_path=None, loadpath=None, model=None):
+    return _init_session(C, weights_path=weights_path, loadpath=loadpath,
+                         model=model, model_fn=make_autoencoder)
+###############################################################################
 
 @notify(tests_done)
 def test_main():
@@ -72,29 +75,21 @@ def test_main():
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         _test_main(C)
-
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 
-def _test_main(C):
-    tg = _init_session(C)
+def _test_main(C, new_model=False):
+    if new_model:
+        tg = init_session(C)
+    else:
+        tg = init_session(C, model=autoencoder)
     tg.train()
     _test_load(tg, C)
 
 
 @notify(tests_done)
 def _test_load(tg, C):
-    def _get_latest_paths(logdir):
-        paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
-        paths.sort(key=os.path.getmtime)
-        return ([p for p in paths if '__weights' in Path(p).stem][-1],
-                [p for p in paths if '__state' in Path(p).stem][-1])
-
-    logdir = tg.logdir
-    _destroy_session(tg)
-
-    weights_path, loadpath = _get_latest_paths(logdir)
-    tg = _init_session(C, weights_path, loadpath)
+    _do_test_load(tg, C, init_session)
 
 
 @notify(tests_done)
@@ -106,56 +101,7 @@ def test_predict():
         C['traingen']['eval_fn_name'] = 'predict'
         C['traingen']['savelist'] = ['{labels}']
         _test_main(C)
-
     print("\nTime elapsed: {:.3f}".format(time() - t0))
-
-
-def _make_model(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'activation', 'filters', 'kernel_size', 'strides',
-                       'up_sampling_2d')
-        return [kw[key] for key in expected_kw]
-
-    (batch_shape, loss, metrics, optimizer, activation, filters, kernel_size,
-     strides, up_sampling_2d) = _unpack_configs(kw)
-
-    ipt = Input(batch_shape=batch_shape)
-    x   = ipt
-
-    configs = (activation, filters, kernel_size, strides, up_sampling_2d)
-    for act, f, ks, s, ups in zip(*configs):
-        if ups is not None:
-            x = UpSampling2D(ups)(x)
-        x = Conv2D(f, ks, strides=s, activation=act, padding='same')(x)
-    out = x
-
-    model = Model(ipt, out)
-    model.compile(optimizer, loss, metrics=metrics)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
-    return model
-
-
-def _init_session(C, weights_path=None, loadpath=None):
-    model = _make_model(weights_path, **C['model'])
-    dg  = DataGenerator(**C['datagen'])
-    vdg = DataGenerator(**C['val_datagen'])
-    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
-    return tg
-
-
-def _destroy_session(tg):
-    def _clear_data(tg):
-        tg.datagen.batch = []
-        tg.datagen.superbatch = {}
-        tg.val_datagen.batch = []
-        tg.val_datagen.superbatch = {}
-
-    _clear_data(tg)
-    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
-    del tg
 
 
 if __name__ == '__main__':

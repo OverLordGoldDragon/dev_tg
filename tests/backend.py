@@ -9,6 +9,7 @@ from termcolor import cprint
 
 from deeptrain import util
 from deeptrain import metrics
+from deeptrain import TrainGenerator, DataGenerator
 
 
 BASEDIR = str(Path(__file__).parents[1])
@@ -33,6 +34,42 @@ else:
     from keras.regularizers import l2
     from keras.optimizers import Adam
     from keras.models import Model
+
+
+def _init_session(C, weights_path=None, loadpath=None, model=None,
+                  model_fn=None):
+    if model is None:
+        model = model_fn(weights_path, **C['model'])
+    dg  = DataGenerator(**C['datagen'])
+    vdg = DataGenerator(**C['val_datagen'])
+    tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
+    return tg
+
+
+def destroy_session(tg):
+    def _clear_data(tg):
+        tg.datagen.batch = []
+        tg.datagen.superbatch = {}
+        tg.val_datagen.batch = []
+        tg.val_datagen.superbatch = {}
+
+    _clear_data(tg)
+    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
+    del tg
+
+
+def _do_test_load(tg, C, init_session_fn):
+    def _get_latest_paths(logdir):
+        paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
+        paths.sort(key=os.path.getmtime)
+        return ([p for p in paths if '__weights' in Path(p).stem][-1],
+                [p for p in paths if '__state' in Path(p).stem][-1])
+
+    logdir = tg.logdir
+    destroy_session(tg)
+
+    weights_path, loadpath = _get_latest_paths(logdir)
+    tg = init_session_fn(C, weights_path, loadpath)
 
 
 @contextlib.contextmanager
@@ -75,6 +112,87 @@ def notify(tests_done):
                 cprint(f"<< {test_name} PASSED >>\n", 'green')
         return _notify
     return wrap
+
+
+def make_classifier(weights_path=None, **kw):
+    def _unpack_configs(kw):
+        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
+                       'num_classes', 'filters', 'kernel_size',
+                       'dropout', 'dense_units')
+        return [kw[key] for key in expected_kw]
+
+    (batch_shape, loss, metrics, optimizer, num_classes, filters,
+     kernel_size, dropout, dense_units) = _unpack_configs(kw)
+
+    ipt = Input(batch_shape=batch_shape)
+    x   = ipt
+
+    for f, ks in zip(filters, kernel_size):
+        x = Conv2D(f, ks, activation='relu', padding='same')(x)
+
+    x   = MaxPooling2D(pool_size=(2, 2))(x)
+    x   = Dropout(dropout[0])(x)
+    x   = Flatten()(x)
+    x   = Dense(dense_units, activation='relu')(x)
+
+    x   = Dropout(dropout[1])(x)
+    out = Dense(num_classes, activation='softmax')(x)
+
+    model = Model(ipt, out)
+    model.compile(optimizer, loss, metrics=metrics)
+
+    if weights_path is not None:
+        model.load_weights(weights_path)
+    return model
+
+
+def make_autoencoder(weights_path=None, **kw):
+    def _unpack_configs(kw):
+        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
+                       'activation', 'filters', 'kernel_size', 'strides',
+                       'up_sampling_2d')
+        return [kw[key] for key in expected_kw]
+
+    (batch_shape, loss, metrics, optimizer, activation, filters, kernel_size,
+     strides, up_sampling_2d) = _unpack_configs(kw)
+
+    ipt = Input(batch_shape=batch_shape)
+    x   = ipt
+
+    configs = (activation, filters, kernel_size, strides, up_sampling_2d)
+    for act, f, ks, s, ups in zip(*configs):
+        if ups is not None:
+            x = UpSampling2D(ups)(x)
+        x = Conv2D(f, ks, strides=s, activation=act, padding='same')(x)
+    out = x
+
+    model = Model(ipt, out)
+    model.compile(optimizer, loss, metrics=metrics)
+
+    if weights_path is not None:
+        model.load_weights(weights_path)
+    return model
+
+
+def make_timeseries_classifier(weights_path=None, **kw):
+    def _unpack_configs(kw):
+        expected_kw = ('batch_shape', 'loss', 'units', 'optimizer')
+        return [kw[key] for key in expected_kw]
+
+    batch_shape, loss, units, optimizer = _unpack_configs(kw)
+
+    ipt = Input(batch_shape=batch_shape)
+    x   = LSTM(units, return_sequences=False, stateful=True,
+               kernel_regularizer=l2(1e-4), recurrent_regularizer=l2(1e-4),
+               bias_regularizer=l2(1e-4))(ipt)
+    out = Dense(1, activation='sigmoid')(x)
+
+    model = Model(ipt, out)
+    model.compile(optimizer, loss)
+
+    if weights_path is not None:
+        model.load_weights(weights_path)
+    return model
 
 
 class ModelDummy():
