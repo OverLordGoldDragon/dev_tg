@@ -86,17 +86,23 @@ def test_deepmap():
     #### CORRECTNESS  #########################################################
     np.random.seed(4)
     arr = np.random.randint(0, 9, (2, 2))
-    obj = (1, {'a': 3, 'b': 4, 'c': ('5', 6., (7, 8)), 'd': 9}, arr)
+    obj = (1, {'a': 3, 'b': 4, 'c': ('5', 6., (7, 8)), 'd': 9}, {}, arr)
 
     out1 = deepmap(deepcopy(obj), fn1)
     assert str(out1) == ("('1', {'a': '3', 'b': '4', 'c': ('5', '6.0', ('7', '8'))"
-                         ", 'd': '9'}, array([[7, 5],\n       [1, 8]]))")
+                         ", 'd': '9'}, {}, array([[7, 5],\n       [1, 8]]))")
     out2 = deepmap(deepcopy(obj), fn2)
     assert str(out2) == ("(1, {'a': 9, 'b': 16, 'c': ('5', 36.0, (49, 64)), "
-                         "'d': 81}, array([[49, 25],\n       [ 1, 64]]))")
+                         "'d': 81}, {}, array([[49, 25],\n       [ 1, 64]]))")
     out3 = deepmap(deepcopy(obj), fn3)
     assert str(out3) == (r"""('1', "{'a': 3, 'b': 4, 'c': ('5', 6.0, (7, 8)), """
-                         r"""'d': 9}", '[[7 5]\n [1 8]]')""")
+                         r"""'d': 9}", '{}', '[[7 5]\n [1 8]]')""")
+    try:
+        deepmap([], fn1)
+    except ValueError:
+        pass
+    except:
+        print("Failed to catch invalid input")
 
     #### PERFORMANCE  #########################################################
     bigobj  = _make_bignest()

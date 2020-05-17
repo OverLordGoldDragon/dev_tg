@@ -32,7 +32,7 @@ from .util.configs  import _TRAINGEN_CFG
 from .util._traingen_utils import TraingenUtils
 from .util.logging  import _log_init_state
 from .util.training import _get_api_metric_name
-from .util.misc     import pass_on_error
+from .util.misc     import pass_on_error, capture_args
 from .introspection import print_dead_weights, print_nan_weights
 from .              import metrics as metrics_fns
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
@@ -41,30 +41,8 @@ from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 sys.stdout = Unbuffered(sys.stdout)
 
 
-# import builtins
-# from deeptrain.util.algorithms import deepmap
-
-
-# def get_passed_args(fn):
-#     def is_builtin_or_numpy_scalar(x):
-#         return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
-#                 isinstance(x, np.generic))
-
-#     def wrap(self, model, datagen, val_datagen, **kwargs):
-#         # convert to string to prevent storing objects
-#         # & trim in case long lists / arrays are passed
-#         def objs_to_str(x, key):
-#             return x if is_builtin_or_numpy_scalar(x) else str(x)[:200]
-#         kwargs['passed_args'] = deepmap(deepcopy(kwargs), objs_to_str)
-#         # kwargs['passed_args'] = {k: (v if is_builtin_or_numpy_scalar(v) else
-#         #                              str(v)[:200])
-#         #                          for k, v in kwargs.items()}
-#         fn(self, model, datagen, val_datagen, **kwargs)
-#     return wrap
-
-
 class TrainGenerator(TraingenUtils):
-    # @get_passed_args
+    @capture_args
     def __init__(self, model, datagen, val_datagen,
                  epochs=1,
                  logs_dir=None,
@@ -139,28 +117,29 @@ class TrainGenerator(TraingenUtils):
         self.model_configs = model_configs
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
 
+        self._passed_args = kwargs.pop('_passed_args', None)
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
         self._init_fit_and_pred_fns()
 
         if self.logs_dir:
             self._init_logger()
-            savedir = os.path.join(self.logdir, "misc")
-            if not os.path.isdir(savedir):
-                os.mkdir(savedir)
-            pass_on_error(_log_init_state, self, kwargs, savedir=savedir,
-                          fail_msg=(
-                              WARN + " could not log init state - skipping"))
         else:
             print(NOTE, "logging OFF")
             self.logdir = None
 
         self._init_callbacks()
         if self.loadpath:
-            self.load(passed_args=kwargs)
-            # self.load(passed_args=kwargs.pop('passed_args', []))
+            self.load(passed_args=self._passed_args)
         else:
             self._prepare_initial_data()
+
+        if self.logs_dir:
+            savedir = os.path.join(self.logdir, "misc")
+            if not os.path.isdir(savedir):
+                os.mkdir(savedir)
+            pass_on_error(_log_init_state, self, kwargs, savedir=savedir,
+                          errmsg=WARN + " could not log init state - skipping")
 
     ########################## MAIN METHODS ##########################
     def train(self):
@@ -223,9 +202,8 @@ class TrainGenerator(TraingenUtils):
             self._set_name_cache.append(self._set_name)
             pass_on_error(self._update_history,
                           print_progress=(self.iter_verbosity >= 1),
-                          fail_msg=(
-                              WARN + " could not update and print progress - "
-                              "OK if right after load; skipping..."))
+                          errmsg=(WARN + " could not update and print progress "
+                                  "- OK if right after load; skipping..."))
             if self.reset_statefuls:
                 self.model.reset_states()
                 if self.iter_verbosity >= 1:
@@ -349,8 +327,8 @@ class TrainGenerator(TraingenUtils):
 
         if self._should_do(self.plot_history_freq):
             pass_on_error(self.plot_history, update_fig=record_progress,
-                          fail_msg=(WARN + " model history could not be "
-                                    "plotted; skipping..."))
+                          errmsg=(WARN + " model history could not be "
+                                  "plotted; skipping..."))
 
         if self.datagen.all_data_exhausted:
             self._apply_callbacks(stage=('val_end', 'train:epoch'))

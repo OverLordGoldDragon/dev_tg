@@ -30,7 +30,7 @@ def deeplen(item, iterables=(list, tuple, dict, np.ndarray)):
 
 
 def deepget(obj, key=None, drop_keys=0):
-    if not key:
+    if not key or not obj:
         return obj
     if drop_keys != 0:
         key = key[:-drop_keys]
@@ -45,12 +45,16 @@ def deepmap(obj, fn):
     def dkey(x, k):
         return list(x)[k] if isinstance(x, Mapping) else k
 
+    def nonempty_iter(item):
+        # do not enter empty iterable, since nothing to 'iterate' or apply fn to
+        return isinstance(item, Iterable) and not isinstance(item, str) and (
+            len(item) > 0)
+
     def _process_key(obj, key, depth, revert_tuple_keys, recursive=False):
         container = deepget(obj, key, 1)
         item      = deepget(obj, key, 0)
 
-        if isinstance(item, Iterable) and not isinstance(item, str) and (
-                not recursive):
+        if nonempty_iter(item) and not recursive:
             depth += 1
         if len(key) == depth:
             if key[-1] == len(container) - 1:  # iterable end reached
@@ -78,6 +82,8 @@ def deepmap(obj, fn):
     depth = 1
     revert_tuple_keys = []
 
+    if not isinstance(obj, Iterable) or len(obj) == 0:  # nothing to do here
+        raise ValueError(f"input must be a non-empty iterable - got: {obj}")
     if isinstance(obj, tuple):
         obj = list(obj)
         revert_tuple_keys.append(None)  # revert to tuple at function exit
@@ -103,3 +109,61 @@ def deepmap(obj, fn):
     if None in revert_tuple_keys:
         obj = tuple(obj)
     return obj
+
+
+def deepcopy_v2(obj, item_fn=None):
+    """Enables customized copying of a nested iterable, mediated by `item_fn`."""
+    copied = [] if isinstance(obj, (list, tuple)) else {}
+    revert_tuple_keys = []
+
+    def dkey(x, k):
+        return list(x)[k] if isinstance(x, Mapping) else k
+
+    def reconstruct(item, key):
+        def _container_or_elem(item):
+            if isinstance(item, Iterable) and not isinstance(item, str):
+                if isinstance(item, (tuple, list)):
+                    return []
+                elif isinstance(item, Mapping):
+                    return {}
+            if item_fn is not None:
+                return item_fn(item)
+            else:
+                return item
+
+        if isinstance(item, tuple):
+            revert_tuple_keys.append(key.copy())
+
+        container = deepget(copied, key, 1)
+        _item = _container_or_elem(item)
+
+        if isinstance(container, list):
+            container.insert(key[-1], _item)
+        elif isinstance(container, tuple):
+            raise Exception("tuple container encountered while reconstructing "
+                            "`obj`; this shouldn't have happened")
+        elif isinstance(container, str):
+            # str container implies container was transformed to str by item_fn;
+            # continue skipping until deepmap exits container in obj
+            pass
+        else:
+            obj_container = deepget(obj, key, 1)
+            k = dkey(obj_container, key[-1])
+            container[k] = _item
+        return item
+
+    def _revert_tuples(copied, obj, revert_tuple_keys):
+        revert_tuple_keys = list(reversed(sorted(revert_tuple_keys,
+                                                 key=lambda x: len(x))))
+        for key in revert_tuple_keys:
+            supercontainer = deepget(copied, key, 1)
+            container      = deepget(copied, key, 0)
+            k = dkey(supercontainer, key[-1])
+            supercontainer[k] = tuple(container)
+        if isinstance(obj, tuple):
+            copied = tuple(copied)
+        return copied
+
+    deepmap(obj, reconstruct)
+    copied = _revert_tuples(copied, obj, revert_tuple_keys)
+    return copied

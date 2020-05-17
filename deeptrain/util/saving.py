@@ -432,5 +432,5 @@ def _save_history(self, savepath=None):
                   "\nErrmsg:", e)
 
     if self.final_fig_dir:  # keep at most one per model_num
-        pass_on_error(_save_epoch_fig, fail_msg=("Epoch fig could not be "
+        pass_on_error(_save_epoch_fig, errmsg=("Epoch fig could not be "
                                                  "saved; skipping"))

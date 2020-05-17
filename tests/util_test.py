@@ -68,9 +68,25 @@ def test_misc():
         assert isinstance(mm['fn1'], LambdaType)
         assert isinstance(mm['not_lambda'], LambdaType)
 
+    def _test_capture_args():
+        class A():
+            @misc.capture_args
+            def __init__(self, a, b, c, *args, d=1, e=2, **kwargs):
+                self._passed_args = kwargs.pop('_passed_args', None)
+
+        a = A(1, 2, 3, 4, d=5, g=6)
+        args = a._passed_args
+        assert all(arg in args for arg in ('a', 'b', 'c', '*args', 'g'))
+        assert args['a'] == 1
+        assert args['b'] == 2
+        assert args['c'] == 3
+        assert args['*args'] == (4,)
+        assert args['g'] == 6
+
     _test_train_on_batch_dummy()
     _test_make_plot_configs_from_metrics()
     _test_get_module_methods()
+    _test_capture_args()
 
 
 @notify(tests_done)

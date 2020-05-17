@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
+import builtins
 import numpy as np
 import matplotlib.pyplot as plt
 import deeptrain.metrics
 
 from types import LambdaType
+from functools import wraps
 from inspect import getfullargspec
+
+from .algorithms import deepmap, deepcopy_v2
 from ._backend import WARN, NOTE
 
 
 def pass_on_error(fn, *args, **kwargs):
-    fail_msg = kwargs.pop('fail_msg', None)
+    errmsg = kwargs.pop('errmsg', None)
     try:
         fn(*args, **kwargs)
     except BaseException as e:
-        if fail_msg is not None:
-            print(fail_msg)
+        if errmsg is not None:
+            print(errmsg)
         print("Errmsg:", e)
 
 
@@ -53,6 +57,44 @@ def get_module_methods(module):
         ):
             output[name] = obj
     return output
+
+
+def capture_args(fn):
+    """Capture bound method arguments without changing its input signature.
+       Method must have a **kwargs to append captured arguments to."""
+    @wraps(fn)
+    def wrap(self, *args, **kwargs):
+        # convert to string to prevent storing objects
+        # & trim in case long lists / arrays are passed
+        def obj_to_str(x, key=None):
+            def is_builtin_or_numpy_scalar(x):
+                return (isinstance(x, np.generic) or
+                    type(x) in (*vars(builtins).values(), type(None), type(min)))
+
+            if is_builtin_or_numpy_scalar(x):
+                return x
+            qname = getattr(x, '__qualname__', None)
+            name  = getattr(x, '__name__', None)
+            return qname or name or str(x)[:200]
+
+        #### Positional arguments ##
+        posarg_names = [arg for arg in argspec(fn)[1:] if arg not in kwargs]
+        posargs = {}
+        for name, value in zip(posarg_names, args):
+            posargs[name] = obj_to_str(value, '')
+        if len(posargs) < len(args):
+            varargs = getfullargspec(fn).varargs
+            posargs[f'*{varargs}'] = deepmap(args[len(posargs):], obj_to_str)
+
+        #### Keyword arguments ##
+        kwargs['_passed_args'] = {}
+        if len(kwargs) != 0:
+            kwargs['_passed_args'].update(deepcopy_v2(kwargs, obj_to_str))
+
+        kwargs['_passed_args'].update(posargs)
+        del kwargs['_passed_args']['_passed_args']
+        fn(self, *args, **kwargs)
+    return wrap
 
 
 def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,

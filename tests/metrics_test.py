@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import pytest
 import numpy as np
 
@@ -122,10 +121,10 @@ def _make_data_fn(name):
 def _test_unweighted(name):
     y_true, y_pred, _ = _make_data_fn(name)()
     results = _make_test_fn(name)(y_true, y_pred)
-    fail_msg = (name, "unweighted",
-                "diff: {} tested: {}, keras: {}".format(
-                    np.abs(results[1] - results[0]), results[0], results[1]))
-    return np.allclose(*results, atol=1e-3, rtol=1e-5), fail_msg
+    errmsg = (name, "unweighted",
+              "diff: {} tested: {}, keras: {}".format(
+                  np.abs(results[1] - results[0]), results[0], results[1]))
+    return np.allclose(*results, atol=1e-3, rtol=1e-5), errmsg
 
 
 def _test_sample_weighted(name):
@@ -134,17 +133,17 @@ def _test_sample_weighted(name):
         return True, ''
     y_true, y_pred, sample_weight = _make_data_fn(name)()
     results = _make_test_fn(name)(y_true, y_pred, sample_weight)
-    fail_msg = (name, "sample_weighted",
-                "diff: {}tested: {}, keras: {}".format(
-                    np.abs(results[1] - results[0]), results[0], results[1]))
-    return np.allclose(*results, atol=1e-3, rtol=1e-5), fail_msg
+    errmsg = (name, "sample_weighted",
+              "diff: {}tested: {}, keras: {}".format(
+                  np.abs(results[1] - results[0]), results[0], results[1]))
+    return np.allclose(*results, atol=1e-3, rtol=1e-5), errmsg
 
 
 def _assert(fn, *args, **kwargs):
     def _do_asserting(fn_out):
         if isinstance(fn_out, (list, tuple)):
-            value, fail_msg = fn_out
-            assert value, fail_msg
+            value, errmsg = fn_out
+            assert value, errmsg
         else:
             assert fn_out  # value only
     return lambda x: _do_asserting(fn(*args, **kwargs))
