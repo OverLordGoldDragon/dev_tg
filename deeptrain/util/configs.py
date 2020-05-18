@@ -23,7 +23,7 @@ _PLOT_CFG = {
 },
 }
 
-_BINARY_CLASSIFICATION_PLOT_CFG = {  # TODO x_ticks?
+_BINARY_CLASSIFICATION_PLOT_CFG = {
 '1': {
     'metrics':
         {'train': ['loss', 'acc'],
@@ -69,7 +69,7 @@ _REPORT_CFG = {
     'traingen':
         {
         'exclude':
-            ['model', 'model_configs', 'model_name', 'logs_use_full_model_name',
+            ['model', 'model_configs', 'logs_use_full_model_name',
              'history_fig', 'plot_configs', 'max_checkpoints',
              'history', 'val_history', 'temp_history', 'val_temp_history',
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
@@ -98,101 +98,6 @@ _REPORT_CFG = {
 }
 
 
-# TODO make into _TRAINGEN_SAVE_SKIPLIST instead
-_TRAINGEN_SAVE_LIST = [  # TODO model_name/num saved neither here nor in report
-    'val_freq',
-    'plot_history_freq',
-    'key_metric',
-    'train_metrics',
-    'val_metrics',
-    'input_as_labels',
-    'batch_size',
-    'max_is_best',
-
-    'datagen',
-    'val_datagen',
-    'model_name',
-    'model_num',
-    'epoch',
-    'val_epoch',
-    'epochs',
-
-    'logs_dir',
-    'logdir',
-    'best_models_dir',
-    'loadpath',
-    'report_fontpath',
-    'final_fig_dir',
-
-    'fit_fn_name',
-    'eval_fn_name',
-    'iter_verbosity',
-    'class_weights',
-    'val_class_weights',
-    'reset_statefuls',
-    'best_subset_size',
-    'best_subset_nums',
-    'loss_weighted_slices_range',
-    'pred_weighted_slices_range',
-
-    'optimizer_save_configs',
-    'optimizer_load_configs',
-    'plot_configs',
-    'model_configs',
-    'model_name_configs',
-    'metric_printskip_configs',
-    'report_configs',
-    'save_skiplist',
-    'loadskip_list',
-    'datagen_saveskip_list',
-
-    'max_checkpoints',
-    'max_one_best_save',  # TODO make configurable?
-    'plot_first_pane_max_vals',
-    'logs_use_full_model_name',
-    'model_num_continue_from_max',
-    'make_new_logdir',
-    '_passed_args',
-
-    'key_metric_history',
-    'best_key_metric',
-    'history',
-    'val_history',
-    'temp_history',
-    'val_temp_history',
-    'history_fig',
-    'plot_history_freq',
-    'unique_checkpoint_freq',
-    'temp_checkpoint_freq',
-    'checkpoints_overwrite_duplicates',
-    'predict_threshold',
-    'dynamic_predict_threshold',
-    'dynamic_predict_threshold_min_max',
-
-    '_set_name',
-    '_val_set_name',
-    '_labels_cache',
-    '_sw_cache',
-    '_y_true',
-    '_y_preds',
-    '_set_name_cache',
-    '_val_set_name_cache',
-
-    '_batches_fit',
-    '_batches_validated',
-    '_has_trained',
-    '_has_validated',
-    '_has_postiter_processed',
-    '_val_has_postiter_processed',
-    '_train_has_notified_of_new_batch',
-    '_val_has_notified_of_new_batch',
-    '_train_x_ticks',
-    '_val_x_ticks',
-    '_times_validated',
-    '_hist_vlines',
-    '_val_hist_vlines',
-]
-
 _TRAINGEN_SAVESKIP_LIST = [
     'model',
     'callbacks',
@@ -200,35 +105,42 @@ _TRAINGEN_SAVESKIP_LIST = [
     'key_metric_fn',
     'custom_metrics',
     'use_passed_dirs_over_loaded',
-    '_val_max_set_name_chars',
-    '_max_set_name_chars',
     'check_model_health',
-    'model_base_name',
     'metric_to_alias',
     'alias_to_metric',
     'name_process_key_fn',
+    'fit_fn',
+    'eval_fn',
+    'callback_objs',
+    'optimizer_state',  # is overridden anyway
+
+    '_labels',
+    '_preds',
+    '_y_true',
+    '_y_preds',
+    '_labels_cache',
+    '_preds_cache',
+    '_sw_cache',
+
     '_imports',
     '_history_fig',
     '_fit_iters',
     '_val_iters',
+    '_val_max_set_name_chars',
+    '_max_set_name_chars',
     '_inferred_batch_size',
-    '_labels',
-    '_preds_cache',
     '_class_labels_cache',
     '_train_val_x_ticks',
     '_val_train_x_ticks',
     '_temp_history_empty',
     '_val_temp_history_empty',
-    'fit_fn',
-    'eval_fn',
-    'callback_objs',
     '_val_sw',
-    'optimizer_state',  # is overridden anyway
     '_set_num',
     '_val_set_num',
 ]
 
-_TRAINGEN_LOADSKIP_LIST = 'auto'
+_TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
+                           'model_num']
 
 _DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                           '_group_batch', '_group_labels']

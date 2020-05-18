@@ -203,6 +203,8 @@ def test_util():
         tg._history_fig = 1
         tg._save_history()
 
+        tg.loadskip_list = 'auto'
+        tg.load()
         tg.loadskip_list = 'none'
         tg.load()
 

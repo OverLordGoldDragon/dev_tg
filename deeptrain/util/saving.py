@@ -239,9 +239,8 @@ def save(self, savepath=None):
             pickle.dump(savedict, savefile)
             print("TrainGenerator state saved")
     except BaseException as e:
-        print(WARN,  "TrainGenerator state could not be saved; skipping...")
+        print(WARN, "TrainGenerator state could not be saved; skipping...")
         print("Errmsg:", e)
-
     _restore_cached_attributes(self, cached_attrs)
 
 
@@ -249,6 +248,12 @@ def load(self, filepath=None, passed_args=None):
     def _get_loadskip_list(passed_args):
         if self.loadskip_list == 'auto' or not self.loadskip_list:
             return list(passed_args) if passed_args else []
+        elif '{auto}' in self.loadskip_list:
+            lsl = self.loadskip_list.copy()
+            if passed_args:
+                lsl += list(passed_args)
+            lsl.pop(lsl.index('{auto}'))
+            return lsl
         elif self.loadskip_list == 'none':
             return []
         else:

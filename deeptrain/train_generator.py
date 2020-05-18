@@ -298,14 +298,6 @@ class TrainGenerator(TraingenUtils):
                 if do_temp or do_unique:
                     self.checkpoint()
 
-        def _clear_cache():
-            attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',
-                              '_class_labels_cache',
-                              '_set_name_cache', '_val_set_name_cache',
-                              '_y_true', '_val_sw')
-            [setattr(self, attr, []) for attr in attrs_to_clear]
-            self.val_temp_history = deepcopy(self._val_temp_history_empty)
-
         def _print_best_subset():
             best_nums = ", ".join([str(x) for x in self.best_subset_nums])
             best_size = self.best_subset_size
@@ -336,13 +328,27 @@ class TrainGenerator(TraingenUtils):
             self._apply_callbacks(stage='val_end')
 
         if clear_cache:
-            _clear_cache()
+            self.clear_cache()
         if self.check_model_health:
             self.check_health()
 
         self._inferred_batch_size = None  # reset
         self._has_validated = False
         self._has_trained = False
+
+    def clear_cache(self, reset_val_flags=False):
+        attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',
+                          '_class_labels_cache',
+                          '_set_name_cache', '_val_set_name_cache',
+                          '_y_true', '_val_sw')
+        [setattr(self, attr, []) for attr in attrs_to_clear]
+        self.val_temp_history = deepcopy(self._val_temp_history_empty)
+
+        if reset_val_flags:
+            self._inferred_batch_size = None
+            self._has_validated = False
+            self._has_trained = False
+            self._val_has_postiter_processed = True
 
     def _should_do(self, config, forced=False):
         if forced:

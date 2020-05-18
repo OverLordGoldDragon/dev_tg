@@ -100,6 +100,8 @@ def test_main():
 
         tg.plot_configs['1']['vhlines']['v'] = 'invalid_vlines'
         pass_on_error(tg._get_history_fig)
+        tg.clear_cache(reset_val_flags=True)
+        tg._should_do({}, forced=True)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
