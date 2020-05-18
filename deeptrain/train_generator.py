@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """TODO:
-    - Clean up warnings & notes on init
     - MetaTrainer
 """
 
@@ -200,10 +199,14 @@ class TrainGenerator(TraingenUtils):
             self._train_x_ticks.append(self._batches_fit)
             self._train_val_x_ticks.append(self._times_validated)
             self._set_name_cache.append(self._set_name)
-            pass_on_error(self._update_history,
-                          print_progress=(self.iter_verbosity >= 1),
-                          errmsg=(WARN + " could not update and print progress "
-                                  "- OK if right after load; skipping..."))
+            try:
+                self._update_train_history()
+                self._print_train_progress()
+            except Exception as e:
+                # might happen due to incomplete loaded data for updating history
+                print(WARN, "could not update and print progress"
+                      "- OK if right after load; skipping...\nErrmsg: %s" % e)
+
             if self.reset_statefuls:
                 self.model.reset_states()
                 if self.iter_verbosity >= 1:
@@ -257,8 +260,10 @@ class TrainGenerator(TraingenUtils):
             self._val_set_name_cache.append(self._val_set_name)
 
             update = record_progress and self.val_datagen.all_data_exhausted
-            self._update_history(val=True, update_val_history=update,
-                                 print_progress=(self.iter_verbosity >= 1))
+            if self.iter_verbosity >= 1:
+                self._print_val_progress()
+            if update:
+                self._update_val_history()
             self._val_has_notified_of_new_batch = False
 
             if self.reset_statefuls:
@@ -435,18 +440,6 @@ class TrainGenerator(TraingenUtils):
     def _update_train_history(self):
         for metric, value in self._get_train_history().items():
             self.history[metric] += [value]
-
-    def _update_history(self, val=False, update_val_history=False,
-                        print_progress=True):
-        if val:
-            if print_progress:
-                self._print_val_progress()
-            if update_val_history:
-                self._update_val_history()
-        else:
-            self._update_train_history()
-            if print_progress:
-                self._print_train_progress()
 
     def _print_train_progress(self):
         train_metrics = self._get_train_history()

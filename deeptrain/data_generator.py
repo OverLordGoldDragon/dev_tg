@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""TODO:
-    - profile batch.extend speed
-"""
 import os
 import h5py
 import random

@@ -188,15 +188,17 @@ def test_configs():
                    a=.5,
                    best_key_metric=0.91,
                    )
+        assert name_fn('a', 'a', cfg) == '_a.5'
         assert name_fn('init_lr',   'lr',   cfg) == '_lr2e-4x3_1e-4'
         assert name_fn('eta_t',     'et',   cfg) == '_et.9_1.1_2'
         assert name_fn('timesteps', '',     cfg) == '_13.5k'
         assert name_fn('name',      'name', cfg) == '_name'
-        assert name_fn('a',         'a',    cfg) == '_a.5'
-        assert name_fn('best_key_metric', 'max',  cfg) == '_max.910'
+        assert name_fn('best_key_metric', 'max', cfg) == '_max.910'
 
     names = ['PLOT_CFG', 'BINARY_CLASSIFICATION_PLOT_CFG',
-             'MODEL_NAME_CFG', 'REPORT_CFG', 'TRAINGEN_SAVE_LIST',
+             'MODEL_NAME_CFG', 'REPORT_CFG',
+             'TRAINGEN_SAVESKIP_LIST', 'TRAINGEN_LOADSKIP_LIST',
+             'DATAGEN_SAVESKIP_LIST', 'DATAGEN_LOADSKIP_LIST',
              'METRIC_PRINTSKIP_CFG', 'METRIC_TO_ALIAS', 'ALIAS_TO_METRIC',
              'TRAINGEN_CFG', 'DATAGEN_CFG']
     for config in (configs, _default_configs):

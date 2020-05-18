@@ -212,7 +212,6 @@ def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
     ax.set_ylim(*ylims)
 
 
-# TODO: multiclass
 def comparative_histogram(model, layer_name, data, keep_borders=True,
                           bins=100, xlims=(0, 1), fontsize=14, vline=None,
                           w=1, h=1):
