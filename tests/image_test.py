@@ -92,6 +92,8 @@ def test_predict():
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         C['traingen']['eval_fn_name'] = 'predict'
+        # tests misc._validate_traingen_configs
+        C['traingen']['val_metrics'] = ['loss', 'acc']
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

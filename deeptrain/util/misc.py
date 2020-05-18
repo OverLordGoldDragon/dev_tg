@@ -239,6 +239,8 @@ def _make_plot_configs_from_metrics(self):
 def _validate_traingen_configs(self):
     def _validate_metrics():
         def _validate(metric, failmsg):
+            if metric == 'accuracy':
+                return  # converted internally (training.py)
             try:
                 # check against alias since converted internally when computing
                 getattr(deeptrain.metrics, self._alias_to_metric_name(metric))
