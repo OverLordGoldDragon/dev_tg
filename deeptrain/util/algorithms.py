@@ -21,7 +21,9 @@ def nCk(n, k):  # n-Choose-k
 
 def deeplen(item, iterables=(list, tuple, dict, np.ndarray)):
     # return 1 and terminate recursion when `item` is no longer iterable
-    if isinstance(item, Iterable) and not isinstance(item, str):
+    if isinstance(item, np.ndarray):
+        return item.size
+    elif isinstance(item, Iterable) and not isinstance(item, str):
         if isinstance(item, Mapping):
             item = item.values()
         return sum(deeplen(subitem) for subitem in item)

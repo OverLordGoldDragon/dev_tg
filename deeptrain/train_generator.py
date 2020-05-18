@@ -55,7 +55,7 @@ class TrainGenerator(TraingenUtils):
                  eval_fn_name='evaluate',
                  key_metric='loss',
                  key_metric_fn=None,
-                 val_metrics='loss',
+                 val_metrics=None,
                  custom_metrics=None,
                  input_as_labels=False,
                  max_is_best=None,
@@ -128,11 +128,11 @@ class TrainGenerator(TraingenUtils):
             print(NOTE, "logging OFF")
             self.logdir = None
 
-        self._init_callbacks()
         if self.loadpath:
             self.load(passed_args=self._passed_args)
         else:
             self._prepare_initial_data()
+            self._init_callbacks()  # called in `load`
 
         if self.logs_dir:
             savedir = os.path.join(self.logdir, "misc")
@@ -566,18 +566,21 @@ class TrainGenerator(TraingenUtils):
         return metric_name
 
     ########################## INIT METHODS ##########################
-    def _prepare_initial_data(self):
-        if self.datagen.superbatch_set_nums != []:
-            self.datagen.preload_superbatch()
-        self.datagen.advance_batch()
-        self._set_name = self.datagen.set_name
-        print("Train initial data prepared")
+    def _prepare_initial_data(self, from_load=False):
+        for dg_name in ('datagen', 'val_datagen'):
+            dg = getattr(self, dg_name)
+            if dg.superbatch_set_nums or dg.superbatch_dir:
+                dg.preload_superbatch()
+            if from_load:
+                dg.batch_loaded = False  # load() might've set to True
+                dg.preload_labels()      # load() might've changed `labels_path`
+            dg.advance_batch()
 
-        if self.val_datagen.superbatch_set_nums != []:
-            self.val_datagen.preload_superbatch()
-        self.val_datagen.advance_batch()
-        self._val_set_name = self.val_datagen.set_name
-        print("Val initial data prepared")
+            pf = '_val' if 'val' in dg_name else ''  # attr prefix
+            setattr(self, pf + '_set_name', dg.set_name)
+            setattr(self, pf + '_set_num', dg.set_num)
+
+            print("%s initial data prepared" % ("Train" if not pf else "Val"))
 
     def _init_logger(self):
         base_name = 'M%s' % self.model_num

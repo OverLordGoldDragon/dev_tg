@@ -186,7 +186,7 @@ def test_util():
         tg = _util_make_autoencoder(C)
         tg.model.loss = 'mean_squared_error'
         tg.train()
-        tg.datagen.set_nums_to_process = [9001]
+        # tg.datagen.set_nums_to_process = [9001] # TODO remove?
         tg.final_fig_dir = tg.logdir
 
         pass_on_error(tg.load)

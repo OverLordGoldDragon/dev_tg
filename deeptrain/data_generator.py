@@ -57,8 +57,7 @@ class DataGenerator():
         else:
             self.superbatch_dir = superbatch_dir
 
-        info = self._infer_data_info(data_dir, data_ext, data_loader,
-                                             base_name)
+        info = self._infer_data_info(data_dir, data_ext, data_loader, base_name)
         self.data_loader = info['data_loader']
         self.base_name   = info['base_name']
         self._filenames  = info['filenames']
@@ -380,17 +379,8 @@ class DataGenerator():
             data_loader = {'.npy': 'numpy',
                            '.h5': 'hdf5'}[extension]
 
-            if data_loader == 'numpy':
-                print(NOTE, "inferred data format: 'numpy'; "
-                      "will load via np.load - if compression / memapping "
-                      "is used, specify the exact `data_loader`.")
-            elif data_loader == 'hdf5' and len(filenames) == 1:
-                print(NOTE, "inferred data format: 'hdf5-dataset' "
-                      "(all data in one file, one group key per batch)")
+            if data_loader == 'hdf5' and len(filenames) == 1:
                 data_loader = 'hdf5-dataset'
-            elif data_loader == 'hdf5':
-                print(NOTE, "inferred data format: 'hdf5'. For DataGenerator, "
-                      ".h5 files should only have one group key")
             return data_loader
 
         def _get_base_name(extension, filenames):
@@ -406,8 +396,6 @@ class DataGenerator():
             filenames = [x.rstrip(extension) for x in filenames]
             base_name = _longest_common_substr(filenames)
 
-            print(NOTE, "Inferred `base_name = '%s'`; " % base_name
-                  + "if this is false, specify `base_name`.")
             return base_name
 
         def _get_filepaths(data_dir, filenames):
@@ -422,7 +410,8 @@ class DataGenerator():
         def _get_filenames_and_data_ext(data_dir, data_ext):
             def _infer_extension(data_dir, supported_extensions):
                 extensions = [x.suffix for x in Path(data_dir).iterdir()
-                               if x.suffix in supported_extensions]
+                              if (x.suffix in supported_extensions and
+                                  str(x) != self.labels_path)]
                 if len(extensions) == 0:
                     raise Exception("No files found with supported extensions: "
                                     + ', '.join(supported_extensions)
@@ -440,7 +429,8 @@ class DataGenerator():
                 data_ext = _infer_extension(data_dir, supported_extensions)
 
             filenames = [x for x in os.listdir(data_dir)
-                         if Path(x).suffix == data_ext]
+                         if (Path(x).suffix == data_ext and
+                             str(x) != self.labels_path)]
             return filenames, data_ext
 
         _validate_directory(data_dir)
@@ -526,11 +516,6 @@ class DataGenerator():
             set_name=None,
             _set_names=[],
             start_increment=0,
-            # attributes to skip in TrainGenerator.load(), i.e. will use
-            # those passed to __init__ instead // # TODO put in docstr instead
-            loadskip_list=['data_dir', 'labels_path', 'superbatch_dir',
-                           'data_loader', 'set_nums_original',
-                           'set_nums_to_process', 'superbatch_set_nums'],
             )
         for k, v in _defaults.items():
             setattr(self, k, getattr(self, k, v))

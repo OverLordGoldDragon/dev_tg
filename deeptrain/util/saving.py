@@ -193,7 +193,6 @@ def save(self, savepath=None):
         return state
 
     def _cache_datagen_attributes():
-        # TODO support configurable caching
         def _cache_then_del_attrs(parent_obj, child_obj_names, to_exclude):
             if not isinstance(child_obj_names, (list, tuple)):
                 child_obj_names = [child_obj_names]
@@ -212,13 +211,11 @@ def save(self, savepath=None):
         cached_attrs = {}
         for dg_name in ('datagen', 'val_datagen'):
             dg = getattr(self, dg_name)
-            to_exclude = ['batch', 'superbatch']
+            to_exclude = dg.saveskip_list.copy()
 
             for key, val in vars(dg).items():
                 if isinstance(val, types.LambdaType):
                     to_exclude.append(key)
-                elif key == 'group_batch':
-                    to_exclude.append('group_batch')
             cached_attrs.update(_cache_then_del_attrs(self, dg_name, to_exclude))
         return cached_attrs
 
@@ -233,7 +230,8 @@ def save(self, savepath=None):
     cached_attrs = _cache_datagen_attributes()
 
     self._apply_callbacks(stage='save')
-    savedict = {k:v for k,v in vars(self).items() if k in self.savelist}
+    savedict = {k: v for k, v in vars(self).items()
+                if k not in self.saveskip_list}
     savedict['optimizer_state'] = _get_optimizer_state(self.model.optimizer)
 
     try:
@@ -261,14 +259,11 @@ def load(self, filepath=None, passed_args=None):
         if filepath is not None:
             return filepath
 
-        txt = None
         if self.logdir is None:
-            txt = "`filepath` and `logdir` are None,"
+            raise ValueError("`filepath`, `loadpath`, and `logdir` are None")
         elif not Path(self.logdir).is_dir():
-            txt = ("`filepath` is None, and `logdir` is not a folder"
-                   "(%s)" % self.logdir)
-        if txt is not None:
-            raise ValueError(txt)
+            raise ValueError("`filepath` is None, and `logdir` is not a folder"
+                             "(%s)" % self.logdir)
 
         tempname = '_temp_model__state.h5'
         if tempname not in os.listdir(self.logdir):
@@ -278,102 +273,65 @@ def load(self, filepath=None, passed_args=None):
         filepath = os.path.join(self.logdir, '_temp_model__state.h5')
         return filepath
 
-    def _cache_datagen_attrs():
-        def _cache_preprocessor_attrs(pp):
-            pp_cache = {}
-            for attr in pp.loadskip_list:
-                value = getattr(pp, attr)
-                if isinstance(value, (list, dict)):
-                    value = value.copy()
-                pp_cache[attr] = value
-            return pp_cache
+    def _load_datagen_attrs(loadfile_parsed):
+        def _load_preprocessor_attrs(dg, dg_loaded, dg_name):
+            pp = dg.preprocessor
+            pp_loaded = dg_loaded.preprocessor
 
-        caches = {'datagen': {}, 'val_datagen': {}}
-        for dg_name in ('datagen', 'val_datagen'):
-            dg = getattr(self, dg_name)
-            caches[dg_name]['preprocessor'] = _cache_preprocessor_attrs(
-                dg.preprocessor)
+            for attr, value in vars(pp_loaded).items():
+                if attr not in pp.loadskip_list:
+                    setattr(pp, attr, value)
 
-            for attr in dg.loadskip_list:
-                value = getattr(dg, attr)
-                if isinstance(value, (list, dict)):
-                    value = value.copy()
-                caches[dg_name][attr] = value
-        return caches
-
-    def _restore_cached_attrs(caches):
-        def _restore_preprocessor_attrs(pp, pp_cache):
-            for attr, value in pp_cache.items():
-                setattr(pp, attr, value)
-
-        def _check_and_fix_set_nums(dg):
+        def _validate_set_nums(dg, dg_loaded):
             if hasattr(dg, 'set_nums_original'):
-                if any([(set_num not in dg.set_nums_original) for
-                        set_num in dg.set_nums_to_process]):
-                    print(WARN,  "found set_num in loaded"
-                          "`set_nums_to_process` that isn't in "
-                          "the non-loaded `set_nums_original`; setting "
+                if any(set_num not in dg.set_nums_original
+                       for set_num in dg_loaded.set_nums_to_process):
+                    print(WARN, "found set_num in loaded `set_nums_to_process` "
+                          "that isn't in the passed `set_nums_original`; setting "
                           "former to `set_nums_original`.")
                     dg.set_nums_to_process = dg.set_nums_original.copy()
 
-        for dg_name in ('datagen', 'val_datagen'):
+        dg_names = [n for n in ('datagen', 'val_datagen') if n in loadfile_parsed]
+
+        for dg_name in dg_names:
             dg = getattr(self, dg_name)
-            pp_cache = caches[dg_name].pop('preprocessor')
-            _restore_preprocessor_attrs(dg.preprocessor, pp_cache)
+            dg_loaded = loadfile_parsed.pop(dg_name)
 
-            for attr, value in caches[dg_name].items():
-                setattr(dg, attr, value)
-            _check_and_fix_set_nums(dg)
-
-    def _unpack_passed_dirs(caches):
-        dgs = (self.datagen, self.val_datagen)
-        for dg_type, dg in zip(caches, dgs):
-            for attr in dg._path_attrs:
-                setattr(dg, attr, caches[dg_type][attr])
+            for attr, value in vars(dg_loaded).items():
+                if attr not in dg.loadskip_list:
+                    if attr == 'set_nums_to_process':
+                        _validate_set_nums(dg, dg_loaded)
+                    else:
+                        setattr(dg, attr, value)
+            _load_preprocessor_attrs(dg, dg_loaded, dg_name)
 
     filepath = _get_filepath(filepath)
-    with open(filepath, "rb") as loadfile:
+    with open(filepath, 'rb') as loadfile:
         loadfile_parsed = pickle.load(loadfile)
-        caches = _cache_datagen_attrs()
-
-        # load keys & values w/o deleting existing
-        for dg_name in ('datagen', 'val_datagen'):
-            for key, value in loadfile_parsed.pop(dg_name).__dict__.items():
-                setattr(getattr(self, dg_name), key, value)
-
         # drop items in loadskip_list (e.g. to avoid overriding passed kwargs)
         loadskip_list = _get_loadskip_list(passed_args)
         for name in loadskip_list:
             loadfile_parsed.pop(name, None)
 
+        if 'datagen' in loadfile_parsed or 'val_datagen' in loadfile_parsed:
+            _load_datagen_attrs(loadfile_parsed)
+
         # assign loaded/cached attributes
         self.__dict__.update(loadfile_parsed)
 
-        if self.use_passed_dirs_over_loaded:
-            _unpack_passed_dirs(caches)
-        if hasattr(self, 'optimizer_state') and self.optimizer_state:
+        if getattr(self, 'optimizer_state', None):
             _load_optimizer_state(self)
         else:
             print(WARN, "'optimizer_state' not found in loadfile; skipping")
-        print("TrainGenerator state loaded from", self.loadpath)
+        print("TrainGenerator state loaded from", filepath)
 
     print("--Preloading excluded data based on datagen states ...")
-    _restore_cached_attrs(caches)
-
-    for dg_name in ('datagen', 'val_datagen'):
-        dg = getattr(self, dg_name)
-        dg.batch_loaded = False
-
-        if dg.superbatch_set_nums != []:
-            dg.preload_superbatch()
-        dg.preload_labels()
-        dg.advance_batch()
-
-    self._set_num     = self.datagen.set_num
-    self._val_set_num = self.val_datagen.set_num
-
-    self._apply_callbacks(stage='load')
+    self._prepare_initial_data(from_load=True)
     print("... finished--")
+
+    if not getattr(self, 'callback_objs', None):  # if not already initialized
+        self._init_callbacks()
+    self._apply_callbacks(stage='load')
 
 
 def _load_optimizer_state(self):

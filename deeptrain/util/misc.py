@@ -315,20 +315,19 @@ def _validate_traingen_configs(self):
                 raise ValueError("cannot have both 'include' and 'exclude' "
                                  f"in `{name}`")
 
-    def _validate_savelist():
-        if self.input_as_labels and 'labels' in self.savelist:
-            print(NOTE, "will exclude `labels` from saving when "
-                  "`input_as_labels=True`; to override, "
-                  "supply '{labels}' instead")
-            self.savelist.pop(self.savelist.index('labels'))
-        if '{labels}' in self.savelist:
-            self.savelist.pop(self.savelist.index('{labels}'))
-            self.savelist.append('labels')
+    def _validate_saveskip_list():
+        if self.input_as_labels and 'labels' not in self.saveskip_list and (
+                '{labels}' not in self.saveskip_list):
+                print(NOTE, "will exclude `labels` from saving when "
+                      "`input_as_labels=True`; to keep 'labels', add '{labels}'"
+                      "to `saveskip_list` instead")
+                self.saveskip_list.append('labels')
+
         for required_key in ('datagen', 'val_datagen'):
-            if required_key not in self.savelist:
-                print(WARN, ("'{}' must be included in `savelist`; will append"
-                             ).format(required_key))
-                self.savelist.append(required_key)
+            if required_key in self.saveskip_list:
+                print(WARN, ("'{}' cannot be included in `saveskip_list`; "
+                             "will pip").format(required_key))
+                self.saveskip_list.pop(self.saveskip_list.index(required_key))
 
     def _validate_loadskip_list():
         lsl = self.loadskip_list
@@ -447,7 +446,7 @@ def _validate_traingen_configs(self):
     _validate_metrics()
     _validate_directories()
     _validate_optimizer_saving_configs()
-    _validate_savelist()
+    _validate_saveskip_list()
     _validate_loadskip_list()
     _validate_weighted_slices_range()
     _validate_class_weights()

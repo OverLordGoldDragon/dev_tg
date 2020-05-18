@@ -24,7 +24,7 @@ MODEL_CFG = dict(
     num_classes=10,
     activation=['relu'] * 4 + ['sigmoid'],
     filters=[2, 2, 1, 2, 1],
-    kernel_size=[(3, 3)]*5,
+    kernel_size=[(3, 3)] * 5,
     strides=[(2, 2), (2, 2), 1, 1, 1],
     up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
 )
@@ -54,7 +54,7 @@ TRAINGEN_CFG = dict(
     input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    savelist=['labels'],  # .misc test
+    saveskip_list=['labels'],  # .misc test
     model_configs=MODEL_CFG,
 )
 
@@ -99,7 +99,7 @@ def test_predict():
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         C['traingen']['eval_fn_name'] = 'predict'
-        C['traingen']['savelist'] = ['{labels}']
+        C['traingen']['saveskip_list'] = ['{labels}']
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
