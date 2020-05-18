@@ -190,6 +190,8 @@ def test_util():
         tg.final_fig_dir = tg.logdir
 
         pass_on_error(tg.load)
+        pass_on_error(tg.checkpoint, overwrite="underwrite")
+        tg.datagen.set_nums_to_process = [9001]
         tg.save()
         tg._save_history()
         tg._save_history()
@@ -205,7 +207,6 @@ def test_util():
         tg.load()
 
         tg.optimizer_save_configs = {'include': []}
-        pass_on_error(tg.checkpoint, overwrite="underwrite")
         tg.save()
 
         with patch('tests.backend.K.get_value') as mock_get_value:

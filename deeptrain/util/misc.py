@@ -320,10 +320,10 @@ def _validate_traingen_configs(self):
     def _validate_saveskip_list():
         if self.input_as_labels and 'labels' not in self.saveskip_list and (
                 '{labels}' not in self.saveskip_list):
-                print(NOTE, "will exclude `labels` from saving when "
-                      "`input_as_labels=True`; to keep 'labels', add '{labels}'"
-                      "to `saveskip_list` instead")
-                self.saveskip_list.append('labels')
+            print(NOTE, "will exclude `labels` from saving when "
+                  "`input_as_labels=True`; to keep 'labels', add '{labels}'"
+                  "to `saveskip_list` instead")
+            self.saveskip_list.append('labels')
 
     def _validate_loadskip_list():
         lsl = self.loadskip_list

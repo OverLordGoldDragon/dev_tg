@@ -141,14 +141,11 @@ def deepcopy_v2(obj, item_fn=None):
 
         if isinstance(container, list):
             container.insert(key[-1], _item)
-        elif isinstance(container, tuple):
-            raise Exception("tuple container encountered while reconstructing "
-                            "`obj`; this shouldn't have happened")
         elif isinstance(container, str):
             # str container implies container was transformed to str by item_fn;
             # continue skipping until deepmap exits container in obj
             pass
-        else:
+        else:  # tuple will yield error, no need to catch
             obj_container = deepget(obj, key, 1)
             k = dkey(obj_container, key[-1])
             container[k] = _item

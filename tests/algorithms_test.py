@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 import pytest
+import builtins
 import numpy as np
 
 from collections.abc import Iterable
 from copy import deepcopy
 from time import time
 
-from deeptrain.util.algorithms import deeplen, deepmap, nCk, ordered_shuffle
+from deeptrain.util.algorithms import deeplen, deepmap, deepcopy_v2
+from deeptrain.util.algorithms import nCk, ordered_shuffle
 from tests.backend import notify
 
 
 tests_done = {name: None for name in ('nCk', 'ordered_shuffle',
-                                      'deeplen', 'deepmap')}
+                                      'deeplen', 'deepmap', 'deepcopy_v2')}
 
 
 def _make_bignest():
@@ -119,6 +121,27 @@ def test_deepmap():
     print("deepmap-fn1: {:.3f} sec".format(time() - t0))
 
     # deepmap-fn2 takes too long
+
+@notify(tests_done)
+def test_deepcopy_v2():
+    def obj_to_str(x, key=None):
+        def is_builtin_or_numpy_scalar(x):
+            return (isinstance(x, np.generic) or
+                type(x) in (*vars(builtins).values(), type(None), type(min)))
+
+        if is_builtin_or_numpy_scalar(x):
+            return x
+        return str(x)[:200]
+
+    np.random.seed(4)
+    arr = np.random.randint(0, 9, (2, 2))
+    obj = (1, {'a': 3, 'b': 4, 'c': ('5', 6., (7, 8)), 'd': 9}, {}, arr, ())
+    obj_orig = deepcopy(obj)
+
+    copied = deepcopy_v2(obj, obj_to_str)
+    assert str(copied) == ("(1, {'a': 3, 'b': 4, 'c': ('5', 6.0, (7, 8)), "
+                           "'d': 9}, {}, '[[7 5]\\n [1 8]]', ())")
+    assert str(obj) == str(obj_orig)  # deepcopy_v2 should not mutate original obj
 
 
 if __name__ == '__main__':
