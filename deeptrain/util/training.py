@@ -239,11 +239,12 @@ def _get_best_subset_val_history(self):
             return [np.asarray([x[idx] for idx in indices]) for x in arrs]
 
         assert best_subset_idxs, "`best_subset_idxs` is empty"
-
         ALL = _filter_by_indices(best_subset_idxs, d['labels_all_norm'],
                                  d['preds_all_norm'], d['sample_weight_all'])
-        (preds_all_norm, labels_all_norm, sample_weight_all
+
+        (labels_all_norm, preds_all_norm, sample_weight_all
          ) = _unroll_into_samples(len(self.model.output_shape), *ALL)
+
         return self._compute_metrics(labels_all_norm, preds_all_norm,
                                      sample_weight_all)
 
