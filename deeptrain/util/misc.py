@@ -325,12 +325,6 @@ def _validate_traingen_configs(self):
                       "to `saveskip_list` instead")
                 self.saveskip_list.append('labels')
 
-        for required_key in ('datagen', 'val_datagen'):
-            if required_key in self.saveskip_list:
-                print(WARN, ("'{}' cannot be included in `saveskip_list`; "
-                             "will pip").format(required_key))
-                self.saveskip_list.pop(self.saveskip_list.index(required_key))
-
     def _validate_loadskip_list():
         lsl = self.loadskip_list
         if not isinstance(lsl, list) and lsl not in ('auto', 'none', None):

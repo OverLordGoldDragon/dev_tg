@@ -296,14 +296,20 @@ def load(self, filepath=None, passed_args=None):
         for dg_name in dg_names:
             dg = getattr(self, dg_name)
             dg_loaded = loadfile_parsed.pop(dg_name)
+            lsl_loaded = None
 
             for attr, value in vars(dg_loaded).items():
                 if attr not in dg.loadskip_list:
                     if attr == 'set_nums_to_process':
                         _validate_set_nums(dg, dg_loaded)
+                    elif attr == 'loadskip_list':
+                        # delay setting since it changes iteration logic
+                        lsl_loaded = value
                     else:
                         setattr(dg, attr, value)
             _load_preprocessor_attrs(dg, dg_loaded, dg_name)
+            if lsl_loaded is not None:
+                dg.loadskip_list = lsl_loaded
 
     filepath = _get_filepath(filepath)
     with open(filepath, 'rb') as loadfile:

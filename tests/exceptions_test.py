@@ -184,9 +184,9 @@ def test_util():
 
     def save(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
+        tg.checkpoint()
         tg.model.loss = 'mean_squared_error'
         tg.train()
-        # tg.datagen.set_nums_to_process = [9001] # TODO remove?
         tg.final_fig_dir = tg.logdir
 
         pass_on_error(tg.load)
@@ -194,15 +194,18 @@ def test_util():
         tg._save_history()
         tg._save_history()
         tg.optimizer_load_configs = {'exclude': ['weights']}
+        tg.loadskip_list = ['optimizer_load_configs']
+        tg.datagen.loadskip_list = ['stuff']
         tg.load()
 
         tg._history_fig = 1
         tg._save_history()
 
-        tg.use_passed_dirs_over_loaded = True
+        tg.loadskip_list = 'none'
         tg.load()
 
         tg.optimizer_save_configs = {'include': []}
+        pass_on_error(tg.checkpoint, overwrite="underwrite")
         tg.save()
 
         with patch('tests.backend.K.get_value') as mock_get_value:
