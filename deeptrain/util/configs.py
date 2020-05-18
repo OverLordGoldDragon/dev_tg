@@ -2,25 +2,39 @@
 import numpy as np
 from .fonts import fontsdir
 
-
+# TODO put elsewhere? unused -- or, integrate w/ _make_plot_configs_from_metrics
+# e.g. `ylims = (0, 2)` is hard-coded
+# keep `None` for configs to be determined automatically by _make_plot...
+# TODO add '2' to _PLOT_CFG
 _PLOT_CFG = {
 '1': {
-    'metrics':
-        {'train': ['loss'],
-         'val'  : ['loss']},
-    'x_ticks':
-        {'train': ['_train_x_ticks'],
-         'val':   ['_val_train_x_ticks']},
+    'metrics': None,
+    'x_ticks': None,
     'vhlines'   :
         {'v': '_hist_vlines',
          'h': 1},
-    'mark_best_cfg': {'val': 'loss'},
+    'mark_best_cfg': None,
     'ylims'        : (0, 2),
+    'legend_kw'    : {'fontsize': 13},
 
-    'linewidth': (1.5, 2),
-    'linestyle': ('-', '-'),
-    'color'    : (None, 'orange'),
+    'linewidth': [1.5, 1.5],
+    'linestyle': ['-', '-'],
+    'color'    : None,
 },
+'2': {
+    'metrics': None,
+    'x_ticks': None,
+    'vhlines':
+        {'v': '_val_hist_vlines',
+         'h': .5},
+    'mark_best_cfg': None,
+    'ylims'        : (0, 1),
+    'legend_kw'    : {'fontsize': 13},
+
+    'linewidth': [1.5],
+    'linestyle': ['-'],
+    'color': None,
+}
 }
 
 _BINARY_CLASSIFICATION_PLOT_CFG = {

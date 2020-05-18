@@ -7,8 +7,10 @@ import deeptrain.metrics
 from types import LambdaType
 from functools import wraps
 from inspect import getfullargspec
+from copy import deepcopy
 
 from .algorithms import deepmap, deepcopy_v2
+from .configs import _PLOT_CFG
 from ._backend import WARN, NOTE
 
 
@@ -179,6 +181,14 @@ def _make_plot_configs_from_metrics(self):
                 colors.append(val_defaults.pop(0))
         return colors
 
+    def _get_extend(config, n, tail=False):
+        if not isinstance(config, (tuple, list)):
+            config = [config]
+        cfg = config[n:] if tail else config[:n]
+        if len(cfg) < n:
+            cfg.extend([cfg[-1]] * (n - len(cfg)))
+        return cfg
+
     plot_configs = {}
     n_train = len(self.train_metrics)
     n_val = len(self.val_metrics)
@@ -193,21 +203,23 @@ def _make_plot_configs_from_metrics(self):
     else:
         mark_best_cfg = None
 
+    PLOT_CFG = deepcopy(_PLOT_CFG)  # ensure module dict remains unchanged
+    CFG = PLOT_CFG['1']
     plot_configs['1'] = {
         'metrics':
-            {'train': self.train_metrics,
-             'val'  : val_metrics_p1},
+            CFG['metrics'] or {'train': self.train_metrics,
+                               'val'  : val_metrics_p1},
         'x_ticks':
-            {'train': ['_train_x_ticks'] * n_train,
-             'val':   ['_val_train_x_ticks'] * n_val_p1},
-        'vhlines'   :
-            {'v': '_hist_vlines',
-             'h': 1},
-        'mark_best_cfg': mark_best_cfg,
-        'ylims'        : (0, 2),
+            CFG['x_ticks'] or {'train': ['_train_x_ticks'] * n_train,
+                               'val'  : ['_val_train_x_ticks'] * n_val_p1},
+        'vhlines'      : CFG['vhlines'],
+        'mark_best_cfg': CFG['mark_best_cfg'] or mark_best_cfg,
+        'ylims'        : CFG['ylims'],
+        'legend_kw'    : CFG['legend_kw'],
 
-        'linewidth': [1.5] * n_total_p1,
-        'color'    : colors[:n_total_p1],
+        'linewidth': _get_extend(CFG['linewidth'], n_total_p1),
+        'linestyle': _get_extend(CFG['linestyle'], n_total_p1),
+        'color'    : _get_extend(CFG['color'] or colors, n_total_p1),
         }
     if len(self.val_metrics) <= self.plot_first_pane_max_vals:
         return plot_configs
@@ -219,19 +231,20 @@ def _make_plot_configs_from_metrics(self):
         mark_best_cfg = None
     n_val_p2 = n_val - n_val_p1
 
+    CFG = PLOT_CFG['2']
     plot_configs['2'] = {
         'metrics':
-            {'val': self.val_metrics[n_val_p1:]},
+            CFG['metrics'] or {'val': self.val_metrics[n_val_p1:]},
         'x_ticks':
-            {'val': ['_val_x_ticks'] * n_val_p2},
-        'vhlines'   :
-            {'v': '_val_hist_vlines',
-             'h': .5},
-        'mark_best_cfg': mark_best_cfg,
-        'ylims'        : (0, 1),
+            CFG['x_ticks'] or {'val': ['_val_x_ticks'] * n_val_p2},
+        'vhlines'      : CFG['vhlines'],
+        'mark_best_cfg': CFG['mark_best_cfg'] or mark_best_cfg,
+        'ylims'        : CFG['ylims'],
+        'legend_kw'    : CFG['legend_kw'],
 
-        'linewidth': [1.5] * n_val_p2,
-        'color'    : colors[n_total_p1:],
+        'linewidth': _get_extend(CFG['linewidth'], n_val_p2),
+        'linestyle': _get_extend(CFG['linestyle'], n_val_p2),
+        'color'    : _get_extend(CFG['color'] or colors, n_total_p1, tail=True),
     }
     return plot_configs
 

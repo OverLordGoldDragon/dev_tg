@@ -5,22 +5,33 @@ from .fonts import fontsdir
 
 _DEFAULT_PLOT_CFG = {
 '1': {
-    'metrics':
-        {'train': ['loss'],
-         'val'  : ['loss']},
-    'x_ticks':
-        {'train': ['_train_x_ticks'],
-         'val':   ['_val_train_x_ticks']},
+    'metrics': None,
+    'x_ticks': None,
     'vhlines'   :
         {'v': '_hist_vlines',
          'h': 1},
-    'mark_best_idx': 1,
+    'mark_best_cfg': None,
     'ylims'        : (0, 2),
+    'legend_kw'    : {'fontsize': 13},
 
-    'linewidth': (1.5, 2),
-    'linestyle': ('-', '-'),
-    'color'    : (None, 'orange'),
+    'linewidth': [1.5, 2],
+    'linestyle': ['-', '-'],
+    'color'    : None,
 },
+'2': {
+    'metrics': None,
+    'x_ticks': None,
+    'vhlines':
+        {'v': '_val_hist_vlines',
+         'h': .5},
+    'mark_best_cfg': None,
+    'ylims'        : (0, 1),
+    'legend_kw'    : {'fontsize': 13},
+
+    'linewidth': [1.5],
+    'linestyle': ['-'],
+    'color': None,
+}
 }
 
 _DEFAULT_BINARY_CLASSIFICATION_PLOT_CFG = {
@@ -36,7 +47,7 @@ _DEFAULT_BINARY_CLASSIFICATION_PLOT_CFG = {
     'linewidth': (1.5, 1, 2),
     'linestyle': ('-', '--', '-'),
     'color'    : (None, 'b', 'orange'),
-    'mark_best_idx': None,
+    'mark_best_cfg': None,
 },
 '2': {
     'metrics':
@@ -44,7 +55,7 @@ _DEFAULT_BINARY_CLASSIFICATION_PLOT_CFG = {
     'vhlines'   :
         {'v': '_val_hist_vlines',
          'h': .5},
-    'mark_best_idx': 2,
+    'mark_best_cfg': {'val': 'f1-score'},
 
     'linewidth': (2, 2, 2),
     'linestyle': ('-', '-', '-'),

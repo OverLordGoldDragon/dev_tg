@@ -59,159 +59,6 @@ def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
     _plot(preds_flat, pred_th, alignment_arr, colors)
 
 
-def _get_history_fig(self, plot_configs=None, w=1, h=1):
-    def _unpack_plot_kws(config):
-        reserved_keys = ('metrics', 'x_ticks', 'vhlines',
-                         'mark_best_cfg', 'ylims')
-        metric_keys = list(config['metrics'].keys())  # 'train', 'val'
-        values_per_key = sum(len(config['metrics'][x]) for x in metric_keys)
-
-        plot_kws = []
-        for i in range(values_per_key):
-            plot_kws.append({key:config[key][i]
-                             for key in config
-                             if key not in reserved_keys})
-        return plot_kws
-
-    def _equalize_ticks_range(x_ticks, metrics):
-        max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks) > 0])
-
-        assert all([ticks[-1] == max_value for ticks in x_ticks])
-        assert all([len(t) == len(m)       for t, m in zip(x_ticks, metrics)])
-        return x_ticks
-
-    def _equalize_metric_names(config):
-        metrics = config['metrics']
-
-        if 'train' in metrics:
-            for idx, name in enumerate(metrics['train']):
-                metrics['train'][idx] = self._alias_to_metric_name(name)
-        if 'val'   in metrics:
-            for idx, name in enumerate(metrics['val']):
-                metrics['val'][idx]   = self._alias_to_metric_name(name)
-        return config
-
-    def _unpack_vhlines(config):
-        vhlines = {'v':[], 'h':[]}
-        for vh in vhlines:
-            vhline = config['vhlines'][vh]
-            if isinstance(vhline, (float, int, list, tuple, np.ndarray)):
-                vhlines[vh] = vhline
-            elif vhline == '_val_hist_vlines':
-                vhlines[vh] = self._val_hist_vlines or None
-            elif vhline == '_hist_vlines':
-                vhlines[vh] = self._hist_vlines or None
-            else:
-                raise ValueError("unsupported `vhlines` in `plot_configs`:",
-                                 vhline)
-        return vhlines
-
-    def _unpack_ticks_and_metrics(config):
-        def _get_mark_best_idx(metrics, name, mark_best_cfg, val):
-            expects_val = bool('val' in mark_best_cfg)
-            expected_name = list(mark_best_cfg.values())[0]
-
-            if not val and expects_val:
-                return
-            elif val and expects_val and name == expected_name:
-                return len(metrics) - 1
-            elif not val and not expects_val and name == expected_name:
-                return len(metrics) - 1
-
-        x_ticks, metrics = [], []
-        mark_best_cfg = config.get('mark_best_cfg', None)
-        mark_best_idx = None
-
-        if 'train' in config['metrics']:
-            for i, name in enumerate(config['metrics']['train']):
-                metrics.append(self.history[name])
-                x_ticks.append(getattr(self, config['x_ticks']['train'][i]))
-                if mark_best_cfg is not None and mark_best_idx is None:
-                    mark_best_idx = _get_mark_best_idx(metrics, name,
-                                                       mark_best_cfg, val=False)
-        if 'val' in config['metrics']:
-            for i, name in enumerate(config['metrics']['val']):
-                metrics.append(self.val_history[name])
-                x_ticks.append(getattr(self, config['x_ticks']['val'][i]))
-                if mark_best_cfg is not None and mark_best_idx is None:
-                    mark_best_idx = _get_mark_best_idx(metrics, name,
-                                                       mark_best_cfg, val=True)
-        return x_ticks, metrics, mark_best_idx
-
-    if plot_configs is None:
-        plot_configs = self.plot_configs
-
-    fig, axes = plt.subplots(len(plot_configs), 1)
-    axes = np.atleast_1d(axes)
-
-    for config, axis in zip(plot_configs.values(), axes):
-        config = _equalize_metric_names(config)
-        x_ticks, metrics, mark_best_idx = _unpack_ticks_and_metrics(config)
-        x_ticks = _equalize_ticks_range(x_ticks, metrics)
-
-        plot_kws = _unpack_plot_kws(config)
-        if config.get('vhlines', None) is not None:
-            vhlines  = _unpack_vhlines(config)
-        ylims = config.get('ylims', (0, 2))
-
-        _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx,
-                      axis=axis, vhlines=vhlines, ylims=ylims,
-                      key_metric=self.key_metric)
-
-    subplot_scaler = .5 * len(axes)
-    fig.set_size_inches(14 * w, 11 * h * subplot_scaler)
-    plt.close(fig)
-    return fig
-
-
-def _plot_metrics(x_ticks, metrics, plot_kws, mark_best_idx=None, axis=None,
-                  vhlines={'v':None, 'h':None}, ylims=(0, 2), key_metric='loss'):
-    if axis is not None:
-        ax = axis
-    else:
-        _, ax = plt.subplots()
-
-    def _plot_vhlines(vhlines, ax):
-        def non_iterable(x):
-            return not isinstance(x, (list, tuple, np.ndarray))
-        vlines, hlines = vhlines.get('v', None), vhlines.get('h', None)
-
-        if vlines is not None:
-            if non_iterable(vlines):
-                vlines = [vlines]
-            [ax.axvline(l, color='k', linewidth=2) for l in vlines if l]
-        if hlines is not None:
-            if non_iterable(hlines):
-                hlines = [hlines]
-            [ax.axhline(l, color='k', linewidth=2) for l in hlines if l]
-
-    def _mark_best_metric(x_ticks, metrics, mark_best_idx, ax):
-        metric = metrics[mark_best_idx]
-
-        best_fn = np.min if key_metric=='loss' else np.max
-        x_best_idx = np.where(metric == best_fn(metric))[0][0]
-        x_best = x_ticks[mark_best_idx][x_best_idx]
-
-        ax.plot(x_best, best_fn(metric), 'o', color=[.3, .95, .3],
-                markersize=15, markeredgewidth=4, markerfacecolor='none')
-
-    def _plot_main(x_ticks, metrics, plot_kws, ax):
-        for ticks, metric, kws in zip(x_ticks, metrics, plot_kws):
-            ax.plot(ticks, metric, **kws)
-
-    _plot_main(x_ticks, metrics, plot_kws, ax)
-    if vhlines is not None:
-        _plot_vhlines(vhlines, ax)
-
-    if mark_best_idx is not None:
-        _mark_best_metric(x_ticks, metrics, mark_best_idx, ax)
-
-    xmin = min([np.min(ticks) for ticks in x_ticks])
-    xmax = max([np.max(ticks) for ticks in x_ticks])
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(*ylims)
-
-
 def comparative_histogram(model, layer_name, data, keep_borders=True,
                           bins=100, xlims=(0, 1), fontsize=14, vline=None,
                           w=1, h=1):
@@ -325,3 +172,170 @@ def viz_roc_auc(y_true, y_pred):
 
     pts, score = _compute_roc_auc(y_true, y_pred)
     _plot(pts, score)
+
+
+def _get_history_fig(self, plot_configs=None, w=1, h=1):
+    def _unpack_plot_kw(config):
+        reserved_keys = ('metrics', 'x_ticks', 'vhlines',
+                         'mark_best_cfg', 'ylims', 'legend_kw')
+        metric_keys = list(config['metrics'].keys())  # 'train', 'val'
+        values_per_key = sum(len(config['metrics'][x]) for x in metric_keys)
+
+        plot_kw = []
+        for i in range(values_per_key):
+            plot_kw.append({key:config[key][i] for key in config
+                            if key not in reserved_keys})
+        return plot_kw
+
+    def _equalize_ticks_range(x_ticks, metrics):
+        max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks) > 0])
+
+        assert all([ticks[-1] == max_value for ticks in x_ticks])
+        assert all([len(t) == len(m) for t, m in zip(x_ticks, metrics.values())])
+        return x_ticks
+
+    def _equalize_metric_names(config):
+        metrics_cfg = config['metrics']
+
+        if 'train' in metrics_cfg:
+            for idx, name in enumerate(metrics_cfg['train']):
+                metrics_cfg['train'][idx] = self._alias_to_metric_name(name)
+        if 'val'   in metrics_cfg:
+            for idx, name in enumerate(metrics_cfg['val']):
+                metrics_cfg['val'][idx]   = self._alias_to_metric_name(name)
+
+    def _unpack_vhlines(config):
+        vhlines = {'v':[], 'h':[]}
+        for vh in vhlines:
+            vhline = config['vhlines'][vh]
+            if isinstance(vhline, (float, int, list, tuple, np.ndarray)):
+                vhlines[vh] = vhline
+            elif vhline == '_val_hist_vlines':
+                vhlines[vh] = self._val_hist_vlines or None
+            elif vhline == '_hist_vlines':
+                vhlines[vh] = self._hist_vlines or None
+            else:
+                raise ValueError("unsupported `vhlines` in `plot_configs`:",
+                                 vhline)
+        return vhlines
+
+    def _unpack_ticks_and_metrics(config):
+        def _get_mark_best_idx(metrics, name, mark_best_cfg, val):
+            expects_val = bool('val' in mark_best_cfg)
+            expected_name = list(mark_best_cfg.values())[0]
+
+            if not val and expects_val:
+                return
+            elif val and expects_val and name == expected_name:
+                return len(metrics) - 1
+            elif not val and not expects_val and name == expected_name:
+                return len(metrics) - 1
+
+        x_ticks, metrics = [], {}
+        mark_best_cfg = config.get('mark_best_cfg', None)
+        mark_best_idx = None
+        # TODO replace mark_best_idx w/ name?
+        if 'train' in config['metrics']:
+            for i, name in enumerate(config['metrics']['train']):
+                metrics[f'train:{name}'] = self.history[name]
+                x_ticks.append(getattr(self, config['x_ticks']['train'][i]))
+                if mark_best_cfg is not None and mark_best_idx is None:
+                    mark_best_idx = _get_mark_best_idx(metrics, name,
+                                                       mark_best_cfg, val=False)
+        if 'val' in config['metrics']:
+            for i, name in enumerate(config['metrics']['val']):
+                metrics[f'val:{name}'] = self.val_history[name]
+                x_ticks.append(getattr(self, config['x_ticks']['val'][i]))
+                if mark_best_cfg is not None and mark_best_idx is None:
+                    mark_best_idx = _get_mark_best_idx(metrics, name,
+                                                       mark_best_cfg, val=True)
+        return x_ticks, metrics, mark_best_idx
+
+    if plot_configs is None:
+        plot_configs = self.plot_configs
+
+    fig, axes = plt.subplots(len(plot_configs), 1)
+    axes = np.atleast_1d(axes)
+
+    for config, axis in zip(plot_configs.values(), axes):
+        _equalize_metric_names(config)
+        x_ticks, metrics, mark_best_idx = _unpack_ticks_and_metrics(config)
+        x_ticks = _equalize_ticks_range(x_ticks, metrics)
+
+        plot_kw = _unpack_plot_kw(config)
+        if config.get('vhlines', None) is not None:
+            vhlines  = _unpack_vhlines(config)
+        ylims = config.get('ylims', (0, 2))
+        legend_kw = config.get('legend_kw', None)
+
+        _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx,
+                      axis=axis, vhlines=vhlines, ylims=ylims,
+                      legend_kw=legend_kw, key_metric=self.key_metric)
+
+    subplot_scaler = .5 * len(axes)
+    fig.set_size_inches(14 * w, 11 * h * subplot_scaler)
+    plt.close(fig)
+    return fig
+
+
+def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None, axis=None,
+                  vhlines={'v':None, 'h':None}, ylims=(0, 2), legend_kw=None,
+                  key_metric='loss'):
+    if axis is not None:
+        ax = axis
+    else:
+        _, ax = plt.subplots()
+
+    def _plot_vhlines(vhlines, ax):
+        def non_iterable(x):
+            return not isinstance(x, (list, tuple, np.ndarray))
+        vlines, hlines = vhlines.get('v', None), vhlines.get('h', None)
+
+        if vlines is not None:
+            if non_iterable(vlines):
+                vlines = [vlines]
+            [ax.axvline(l, color='k', linewidth=2) for l in vlines if l]
+        if hlines is not None:
+            if non_iterable(hlines):
+                hlines = [hlines]
+            [ax.axhline(l, color='k', linewidth=2) for l in hlines if l]
+
+    def _mark_best_metric(x_ticks, metrics, mark_best_idx, ax):
+        metric = list(metrics.values())[mark_best_idx]
+
+        best_fn = np.min if key_metric=='loss' else np.max
+        x_best_idx = np.where(metric == best_fn(metric))[0][0]
+        x_best = x_ticks[mark_best_idx][x_best_idx]
+
+        ax.plot(x_best, best_fn(metric), 'o', color=[.3, .95, .3],
+                markersize=15, markeredgewidth=4, markerfacecolor='none')
+
+    def _make_legend_label(name, bold):
+        mode, metric_name = name.split(':')
+        label = "{} ({})".format(metric_name, mode)
+        if bold:
+            label = f"$\\bf{label}$"
+        return label
+
+    def _plot_main(x_ticks, metrics, plot_kw, legend_kw, ax):
+        bold = bool(legend_kw.get('weight', None) == 'bold')
+        for ticks, name, kws in zip(x_ticks, metrics, plot_kw):
+            if legend_kw is not None:
+                kws['label'] = _make_legend_label(name, bold)
+            ax.plot(ticks, metrics[name], **kws)
+
+    _plot_main(x_ticks, metrics, plot_kw, legend_kw, ax)
+    if legend_kw is not None:
+        legend_kw = legend_kw.copy()  # ensure external dict unaffected
+        legend_kw.pop('weight', None)  # invalid kwarg
+        ax.legend(**legend_kw)
+    if vhlines is not None:
+        _plot_vhlines(vhlines, ax)
+
+    if mark_best_idx is not None:
+        _mark_best_metric(x_ticks, metrics, mark_best_idx, ax)
+
+    xmin = min([np.min(ticks) for ticks in x_ticks])
+    xmax = max([np.max(ticks) for ticks in x_ticks])
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(*ylims)

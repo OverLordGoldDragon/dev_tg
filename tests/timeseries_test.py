@@ -99,7 +99,7 @@ def test_predict():
             C['traingen']['best_models_dir']):
         C['traingen'].update(dict(eval_fn_name='predict',
                                   key_metric='f1_score',
-                                  val_metrics=('tnr', 'tpr'),
+                                  val_metrics=('loss', 'tnr', 'tpr'),
                                   plot_first_pane_max_vals=1,
                                   metric_printskip_configs={'val': 'f1_score'},
                                   class_weights={0: 1, 1: 5},
