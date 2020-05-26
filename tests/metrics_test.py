@@ -1,9 +1,19 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import numpy as np
 
-from tests.backend import K
-from tests.backend import keras_losses, keras_metrics
+from backend import K, TF_2, TF_KERAS
+from backend import keras_losses, keras_metrics
 from deeptrain import metrics
 
 
@@ -20,7 +30,7 @@ to_test = ['binary_crossentropy',
            'logcosh',
            'kullback_leibler_divergence',
            'poisson',
-           'cosine_proximity',
+           'cosine_similarity',
            'binary_accuracy',
            'categorical_accuracy',
            'sparse_categorical_accuracy',
@@ -32,7 +42,15 @@ np.random.seed(0)
 
 
 def _make_test_fn(name):
+    def _maybe_cast_to_tensor(y_true, y_pred):
+        if name not in ('hinge', 'squared_hinge'):
+            return K.variable(y_true), K.variable(y_pred)
+        return y_true, y_pred
+
     def _keras_metric(name):
+        if name == 'cosine_similarity' and (not TF_KERAS and not TF_2):
+            name = 'cosine_proximity'
+
         if name not in KERAS_METRICS:
             def _weighted_loss(y_true, y_pred, sample_weight):
                 def _standardize(losses, sample_weight):
@@ -44,16 +62,17 @@ def _make_test_fn(name):
                             losses = np.expand_dims(losses, -1)
                     return losses, sample_weight
 
-                losses = K.get_value(getattr(keras_losses, name)(
-                    K.variable(y_true), K.variable(y_pred)))
+                yt, yp = _maybe_cast_to_tensor(y_true, y_pred)
+                losses = K.eval(getattr(keras_losses, name)(yt, yp))
                 losses, sample_weight = _standardize(losses, sample_weight)
                 return np.mean(losses * sample_weight)
             return _weighted_loss
         else:
-            # sample_weight makes no sense for keras `metrics`
-            return lambda y_true, y_pred: (
-                K.get_value(getattr(keras_metrics, name)(K.variable(y_true),
-                                                         K.variable(y_pred))))
+            def _fn(y_true, y_pred):
+                yt, yp = _maybe_cast_to_tensor(y_true, y_pred)
+                # sample_weight makes no sense for keras `metrics`
+                return K.eval(getattr(keras_metrics, name)(yt, yp))
+            return _fn
 
     def _test_metric(name):
         if name not in KERAS_METRICS:
@@ -69,7 +88,7 @@ def _make_test_fn(name):
     def _test_fn(y_true, y_pred, sample_weight=1):
         args = (y_true, y_pred, sample_weight)
         if name in KERAS_METRICS:
-            args = args[:-1]
+            args = args[:-1]  # exclude sample_weight
         return _test_metric_fn(*args), _keras_metric_fn(*args)
     return _test_fn
 
@@ -103,7 +122,10 @@ def _make_data_fn(name):
         elif name in ('squared_hinge', 'hinge', 'categorical_hinge'):
             y_true = np.array([-1, 1])[np.random.randint(0, 2, (batch_size, 1))]
             y_pred = np.random.uniform(-1, 1, (batch_size, 1))
-        elif name in ('poisson', 'cosine_proximity'):
+            # TF2 keras performs type checks for consistency
+            y_true = y_true.astype('float32')
+            y_pred = y_pred.astype('float32')
+        elif name in ('poisson', 'cosine_similarity'):
             y_true = np.random.uniform(0, 10, batch_size)
             y_pred = np.random.uniform(0, 10, batch_size)
         else:
@@ -114,6 +136,7 @@ def _make_data_fn(name):
         if y_pred.ndim == 1:
             y_pred == y_pred.reshape(-1, 1)
         sample_weight = np.random.uniform(0, 10, batch_size)
+
         return lambda: (y_true, y_pred, sample_weight)
     return _data_fn(name)
 
@@ -134,7 +157,7 @@ def _test_sample_weighted(name):
     y_true, y_pred, sample_weight = _make_data_fn(name)()
     results = _make_test_fn(name)(y_true, y_pred, sample_weight)
     errmsg = (name, "sample_weighted",
-              "diff: {}tested: {}, keras: {}".format(
+              "diff: {} tested: {}, keras: {}".format(
                   np.abs(results[1] - results[0]), results[0], results[1]))
     return np.allclose(*results, atol=1e-3, rtol=1e-5), errmsg
 

@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 
 from pathlib import Path
 from time import time
 from copy import deepcopy
 
-from tests.backend import BASEDIR, tempdir, notify, make_classifier
-from tests.backend import _init_session, _do_test_load
+from backend import BASEDIR, tempdir, notify, make_classifier
+from backend import _init_session, _do_test_load
 from deeptrain.util.logging import _log_init_state
 from deeptrain.util.misc import pass_on_error
 

@@ -212,7 +212,7 @@ def poisson(y_true, y_pred, sample_weight=1):
                                   axis=-1), sample_weight)
 
 
-def cosine_proximity(y_true, y_pred, sample_weight=1):
+def cosine_similarity(y_true, y_pred, sample_weight=1):
     def _l2_normalize(x, axis=-1, eps=1e-7):
         return x / np.sqrt(np.maximum(np.sum(x**2), eps))
 

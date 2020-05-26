@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import numpy as np
 
@@ -7,8 +16,8 @@ from time import time
 from copy import deepcopy
 from see_rnn import get_weights, features_2D
 
-from tests.backend import BASEDIR, tempdir, notify, make_classifier
-from tests.backend import _init_session, _do_test_load
+from backend import BASEDIR, tempdir, notify, make_classifier
+from backend import _init_session, _do_test_load
 from deeptrain.callbacks import TraingenLogger, make_callbacks
 from deeptrain.callbacks import make_layer_hists_cb
 
@@ -74,9 +83,9 @@ def _make_logger_cb(get_data_fn=None, get_labels_fn=None, gather_fns=None):
     }
     callbacks_init = {
         'logger': lambda self: TraingenLogger(self, logger_savedir, log_configs,
-                                             get_data_fn=get_data_fn,
-                                             get_labels_fn=get_labels_fn,
-                                             gather_fns=gather_fns)
+                                              get_data_fn=get_data_fn,
+                                              get_labels_fn=get_labels_fn,
+                                              gather_fns=gather_fns)
         }
     save_fn = lambda self: TraingenLogger.save(self, _id=self.tg.epoch)
     callbacks = {
@@ -136,7 +145,7 @@ def test_main():
 
         tg = init_session(C, model=model)
         tg.train()
-        _test_load(tg, C)
+        # _test_load(tg, C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

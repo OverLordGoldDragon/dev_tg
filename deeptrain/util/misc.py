@@ -2,16 +2,24 @@
 import builtins
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 import deeptrain.metrics
 
 from types import LambdaType
 from functools import wraps
 from inspect import getfullargspec
 from copy import deepcopy
+from collections.abc import Mapping
 
-from .algorithms import deepmap, deepcopy_v2
+from deeptrain.backend import model_util
+from .algorithms import deepmap, deepcopy_v2, deep_isinstance
+from .algorithms import builtin_or_npscalar
 from .configs import _PLOT_CFG
 from ._backend import WARN, NOTE
+
+if tf.__version__[0] == '2':
+    from tensorflow.python.keras.engine.training import _minimize
+    from tensorflow.python.keras.engine import data_adapter
 
 
 def pass_on_error(fn, *args, **kwargs):
@@ -22,6 +30,13 @@ def pass_on_error(fn, *args, **kwargs):
         if errmsg is not None:
             print(errmsg)
         print("Errmsg:", e)
+
+
+def try_except(try_fn, except_fn):
+    try:
+        try_fn()
+    except:
+        except_fn()
 
 
 def argspec(obj):
@@ -69,11 +84,11 @@ def capture_args(fn):
         # convert to string to prevent storing objects
         # & trim in case long lists / arrays are passed
         def obj_to_str(x, key=None):
-            def is_builtin_or_numpy_scalar(x):
+            def builtin_or_npscalar(x):
                 return (isinstance(x, np.generic) or
                     type(x) in (*vars(builtins).values(), type(None), type(min)))
 
-            if is_builtin_or_numpy_scalar(x):
+            if builtin_or_npscalar(x):
                 return x
             qname = getattr(x, '__qualname__', None)
             name  = getattr(x, '__name__', None)
@@ -99,6 +114,27 @@ def capture_args(fn):
     return wrap
 
 
+def extract_pickleable(obj, skip_flag=42069):
+    def item_fn(item):
+        if builtin_or_npscalar(item):
+            return item
+        return skip_flag
+    return deepcopy_v2(obj, item_fn, skip_flag)
+
+
+def exclude_unpickleable(obj):
+    if not isinstance(obj, Mapping):
+        raise ValueError(f"input must be a Mapping (dict, etc) - got: {obj}")
+
+    can_pickle = builtin_or_npscalar
+    pickleable = {}
+    for k, v in obj.items():
+        bools = deep_isinstance(v, cond=can_pickle)
+        if bools and all(bools):
+            pickleable[k] = v
+    return pickleable
+
+
 def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
                           alias_to_metric_name_fn=None):
     """Instantiates trainer & optimizer, but does NOT train (update weights)"""
@@ -122,20 +158,10 @@ def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
             return np.random.randn(batch_size, 10, 4)
         elif loss in ('squared_hinge', 'hinge', 'categorical_hinge'):
             return np.array([-1, 1])[np.random.randint(0, 2, (batch_size, 1))]
-        elif loss in ('poisson', 'cosine_proximity'):
+        elif loss in ('poisson', 'cosine_similarity'):
             return np.random.uniform(0, 10, batch_size)
         else:
             raise ValueError("unknown loss: '{}'".format(loss))
-
-    def _make_sample_weight(toy_labels, class_weights, loss):
-        if class_weights is None:
-            return np.ones(toy_labels.shape[0])
-        if loss == 'categorical_crossentropy':
-            return np.array([class_weights[int(np.argmax(l))]
-                             for l in toy_labels])
-        else:
-            return np.array([class_weights[int(l)]
-                             for l in toy_labels])
 
     batch_size = model.output_shape[0]
     if batch_size is None:
@@ -146,12 +172,25 @@ def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
 
     toy_inputs = _make_toy_inputs(batch_size, model.input_shape)
     toy_labels = _make_toy_labels(batch_size, model.output_shape, loss)
-    toy_sample_weight = _make_sample_weight(toy_labels, class_weights, loss)
     if input_as_labels:
         toy_labels = toy_inputs
 
-    model._standardize_user_data(toy_inputs, toy_labels, toy_sample_weight)
-    model._make_train_function()
+    if not hasattr(model, '_standardize_user_data'):
+        iterator = data_adapter.single_batch_iterator(
+            model.distribute_strategy, toy_inputs, toy_labels)
+        data = next(iterator)
+        data = data_adapter.expand_1d(data)
+        x, _, sample_weight = data_adapter.unpack_x_y_sample_weight(data)
+
+        with tf.GradientTape() as tape:
+            y_pred = model(x, training=True)
+            loss = model.compiled_loss(y_pred, y_pred)  # zero loss
+        # 'updates' weights with zero gradients, instantiating optimizer
+        _minimize(model.distribute_strategy, tape, model.optimizer, loss,
+                  model.trainable_variables)
+    else:
+        model._standardize_user_data(toy_inputs, toy_labels)
+        model._make_train_function()
 
 
 def _make_plot_configs_from_metrics(self):
@@ -260,7 +299,7 @@ def _validate_traingen_configs(self):
             except:
                 raise ValueError(failmsg)
 
-        model_metrics = self.model.metrics_names
+        model_metrics = model_util.get_model_metrics(self.model)
 
         vm_set_and_evaluate = self.val_metrics and self.eval_fn_name == 'evaluate'
         if self.val_metrics is None or vm_set_and_evaluate:

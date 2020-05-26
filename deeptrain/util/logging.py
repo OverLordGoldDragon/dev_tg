@@ -292,7 +292,7 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
             if verbose:
                 print(str(self), "source codes saved to", path)
 
-    def is_builtin_or_numpy_scalar(x):
+    def builtin_or_npscalar(x):
         return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
                 isinstance(x, np.generic))
 
@@ -310,7 +310,7 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
         for k, v in state_full.items():
             if k in to_exclude:
                 continue
-            elif is_builtin_or_numpy_scalar(v):
+            elif builtin_or_npscalar(v):
                 if hasattr(v, '__len__') and deeplen(v) > 50:
                     v = _name(v)
                 state[k] = str(v)
@@ -342,7 +342,7 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     print(WARN, f"{k} not found in self.__dict__ - will skip")
                     continue
                 v = state_full[k]
-                if (not is_builtin_or_numpy_scalar(v) and
+                if (not builtin_or_npscalar(v) and
                     not isinstance(v, np.ndarray)):
                     if not_func(v):
                         v = v.__class__

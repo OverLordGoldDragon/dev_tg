@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import numpy as np
 
@@ -7,9 +16,9 @@ from unittest.mock import patch
 from time import time
 from copy import deepcopy
 
-from tests.backend import BASEDIR, tempdir, notify
-from tests.backend import _init_session
-from tests.backend import make_timeseries_classifier, make_autoencoder
+from backend import BASEDIR, tempdir, notify
+from backend import _init_session
+from backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
@@ -211,7 +220,7 @@ def test_util():
         tg.optimizer_save_configs = {'include': []}
         tg.save()
 
-        with patch('tests.backend.K.get_value') as mock_get_value:
+        with patch('backend.K.get_value') as mock_get_value:
             mock_get_value.side_effect = Exception()
             tg.save()
 
@@ -226,11 +235,11 @@ def test_util():
         tg.logdir = None
         pass_on_error(tg.load)
 
-    def _get_sample_weight(C):  # [util.training]
+    def get_sample_weight(C):  # [util.training]
         tg = _util_make_autoencoder(C)
         labels = np.random.randint(0, 2, (32, 3))
         tg.class_weights = {0: 1, 1: 2, 2: 3}
-        tg._get_sample_weight(labels)
+        tg.get_sample_weight(labels)
 
     def _get_api_metric_name(C):  # [util.training]
         util.training._get_api_metric_name(
@@ -332,7 +341,7 @@ def test_util():
 
         C = deepcopy(CONFIGS)
         C['traingen']['eval_fn_name'] = 'predict'
-        C['traingen']['val_metrics'] = 'cosine_proximity'
+        C['traingen']['val_metrics'] = 'cosine_similarity'
         pass_on_error(_util_make_autoencoder, C)
 
         C = deepcopy(CONFIGS)
@@ -405,7 +414,7 @@ def test_util():
     tests_all = [_save_best_model,
                   checkpoint,
                   save,
-                  _get_sample_weight,
+                  get_sample_weight,
                   _get_api_metric_name,
                   _validate_weighted_slices_range,
                   _get_best_subset_val_history,

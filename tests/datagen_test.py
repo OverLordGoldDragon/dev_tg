@@ -1,12 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
 from copy import deepcopy
 
-from tests.backend import BASEDIR, tempdir, notify
+from backend import BASEDIR, tempdir, notify
 from deeptrain.util.misc import pass_on_error
 from deeptrain.util.algorithms import ordered_shuffle
 from deeptrain.util import data_loaders, labels_preloaders

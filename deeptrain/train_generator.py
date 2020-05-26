@@ -35,7 +35,7 @@ from .util.misc     import pass_on_error, capture_args
 from .introspection import print_dead_weights, print_nan_weights
 from .              import metrics as metrics_fns
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
-
+from .backend import model_util
 
 sys.stdout = Unbuffered(sys.stdout)
 
@@ -90,7 +90,7 @@ class TrainGenerator(TraingenUtils):
         self.eval_fn_name=eval_fn_name
         self.key_metric=key_metric
         self.key_metric_fn=key_metric_fn
-        self.train_metrics = model.metrics_names.copy()
+        self.train_metrics = model_util.get_model_metrics(model)
         self.val_metrics=val_metrics
         self.custom_metrics=custom_metrics
         self.input_as_labels=input_as_labels
@@ -391,7 +391,7 @@ class TrainGenerator(TraingenUtils):
 
         class_labels = _standardize_shape(labels)
         slice_idx = getattr(datagen, 'slice_idx', None)
-        sample_weight = self._get_sample_weight(class_labels, val, slice_idx)
+        sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
 
         return x, y, sample_weight
 
@@ -463,7 +463,6 @@ class TrainGenerator(TraingenUtils):
         if len(names) != 1:
             names_joined  = '(%s)' % names_joined
             values_joined = '(%s)' % values_joined
-
         print(" {} = {} ".format(names_joined, values_joined), end=endchar)
 
     def _print_iter_progress(self, val=False):

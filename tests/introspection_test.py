@@ -1,12 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 
 from copy import deepcopy
 
-from tests.backend import Adam
-from tests.backend import BASEDIR, notify, make_autoencoder
-from tests.backend import _init_session
+from backend import Adam
+from backend import BASEDIR, notify, make_autoencoder
+from backend import _init_session
 
 
 #### CONFIGURE TESTING #######################################################

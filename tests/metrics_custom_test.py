@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import numpy as np
 import sklearn.metrics
@@ -14,7 +24,7 @@ from deeptrain.metrics import (
     roc_auc_score
     )
 from deeptrain import metrics as metric_fns
-from tests.backend import notify, TraingenDummy
+from backend import notify, TraingenDummy
 
 
 tests_done = {name: None for name in (

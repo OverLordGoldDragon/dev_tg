@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import builtins
 import numpy as np
@@ -9,7 +19,7 @@ from time import time
 
 from deeptrain.util.algorithms import deeplen, deepmap, deepcopy_v2
 from deeptrain.util.algorithms import nCk, ordered_shuffle
-from tests.backend import notify
+from backend import notify
 
 
 tests_done = {name: None for name in ('nCk', 'ordered_shuffle',
@@ -125,11 +135,11 @@ def test_deepmap():
 @notify(tests_done)
 def test_deepcopy_v2():
     def obj_to_str(x, key=None):
-        def is_builtin_or_numpy_scalar(x):
+        def builtin_or_npscalar(x):
             return (isinstance(x, np.generic) or
                 type(x) in (*vars(builtins).values(), type(None), type(min)))
 
-        if is_builtin_or_numpy_scalar(x):
+        if builtin_or_npscalar(x):
             return x
         return str(x)[:200]
 

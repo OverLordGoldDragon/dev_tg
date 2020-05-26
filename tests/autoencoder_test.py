@@ -1,12 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 
 from time import time
 from copy import deepcopy
 
-from tests.backend import BASEDIR, tempdir, notify, make_autoencoder
-from tests.backend import _init_session, _do_test_load
+from backend import BASEDIR, tempdir, notify, make_autoencoder
+from backend import _init_session, _do_test_load
 
 
 #### CONFIGURE TESTING #######################################################
@@ -54,7 +63,6 @@ TRAINGEN_CFG = dict(
     input_as_labels=True,
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    saveskip_list=['labels'],  # .misc test
     model_configs=MODEL_CFG,
 )
 

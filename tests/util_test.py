@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
+import inspect
+# ensure `tests` directory path is on top of Python's module search
+filedir = os.path.dirname(inspect.stack()[0][1])
+if sys.path[0] != filedir:
+    if filedir in sys.path:
+        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
+    sys.path.insert(0, filedir)
+
 import pytest
 import shutil
 import numpy as np
@@ -18,7 +27,7 @@ from deeptrain.util.misc import pass_on_error
 from deeptrain import metrics
 from deeptrain import preprocessing
 from tests import _methods_dummy
-from tests.backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
+from backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
 
 
 tests_done = {name: None for name in ('searching', 'misc', 'configs', 'saving',
@@ -195,8 +204,7 @@ def test_configs():
         assert name_fn('name',      'name', cfg) == '_name'
         assert name_fn('best_key_metric', 'max', cfg) == '_max.910'
 
-    names = ['PLOT_CFG', 'BINARY_CLASSIFICATION_PLOT_CFG',
-             'MODEL_NAME_CFG', 'REPORT_CFG',
+    names = ['PLOT_CFG', 'MODEL_NAME_CFG', 'REPORT_CFG',
              'TRAINGEN_SAVESKIP_LIST', 'TRAINGEN_LOADSKIP_LIST',
              'DATAGEN_SAVESKIP_LIST', 'DATAGEN_LOADSKIP_LIST',
              'METRIC_PRINTSKIP_CFG', 'METRIC_TO_ALIAS', 'ALIAS_TO_METRIC',

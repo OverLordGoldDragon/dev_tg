@@ -3,6 +3,7 @@ import contextlib
 import shutil
 import tempfile
 import numpy as np
+import tensorflow as tf
 
 from pathlib import Path
 from termcolor import cprint
@@ -14,6 +15,16 @@ from deeptrain import TrainGenerator, DataGenerator
 
 BASEDIR = str(Path(__file__).parents[1])
 TF_KERAS = bool(os.environ.get('TF_KERAS', '0') == '1')
+TF_2 = bool(tf.__version__[0] == '2')
+
+if TF_2:
+    USING_GPU = bool(tf.config.list_logical_devices('GPU') != [])
+else:
+    USING_GPU = bool(tf.config.experimental.list_logical_devices('GPU') != [])
+
+print("TF version: %s" % tf.__version__)
+print("TF uses", "GPU" if USING_GPU else "CPU")
+print("TF_KERAS =", "1" if TF_KERAS else "0")
 
 
 if TF_KERAS:
@@ -22,6 +33,7 @@ if TF_KERAS:
     from tensorflow.keras import metrics as keras_metrics
     from tensorflow.keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+    from tensorflow.keras.layers import Activation
     from tensorflow.keras.regularizers import l2
     from tensorflow.keras.optimizers import Adam
     from tensorflow.keras.models import Model
@@ -31,6 +43,7 @@ else:
     from keras import metrics as keras_metrics
     from keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+    from keras.layers import Activation
     from keras.regularizers import l2
     from keras.optimizers import Adam
     from keras.models import Model
@@ -136,7 +149,8 @@ def make_classifier(weights_path=None, **kw):
     x   = Dense(dense_units, activation='relu')(x)
 
     x   = Dropout(dropout[1])(x)
-    out = Dense(num_classes, activation='softmax')(x)
+    x   = Dense(num_classes)(x)
+    out = Activation('softmax')(x)
 
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)

@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from termcolor import cprint
 from see_rnn import get_gradients, features_hist, detect_nans
 from see_rnn import get_layer
-from see_rnn.inspect_gen import _make_grads_fn, _get_grads
-from .util._backend import K, WARN
+from see_rnn.inspect_gen import _make_grads_fn, _get_grads_eager
+from see_rnn.utils import _get_params
+from .util._backend import K, WARN, TF_KERAS
 
 
 def compute_gradients_norm(self, input_data, labels, sample_weight=None,
@@ -37,21 +39,6 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
         plt.hist(grad_norms.ravel(), bins=bins)
         plt.gcf().set_size_inches(9 * w, 4 * h)
         plt.show()
-
-    def _make_gradients_fn(model, learning_phase, mode):
-        # make grads_fn only once instead of repeatedly calling `get_gradients`
-        # for potentially massive speedup due to not rebuilding graph
-        attr = 'output' if mode == 'outputs' else 'trainable_weights'
-        _id = []
-        for l in model.layers[1:]:  # exclude input
-            params = getattr(l, attr, [])
-            if (isinstance(params, list) and len(params) > 0) or (
-                    not isinstance(params, list)):
-                _id.append(l.name)
-        layers = get_layer(model, _id)
-        _grads_fn, names = _make_grads_fn(model, layers, mode=mode,
-                                         return_names=True)
-        return lambda x, y, sw: _get_grads(_grads_fn, x, y, sw, learning_phase)
 
     def _compute_gradients_norm(model, x, y, sw):
         grads = grads_fn(x, y, sw)
@@ -96,24 +83,6 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
         data = list(grads_sum.values())
         features_hist(data, annotations=list(grads_sum), **plot_kw)
 
-    def _make_gradients_fn(model, learning_phase, mode):
-        # make grads_fn only once instead of repeatedly calling `get_gradients`
-        # for potentially massive speedup due to not rebuilding graph
-        attr = 'output' if mode == 'outputs' else 'trainable_weights'
-        _id = []
-        for l in model.layers[1:]:  # exclude input
-            params = getattr(l, attr, [])
-            if (isinstance(params, list) and len(params) > 0) or (
-                    not isinstance(params, list)):
-                _id.append(l.name)
-        layers = get_layer(model, _id)
-        _grads_fn, names = _make_grads_fn(model, layers, mode=mode,
-                                         return_names=True)
-        def grads_fn(x, y, sw):
-            grads = _get_grads(_grads_fn, x, y, sw, learning_phase)
-            return {name: x for name, x in zip(names, grads)}
-        return grads_fn
-
     def gather_fn(data, model, x, y, sw):
         newdata = grads_fn(x, y, sw)
 
@@ -125,7 +94,8 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
         return data
 
     _init_notify(learning_phase, val)
-    grads_fn = _make_gradients_fn(self.model, learning_phase, mode)
+    grads_fn = _make_gradients_fn(self.model, learning_phase, mode,
+                                  return_names=True)
 
     grads_sum, batches_processed, iters_processed = _gather_over_dataset(
         self, gather_fn, val, n_iters, prog_freq)
@@ -182,6 +152,53 @@ def _gather_over_dataset(self, gather_fn, val=False, n_iters=None, prog_freq=10)
     dg.reset_state()
 
     return gathered, batches_processed, iters_processed
+
+
+def _make_gradients_fn(model, learning_phase, mode, return_names=False):
+    def _fn_graph(model, learning_phase, mode, params):
+        # make grads_fn only once instead of repeatedly calling
+        # `get_gradients` for potentially massive speedup due to
+        # not rebuilding graph
+        _g_fn = _make_grads_fn(model, params=params, mode=mode)
+
+        def grads_fn(x, y, sw):
+            if sw is None:
+                if isinstance(x, list):
+                    sample_weight = []
+                    for data in x:
+                        # extend to each input
+                        sample_weight.append(np.ones(len(data)))
+                else:
+                    sw = [np.ones(len(x))]
+            ins = [x, y, sw]
+            for i, data in enumerate(ins):
+                if not isinstance(data, (list, tuple)):
+                    ins[i] = [data]
+            ins = [x for data in ins for x in data]  # flatten list
+
+            return _g_fn([*ins, bool(learning_phase)])
+        return grads_fn
+
+    def _fn_eager(model, learning_phase, mode, params):
+        return lambda x, y, sw: _get_grads_eager(model, x, y, sw,
+                                                 learning_phase, params=params)
+
+    _id = [l.name for l in model.layers]
+    layers = get_layer(model, _id)
+    params = _get_params(model, layers, mode=mode, verbose=0)
+
+    if TF_KERAS and tf.executing_eagerly():
+        _grads_fn = _fn_eager(model, learning_phase, mode, params)
+    else:
+        _grads_fn = _fn_graph(model, learning_phase, mode, params)
+
+    if return_names:
+        def grads_fn(x, y, sw):
+            return {p.name: g for p, g in zip(params, _grads_fn(x, y, sw))}
+    else:
+        def grads_fn(x, y, sw):
+            return _grads_fn(x, y, sw)
+    return grads_fn
 
 
 def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,

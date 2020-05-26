@@ -14,7 +14,7 @@ _DEFAULT_PLOT_CFG = {
     'ylims'        : (0, 2),
     'legend_kw'    : {'fontsize': 13},
 
-    'linewidth': [1.5, 2],
+    'linewidth': [1.5, 1.5],
     'linestyle': ['-', '-'],
     'color'    : None,
 },
@@ -34,35 +34,6 @@ _DEFAULT_PLOT_CFG = {
 }
 }
 
-_DEFAULT_BINARY_CLASSIFICATION_PLOT_CFG = {
-'1': {
-    'metrics':
-        {'train': ['loss', 'acc'],
-         'val'   : ['loss']},
-    'vhlines'   :
-        {'v': '_hist_vlines',
-         'h': 1},
-    'ylims'     : (0, 2),
-
-    'linewidth': (1.5, 1, 2),
-    'linestyle': ('-', '--', '-'),
-    'color'    : (None, 'b', 'orange'),
-    'mark_best_cfg': None,
-},
-'2': {
-    'metrics':
-        {'val'  : ['tnr', 'tpr', 'f1-score']},
-    'vhlines'   :
-        {'v': '_val_hist_vlines',
-         'h': .5},
-    'mark_best_cfg': {'val': 'f1-score'},
-
-    'linewidth': (2, 2, 2),
-    'linestyle': ('-', '-', '-'),
-    'color'    : (None, 'r', 'purple'),
-    'ylims'     : (0, 1),
-},
-}
 
 # order-dependent
 _DEFAULT_MODEL_NAME_CFG = dict(
@@ -80,7 +51,7 @@ _DEFAULT_REPORT_CFG = {
     'traingen':
         {
         'exclude':
-            ['model', 'model_configs', 'model_name', 'logs_use_full_model_name',
+            ['model', 'model_configs', 'logs_use_full_model_name',
              'history_fig', 'plot_configs', 'max_checkpoints',
              'history', 'val_history', 'temp_history', 'val_temp_history',
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
@@ -174,14 +145,15 @@ _DEFAULT_METRIC_TO_ALIAS = {
 }
 
 _DEFAULT_ALIAS_TO_METRIC = {
-    'acc':    'accuracy',
-    'mae':    'mean_absolute_error',
-    'mse':    'mean_squared_error',
-    'mape':   'mean_absolute_percentage_error',
-    'msle':   'mean_squared_logarithmic_error',
-    'kld':    'kullback_leibler_divergence',
-    'cosine': 'cosine_proximity',
-    'f1':     'f1-score',
+    'acc':     'accuracy',
+    'mae':     'mean_absolute_error',
+    'mse':     'mean_squared_error',
+    'mape':    'mean_absolute_percentage_error',
+    'msle':    'mean_squared_logarithmic_error',
+    'kld':     'kullback_leibler_divergence',
+    'cosine':  'cosine_similarity',
+    'f1':      'f1_score',
+    'f1-score':'f1_score',
 }
 
 def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, configs):
@@ -260,8 +232,8 @@ _DEFAULT_TRAINGEN_CFG = dict(
     predict_threshold    = 0.5,
     best_subset_size     = 0,
     check_model_health   = True,
-    max_checkpoints = 5,
     max_one_best_save    = None,
+    max_checkpoints = 5,
     report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",
     make_new_logdir = True,

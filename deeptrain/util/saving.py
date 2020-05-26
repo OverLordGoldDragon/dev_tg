@@ -5,9 +5,10 @@ import types
 import tensorflow as tf
 
 from pathlib import Path
-from ._backend import K, WARN, NOTE
+from ._backend import K, WARN
 from ..visuals import _get_history_fig
-from .misc import pass_on_error, _train_on_batch_dummy
+from .misc import pass_on_error, _train_on_batch_dummy, exclude_unpickleable
+from ..backend import tensor_util
 
 
 def _save_best_model(self, del_previous_best=False):
@@ -142,52 +143,40 @@ def save(self, savepath=None):
     def _get_optimizer_state(opt):
         def _get_attrs_to_save(opt):
             cfg = self.optimizer_save_configs
-            all_attrs = [a for a in list(vars(opt).keys()) if a != 'updates']
+            all_attrs = exclude_unpickleable(vars(opt))
+            all_attrs['weights'] = []
 
             if cfg is None:
                 return all_attrs
 
             if 'exclude' in cfg:
-                if 'updates' not in cfg['exclude']:
-                    print(NOTE, "saving 'updates' is unsupported; will skip")
                 return [a for a in all_attrs if a not in cfg['exclude']]
 
             if 'include' in cfg:
-                if 'updates' in cfg['include']:
-                    print(WARN, "saving 'updates' is unsupported; skipping")
                 attrs = []
                 for attr in cfg['include']:
                     if attr in all_attrs:
                         attrs.append(attr)
+                    elif attr in vars(opt):
+                        print(WARN, ("'{}' optimizer attribute cannot be "
+                                     "pickled; skipping"))
                     else:
                         print(WARN, ("'{}' attribute not found in optimizer; "
                                      "skipping").format(attr))
                 return attrs
 
-        def _get_tensor_value(tensor):
-            try:
-                return K.get_value(tensor)
-            except:
-                return K.eval(tensor)
-
-        def _get_optimizer_weights(optimizer):
-            weights = K.batch_get_value(optimizer.weights)
-            if weights == []:
-                print(WARN, "optimizer 'weights' empty, and will not be saved")
-            return weights
-
         state = {}
         to_save = _get_attrs_to_save(opt)
         for name in to_save:
             if name == 'weights':
-                weights = _get_optimizer_weights(opt)
+                weights = opt.get_weights()
                 if weights != []:
                     state['weights'] = weights
                 continue
 
             value = getattr(opt, name, None)
             if isinstance(value, tf.Variable):
-                state[name] = _get_tensor_value(value)
+                state[name] = tensor_util.eval_tensor(value, backend=K)
             else:
                 state[name] = value
         return state

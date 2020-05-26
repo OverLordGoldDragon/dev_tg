@@ -78,7 +78,7 @@ def _update_temp_history(self, metrics, val=False):
             temp_history[name][-1] = np.mean(temp_history[name][-1])
 
 
-def _get_sample_weight(self, class_labels, val=False, slice_idx=None,
+def get_sample_weight(self, class_labels, val=False, slice_idx=None,
                        force_unweighted=False):
     def _get_unweighted(class_labels, val):
         class_labels = _unroll_into_samples(len(self.model.output_shape),
@@ -113,7 +113,7 @@ def _get_weighted_sample_weight(self, class_labels_all, val=False,
         for batch_labels in class_labels_all:
             sw_all.append([])
             for slice_labels in batch_labels:
-                sw = _get_sample_weight(
+                sw = get_sample_weight(
                     self, slice_labels, val, slice_idx,
                     force_unweighted=True)  # break recursion
                 sw_all[-1].append(sw)

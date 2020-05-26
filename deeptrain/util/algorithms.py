@@ -1,6 +1,8 @@
+import builtins
 import numpy as np
 from functools import reduce
-from collections.abc import Iterable, Mapping
+from pprint import pprint
+from collections.abc import Mapping
 
 
 def ordered_shuffle(*args):
@@ -19,16 +21,23 @@ def nCk(n, k):  # n-Choose-k
     return numer / denom
 
 
-def deeplen(item, iterables=(list, tuple, dict, np.ndarray)):
-    # return 1 and terminate recursion when `item` is no longer iterable
+def builtin_or_npscalar(x):
+    return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
+            isinstance(x, np.generic))
+
+
+def deeplen(item):
     if isinstance(item, np.ndarray):
         return item.size
-    elif isinstance(item, Iterable) and not isinstance(item, str):
-        if isinstance(item, Mapping):
-            item = item.values()
-        return sum(deeplen(subitem) for subitem in item)
-    else:
+    try:
+        list(iter(item))
+    except:
         return 1
+    if isinstance(item, str):
+        return 1
+    if isinstance(item, Mapping):
+        item = item.values()
+    return sum(deeplen(subitem) for subitem in item)
 
 
 def deepget(obj, key=None, drop_keys=0):
@@ -38,7 +47,14 @@ def deepget(obj, key=None, drop_keys=0):
         key = key[:-drop_keys]
     for k in key:
         if isinstance(obj, Mapping):
-            k = list(obj)[k]  # get key by index (OrderedDict, Python >=3.6)
+            try:
+                k = list(obj)[k]  # get key by index (OrderedDict, Python >=3.6)
+            except:
+                print('\n')
+                print(obj)
+                print(key)
+                print(len(obj))
+                raise Exception
         obj = obj[k]
     return obj
 
@@ -49,8 +65,11 @@ def deepmap(obj, fn):
 
     def nonempty_iter(item):
         # do not enter empty iterable, since nothing to 'iterate' or apply fn to
-        return isinstance(item, Iterable) and not isinstance(item, str) and (
-            len(item) > 0)
+        try:
+            list(iter(item))
+        except:
+            return False
+        return not isinstance(item, str) and len(item) > 0
 
     def _process_key(obj, key, depth, revert_tuple_keys, recursive=False):
         container = deepget(obj, key, 1)
@@ -84,7 +103,7 @@ def deepmap(obj, fn):
     depth = 1
     revert_tuple_keys = []
 
-    if not isinstance(obj, Iterable) or len(obj) == 0:  # nothing to do here
+    if not nonempty_iter(obj):  # nothing to do here
         raise ValueError(f"input must be a non-empty iterable - got: {obj}")
     if isinstance(obj, tuple):
         obj = list(obj)
@@ -113,42 +132,123 @@ def deepmap(obj, fn):
     return obj
 
 
-def deepcopy_v2(obj, item_fn=None):
+# TODO cleanup
+def deepcopy_v2(obj, item_fn=None, skip_flag=42069, debug_verbose=False):
     """Enables customized copying of a nested iterable, mediated by `item_fn`."""
+    if item_fn is None:
+        item_fn = lambda item: item
     copied = [] if isinstance(obj, (list, tuple)) else {}
+    copied_key = []
     revert_tuple_keys = []
+    copy_paused = [False]
+    key_decrements = [0]
+    skipref_key = []
 
     def dkey(x, k):
         return list(x)[k] if isinstance(x, Mapping) else k
 
+    def isiter(item):
+        try:
+            list(iter(item))
+            return not isinstance(item, str)
+        except:
+            return False
+
     def reconstruct(item, key):
         def _container_or_elem(item):
-            if isinstance(item, Iterable) and not isinstance(item, str):
+            if isiter(item):
                 if isinstance(item, (tuple, list)):
                     return []
                 elif isinstance(item, Mapping):
                     return {}
-            if item_fn is not None:
-                return item_fn(item)
+            return item_fn(item)
+
+        def _obj_key_advanced(key, skipref_key):
+            # [1, 1]    [1, 0] -> True
+            # [2]       [1, 0] -> True
+            # [2, 0]    [1, 0] -> True
+            # [1, 0]    [1, 0] -> False
+            # [1]       [1, 0] -> False
+            # [1, 0, 1] [1, 0] -> False
+            i = 0
+            while (i < len(key) - 1 and i < len(skipref_key) - 1) and (
+                    key[i] == skipref_key[i]):
+                i += 1
+            return key[i] > skipref_key[i]
+
+        def _update_copied_key(key, copied_key, on_skip=False):
+            ck = []
+            for i, (k, k_decrement) in enumerate(zip(key, key_decrements)):
+                ck.append(k - k_decrement)
+            copied_key[:] = ck
+
+        def _update_key_decrements(key, key_decrements, on_skip=False):
+            if on_skip:
+                while len(key_decrements) < len(key):
+                    key_decrements.append(0)
+                while len(key_decrements) > len(key):
+                    key_decrements.pop()
+                key_decrements[len(key) - 1] += 1
             else:
-                return item
+                while len(key_decrements) < len(key):
+                    key_decrements.append(0)
+                while len(key_decrements) > len(key):
+                    key_decrements.pop()
+
+        def _copy(obj, copied, key, copied_key, _item):
+            container = deepget(copied, copied_key, 1)
+
+            if isinstance(container, list):
+                container.insert(copied_key[-1], _item)
+            elif isinstance(container, str):
+                # str container implies container was transformed to str by
+                # item_fn; continue skipping until deepmap exits container in obj
+                pass
+            else:  # tuple will yield error, no need to catch
+                obj_container = deepget(obj, key, 1)
+                k = dkey(obj_container, key[-1])
+                if debug_verbose:
+                    print("OBJ_CONTAINER:", obj_container, key[-1])
+                    print("CONTAINER:", container, k, '\n')
+                container[k] = _item
+
+        if copy_paused[0] and not _obj_key_advanced(key, skipref_key):
+            if debug_verbose:
+                print(">SKIP:", item)
+            return item
+
+
+        _item = _container_or_elem(item)
+        if isinstance(_item, int) and _item == skip_flag:
+            copy_paused[0] = True
+            _update_key_decrements(key, key_decrements, on_skip=True)
+            skipref_key[:] = key
+            if debug_verbose:
+                print("SKIP:", key, key_decrements, copied_key)
+                print(item)
+            return item
+        copy_paused[0] = False
+
+        _update_key_decrements(key, key_decrements)
+        while len(key_decrements) > len(key):
+            key_decrements.pop()
+            if debug_verbose:
+                pprint("POP: {} {} {}".format(key, key_decrements, copied_key))
+        _update_copied_key(key, copied_key)
+
+        if debug_verbose:
+            print("\nSTUFF:", key, key_decrements, copied_key, len(copied))
+            print(_item)
+            for k, v in copied.items():
+                print(k, '--', v)
+            print()
+        _copy(obj, copied, key, copied_key, _item)
+        if debug_verbose:
+            print("###########################################################",
+                  len(copied))
 
         if isinstance(item, tuple):
-            revert_tuple_keys.append(key.copy())
-
-        container = deepget(copied, key, 1)
-        _item = _container_or_elem(item)
-
-        if isinstance(container, list):
-            container.insert(key[-1], _item)
-        elif isinstance(container, str):
-            # str container implies container was transformed to str by item_fn;
-            # continue skipping until deepmap exits container in obj
-            pass
-        else:  # tuple will yield error, no need to catch
-            obj_container = deepget(obj, key, 1)
-            k = dkey(obj_container, key[-1])
-            container[k] = _item
+            revert_tuple_keys.append(copied_key.copy())
         return item
 
     def _revert_tuples(copied, obj, revert_tuple_keys):
@@ -166,3 +266,24 @@ def deepcopy_v2(obj, item_fn=None):
     deepmap(obj, reconstruct)
     copied = _revert_tuples(copied, obj, revert_tuple_keys)
     return copied
+
+
+def deep_isinstance(obj, cond):
+    bools = []
+    def fn(item, key=None):
+        if isinstance(item, str):
+            bools.append(cond(item))
+            return item
+        try:
+            list(iter(item))
+        except TypeError:
+            bools.append(cond(item))
+        return item
+
+    try:
+        list(iter(obj))
+        assert len(obj) > 0
+        deepmap(obj, fn)
+    except:
+        fn(obj)
+    return bools
