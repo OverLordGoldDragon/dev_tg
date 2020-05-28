@@ -337,7 +337,7 @@ def load(self, filepath=None, passed_args=None):
 def _load_optimizer_state(self):
     def _get_attrs_to_load(opt):
         cfg = self.optimizer_load_configs
-        all_attrs = [a for a in list(vars(opt).keys()) if a != 'updates']
+        all_attrs = [a for a in list(vars(opt)) if a != 'updates']
 
         if cfg is None:
             return all_attrs

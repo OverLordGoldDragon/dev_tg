@@ -15,7 +15,7 @@ from time import time
 from copy import deepcopy
 
 from backend import BASEDIR, tempdir, notify, make_timeseries_classifier
-from backend import _init_session, _do_test_load, destroy_session
+from backend import _init_session, _do_test_load
 from deeptrain.callbacks import predictions_per_iteration_cb
 from deeptrain.callbacks import predictions_distribution_cb
 from deeptrain.callbacks import comparative_histogram_cb
@@ -96,7 +96,6 @@ def test_weighted_slices():
             C['traingen']['best_models_dir']):
         tg = init_session(C, model=model)
         tg.train()
-        destroy_session(tg)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 

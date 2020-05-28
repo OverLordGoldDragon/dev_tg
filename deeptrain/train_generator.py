@@ -21,6 +21,7 @@
 
 import os
 import sys
+import gc
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -562,6 +563,29 @@ class TrainGenerator(TraingenUtils):
         if metric_name in self.metric_to_alias:
             return self.metric_to_alias[metric_name.lower()]
         return metric_name
+
+    def destroy(self, confirm=False, verbose=1):
+        def _destroy():
+            for obj in (self.datagen, self.val_datagen, self):
+                attrs = list(vars(obj))
+                for attr in attrs:
+                    setattr(obj, attr, [])
+                    delattr(obj, attr)
+                del obj
+            gc.collect()
+            if verbose:
+                print(">> TrainGenerator SELF-DESTRUCTED <<")
+
+        if confirm:
+            _destroy()
+            return
+        response = input("!! WARNING !!\nYou are about to destroy TrainGenerator"
+                         "; this will wipe all its own and DataGenerator's "
+                         "(train & val) shallow-refeerenced data, and delete "
+                         "respective attributes. `model` will be dereferenced, "
+                         "but not destroyed. Proceed? [y/n]")
+        if response == 'y':
+            _destroy()
 
     ########################## INIT METHODS ##########################
     def _prepare_initial_data(self, from_load=False):

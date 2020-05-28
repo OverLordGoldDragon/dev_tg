@@ -77,18 +77,6 @@ def _init_session(C, weights_path=None, loadpath=None, model=None,
     return tg
 
 
-def destroy_session(tg):
-    def _clear_data(tg):
-        tg.datagen.batch = []
-        tg.datagen.superbatch = {}
-        tg.val_datagen.batch = []
-        tg.val_datagen.superbatch = {}
-
-    _clear_data(tg)
-    [delattr(tg, name) for name in ('model', 'datagen', 'val_datagen')]
-    del tg
-
-
 def _do_test_load(tg, C, init_session_fn):
     def _get_latest_paths(logdir):
         paths = [str(p) for p in Path(logdir).iterdir() if p.suffix == '.h5']
@@ -97,10 +85,11 @@ def _do_test_load(tg, C, init_session_fn):
                 [p for p in paths if '__state' in Path(p).stem][-1])
 
     logdir = tg.logdir
-    destroy_session(tg)
+    tg.destroy(confirm=True)
+    del tg
 
     weights_path, loadpath = _get_latest_paths(logdir)
-    tg = init_session_fn(C, weights_path, loadpath)
+    init_session_fn(C, weights_path, loadpath)
 
 
 @contextlib.contextmanager
