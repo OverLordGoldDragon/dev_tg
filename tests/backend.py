@@ -15,8 +15,8 @@ os.environ['TF_KERAS'] = os.environ.get("TF_KERAS", '1')
 os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '0')
 
 BASEDIR = str(Path(__file__).parents[1])
-TF_KERAS = bool(os.environ.get('TF_KERAS', '0') == '1')
-TF_EAGER = bool(os.environ.get('TF_EAGER', '0') == '1')
+TF_KERAS = bool(os.environ['TF_KERAS'] == '1')
+TF_EAGER = bool(os.environ['TF_EAGER'] == '1')
 TF_2 = bool(tf.__version__[0] == '2')
 
 if TF_2:
@@ -215,7 +215,8 @@ def make_timeseries_classifier(weights_path=None, **kw):
 
     ipt = Input(batch_shape=batch_shape)
     x   = LSTM(units, return_sequences=False, stateful=True,
-               kernel_regularizer=l2(1e-4), recurrent_regularizer=l2(1e-4),
+               kernel_regularizer=l2(1e-4),
+               recurrent_regularizer=l2(1e-4),
                bias_regularizer=l2(1e-4))(ipt)
     out = Dense(1, activation='sigmoid')(x)
 

@@ -64,6 +64,11 @@ def _make_test_fn(name):
 
                 yt, yp = _maybe_cast_to_tensor(y_true, y_pred)
                 losses = K.eval(getattr(keras_losses, name)(yt, yp))
+
+                # negative is standard in TF2, but was positive in TF1
+                if name == 'cosine_similarity' and (not TF_2 and TF_KERAS):
+                    losses = - losses
+
                 losses, sample_weight = _standardize(losses, sample_weight)
                 return np.mean(losses * sample_weight)
             return _weighted_loss
