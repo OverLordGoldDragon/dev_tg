@@ -6,13 +6,13 @@ def get_model_metrics(model):
     # differently
     if TF_2 and TF_KERAS:
         if TF_EAGER:
-            metrics = model.compiled_metrics._metrics
+            metrics = model.compiled_metrics._user_metrics
         else:
             metrics = model._compile_metrics
     else:
         metrics = model.metrics_names
 
-    if 'loss' in metrics:
+    if metrics and 'loss' in metrics:
         metrics.pop(metrics.index('loss'))
     return ['loss', *metrics] if metrics else ['loss']
 

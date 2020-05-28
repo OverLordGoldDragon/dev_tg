@@ -86,7 +86,7 @@ def test_gather_over_dataset():
 def test_print_dead_nan():
     def _test_print_nan_weights():
         C = deepcopy(CONFIGS)
-        C['model']['optimizer'] = Adam(lr=1e50)
+        C['model']['optimizer'] = Adam(lr=1e9)
         tg = init_session(C)
         tg.train()
         tg.check_health()

@@ -17,9 +17,9 @@ from collections.abc import Iterable
 from copy import deepcopy
 from time import time
 
+from backend import notify
 from deeptrain.util.algorithms import deeplen, deepmap, deepcopy_v2
 from deeptrain.util.algorithms import nCk, ordered_shuffle
-from backend import notify
 
 
 tests_done = {name: None for name in ('nCk', 'ordered_shuffle',

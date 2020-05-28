@@ -65,7 +65,7 @@ VAL_DATAGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load')}
+tests_done = {name: None for name in ('main', 'load', 'traingen_logger')}
 model = make_classifier(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
@@ -145,7 +145,7 @@ def test_main():
 
         tg = init_session(C, model=model)
         tg.train()
-        # _test_load(tg, C)
+        _test_load(tg, C)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
