@@ -14,9 +14,10 @@ import pytest
 from copy import deepcopy
 
 from backend import Adam
-from backend import BASEDIR, notify, make_autoencoder
+from backend import BASEDIR, notify, pyxfail, make_autoencoder
 from backend import _init_session
 
+pytestmark = pyxfail
 
 #### CONFIGURE TESTING #######################################################
 batch_size = 128

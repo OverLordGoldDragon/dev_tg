@@ -16,7 +16,7 @@ from unittest.mock import patch
 from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify
+from backend import BASEDIR, tempdir, notify, pyxfail
 from backend import _init_session
 from backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
@@ -86,6 +86,7 @@ autoencoder = make_autoencoder(**AE_CFG)
 init_session = _init_session
 ###############################################################################
 
+@pyxfail
 @notify(tests_done)
 def test_datagen():
     t0 = time()
@@ -145,6 +146,7 @@ def test_visuals():
         _layer_hists(model)
 
 
+@pyxfail
 @notify(tests_done)
 def test_util():
     t0 = time()

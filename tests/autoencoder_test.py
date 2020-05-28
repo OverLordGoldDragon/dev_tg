@@ -14,8 +14,10 @@ import pytest
 from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify, make_autoencoder
-from backend import _init_session, _do_test_load
+from backend import BASEDIR, tempdir, notify, pyxfail
+from backend import _init_session, make_autoencoder, _do_test_load
+
+pytestmark = pyxfail
 
 
 #### CONFIGURE TESTING #######################################################
@@ -107,7 +109,6 @@ def test_predict():
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         C['traingen']['eval_fn_name'] = 'predict'
-        C['traingen']['saveskip_list'] = ['{labels}']
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

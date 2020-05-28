@@ -14,10 +14,10 @@ import numpy as np
 
 from time import time
 from copy import deepcopy
-from see_rnn import get_weights, features_2D
 
 from backend import BASEDIR, tempdir, notify, make_classifier
 from backend import _init_session, _do_test_load
+from see_rnn import get_weights, features_2D
 from deeptrain.callbacks import TraingenLogger, make_callbacks
 from deeptrain.callbacks import make_layer_hists_cb
 

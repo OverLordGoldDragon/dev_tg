@@ -2,12 +2,20 @@ from . import K, TF_KERAS, TF_EAGER, TF_2
 
 
 def get_model_metrics(model):
-    for attr in ('metrics_names', '_compile_metrics'):
-        metrics = getattr(model, attr, None)
-        if metrics and all(isinstance(m, str) for m in metrics):
-            return metrics if 'loss' in metrics else ['loss', *metrics]
+    # TF1, 2, Eager, Graph, keras, and tf.keras store model.compile(metrics)
+    # differently
+    if TF_2 and TF_KERAS:
+        if TF_EAGER:
+            metrics = model.compiled_metrics._metrics
+        else:
+            metrics = model._compile_metrics
+    else:
+        metrics = model.metrics_names
 
-    return ['loss', *model.compiled_metrics._metrics]
+    if 'loss' in metrics:
+        metrics.pop(metrics.index('loss'))
+    return ['loss', *metrics] if metrics else ['loss']
+
 
 
 # TF2 tf.keras Eager (Graph is same)
