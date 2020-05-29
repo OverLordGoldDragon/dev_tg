@@ -36,20 +36,23 @@ def _save_best_model(self, del_previous_best=False):
     self.best_key_metric = round(self.key_metric_history[-1], 6)
     _update_best_key_metric_in_model_name()
 
-    savepath = os.path.join(self.best_models_dir, self.model_name)
-    self.model.save_weights(savepath + '.h5')
-    self._history_fig = _get_history_fig(self)
-    self._history_fig.savefig(savepath + '.png')
+    basepath = os.path.join(self.best_models_dir, self.model_name)
+    save_fns = self._make_model_save_fns(basepath + '__')
+    for path, save_fn in save_fns:
+        save_fn(path)
 
-    self.save(savepath + '__state.h5')
+    self._history_fig = _get_history_fig(self)
+    self._history_fig.savefig(basepath + '.png')
+
+    self.save(basepath + '__state.h5')
 
     if self._imports.get('PIL', False):
         try:
-            self.generate_report(savepath + '__report.png')
+            self.generate_report(basepath + '__report.png')
         except BaseException as e:
             print(WARN,  "Best model report could not be saved; skipping")
             print("Errmsg", e)
-    print("Best model saved to " + savepath)
+    print("Best model saved to " + basepath)
 
 
 def checkpoint(self, forced=False, overwrite=None):
@@ -94,10 +97,12 @@ def checkpoint(self, forced=False, overwrite=None):
         if overwrite is None:
             overwrite = bool(self.checkpoints_overwrite_duplicates)
 
-        save_fns = [(basepath + 'weights.h5', self.model.save_weights),
-                    (basepath + 'state.h5',   self.save),
+        save_fns = [(basepath + 'state.h5',   self.save),
                     (basepath + 'hist.png',   self._save_history),
                     (basepath + 'report.png', self.generate_report)]
+
+        _sf = self._make_model_save_fns(basepath)
+        save_fns.extend(_sf)
 
         for path, save_fn in save_fns:
             _maybe_save(save_fn, path, overwrite)
@@ -137,6 +142,23 @@ def checkpoint(self, forced=False, overwrite=None):
     except BaseException as e:
         print(WARN,  "Checkpoint files could not be cleared; skipping")
         print("Errmsg:", e)
+
+
+def _make_model_save_fns(self, basepath):
+    save_fns = []
+    if 'model' not in self.saveskip_list:
+        name = 'model'
+        if not self.model_save_kw.get('include_optimizer', True):
+            name += '_noopt'
+        save_fns.append((
+            basepath + name,
+            lambda path: self.model.save(path, **self.model_save_kw)))
+    if 'model:weights' not in self.saveskip_list:
+        save_fns.append((
+            basepath + 'weights.h5',
+            lambda path: self.model.save_weights(
+                path, **self.model_save_weights_kw)))
+    return save_fns
 
 
 def save(self, savepath=None):
@@ -219,9 +241,11 @@ def save(self, savepath=None):
     cached_attrs = _cache_datagen_attributes()
 
     self._apply_callbacks(stage='save')
-    savedict = {k: v for k, v in vars(self).items()
-                if k not in self.saveskip_list}
-    savedict['optimizer_state'] = _get_optimizer_state(self.model.optimizer)
+
+    skiplist = self.saveskip_list + ['model']  # do not pickle model
+    savedict = {k: v for k, v in vars(self).items() if k not in skiplist}
+    if 'optimizer_state' not in self.saveskip_list:
+        savedict['optimizer_state'] = _get_optimizer_state(self.model.optimizer)
 
     try:
         with open(savepath, "wb") as savefile:
@@ -259,13 +283,16 @@ def load(self, filepath=None, passed_args=None):
             raise ValueError("`filepath` is None, and `logdir` is not a folder"
                              "(%s)" % self.logdir)
 
-        tempname = '_temp_model__state.h5'
-        if tempname not in os.listdir(self.logdir):
-            raise ValueError("`filepath` is None, and tempfile default "
-                             f"{tempname} not found in `logdir` ({self.logdir})")
+        paths = []
+        for path in Path(self.logdir).iterdir():
+            if path.name.endswith('__state.h5'):
+                paths.append(path)
 
-        filepath = os.path.join(self.logdir, '_temp_model__state.h5')
-        return filepath
+        if not paths:
+            raise ValueError("`filepath` is None, and no __state.h5 files "
+                             f"found in `logdir` ({self.logdir})")
+        paths.sort(key=os.path.getmtime)
+        return paths[-1]  # latest
 
     def _load_datagen_attrs(loadfile_parsed):
         def _load_preprocessor_attrs(dg, dg_loaded, dg_name):
@@ -310,6 +337,7 @@ def load(self, filepath=None, passed_args=None):
         loadfile_parsed = pickle.load(loadfile)
         # drop items in loadskip_list (e.g. to avoid overriding passed kwargs)
         loadskip_list = _get_loadskip_list(passed_args)
+        loadskip_list.append('model')  # cannot unpickle model
         for name in loadskip_list:
             loadfile_parsed.pop(name, None)
 
@@ -319,10 +347,16 @@ def load(self, filepath=None, passed_args=None):
         # assign loaded/cached attributes
         self.__dict__.update(loadfile_parsed)
 
-        if getattr(self, 'optimizer_state', None):
-            _load_optimizer_state(self)
-        else:
-            print(WARN, "'optimizer_state' not found in loadfile; skipping")
+        if 'optimizer_state' not in loadskip_list:
+            if getattr(self, 'optimizer_state', None):
+                _load_optimizer_state(self)
+            else:
+                print(WARN, "'optimizer_state' not found in loadfile; skipping."
+                      " (optimizer will still instantiate before .train())")
+                _train_on_batch_dummy(
+                    self.model, self.class_weights,
+                    input_as_labels=self.input_as_labels,
+                    alias_to_metric_name_fn=self._alias_to_metric_name)
         print("TrainGenerator state loaded from", filepath)
 
     print("--Preloading excluded data based on datagen states ...")

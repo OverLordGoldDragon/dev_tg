@@ -14,10 +14,8 @@ import pytest
 from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify, pyxfail
-from backend import _init_session, make_autoencoder, _do_test_load
-
-pytestmark = pyxfail
+from backend import BASEDIR, tempdir, notify, make_autoencoder
+from backend import _init_session, _do_test_load, _get_test_names
 
 
 #### CONFIGURE TESTING #######################################################
@@ -112,6 +110,8 @@ def test_predict():
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

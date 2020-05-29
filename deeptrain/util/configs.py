@@ -94,7 +94,7 @@ _TRAINGEN_SAVESKIP_LIST = [
     'fit_fn',
     'eval_fn',
     'callback_objs',
-    'optimizer_state',  # is overridden anyway
+    # 'optimizer_state',  # is overridden anyway TOO
 
     '_labels',
     '_preds',
@@ -236,16 +236,17 @@ _TRAINGEN_CFG = dict(
     max_checkpoints = 5,
     report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",
-    make_new_logdir = True,
     final_fig_dir   = None,
 
     loadskip_list = _TRAINGEN_LOADSKIP_LIST,
     saveskip_list = _TRAINGEN_SAVESKIP_LIST,
-    metric_to_alias     = _METRIC_TO_ALIAS,
-    alias_to_metric     = _ALIAS_TO_METRIC,
-    report_configs      = _REPORT_CFG,
-    model_name_configs  = _MODEL_NAME_CFG,
-    name_process_key_fn = _NAME_PROCESS_KEY_FN,
+    model_save_kw = {'save_format': 'h5', 'include_optimizer': True},
+    model_save_weights_kw = {'save_format': 'h5'},
+    metric_to_alias       = _METRIC_TO_ALIAS,
+    alias_to_metric       = _ALIAS_TO_METRIC,
+    report_configs        = _REPORT_CFG,
+    model_name_configs    = _MODEL_NAME_CFG,
+    name_process_key_fn   = _NAME_PROCESS_KEY_FN,
     metric_printskip_configs = _METRIC_PRINTSKIP_CFG,
 )
 

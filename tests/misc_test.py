@@ -16,7 +16,7 @@ from time import time
 from copy import deepcopy
 
 from backend import BASEDIR, tempdir, notify, make_classifier
-from backend import _init_session, _do_test_load
+from backend import _init_session, _do_test_load, _get_test_names
 from deeptrain.util.logging import _log_init_state
 from deeptrain.util.misc import pass_on_error
 
@@ -64,7 +64,7 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'checkpoint')}
+tests_done = {}
 classifier = make_classifier(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
@@ -163,6 +163,8 @@ def test_checkpoint():
             "files in `logdir` differs from that in first checkpoint "
             "({} -> {})".format(nfiles_1, nfiles_5))
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

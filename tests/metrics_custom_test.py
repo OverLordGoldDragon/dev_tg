@@ -13,6 +13,7 @@ import pytest
 import numpy as np
 import sklearn.metrics
 
+from backend import notify, TraingenDummy, _get_test_names
 from deeptrain.util.training import _get_val_history, _weighted_normalize_preds
 from deeptrain.metrics import (
     f1_score,
@@ -24,12 +25,9 @@ from deeptrain.metrics import (
     roc_auc_score
     )
 from deeptrain import metrics as metric_fns
-from backend import notify, TraingenDummy
 
 
-tests_done = {name: None for name in (
-    'f1_score', 'f1_score_multi_th', 'binaries', 'binaries_multi_th',
-    'roc_auc_score', 'sample_unrolling', 'sklearn')}
+tests_done = {}
 
 
 @notify(tests_done)
@@ -255,6 +253,8 @@ def test_sklearn():
     assert (metric_fns.r2_score(y_true, y_pred) ==
             sklearn.metrics.r2_score(y_true, y_pred))
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

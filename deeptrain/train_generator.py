@@ -70,6 +70,7 @@ class TrainGenerator(TraingenUtils):
 
                  reset_statefuls=False,
                  iter_verbosity=1,
+                 logdir=None,
                  optimizer_save_configs=None,
                  optimizer_load_configs=None,
                  plot_configs=None,
@@ -111,6 +112,7 @@ class TrainGenerator(TraingenUtils):
 
         self.reset_statefuls=reset_statefuls
         self.iter_verbosity=iter_verbosity
+        self.logdir=logdir
         self.optimizer_save_configs=optimizer_save_configs
         self.optimizer_load_configs=optimizer_load_configs
         self.plot_configs=plot_configs
@@ -122,7 +124,7 @@ class TrainGenerator(TraingenUtils):
         self._init_class_vars()
         self._init_fit_and_pred_fns()
 
-        if self.logs_dir:
+        if self.logdir or self.logs_dir:
             self._init_logger()
         else:
             print(NOTE, "logging OFF")
@@ -134,7 +136,7 @@ class TrainGenerator(TraingenUtils):
             self._prepare_initial_data()
             self._init_callbacks()  # called in `load`
 
-        if self.logs_dir:
+        if self.logdir:
             savedir = os.path.join(self.logdir, "misc")
             if not os.path.isdir(savedir):
                 os.mkdir(savedir)
@@ -147,9 +149,11 @@ class TrainGenerator(TraingenUtils):
             while self.epoch < self.epochs:
                 if self._has_postiter_processed:
                     x, y, sample_weight = self.get_data(val=False)
+                    sw = sample_weight if self.class_weights else None
                     if self.iter_verbosity:
                         self._print_iter_progress()
-                    metrics = self.fit_fn(x, y, sample_weight)
+
+                    metrics = self.fit_fn(x, y, sample_weight=sw)
                     self._has_postiter_processed = False
 
                 self._train_postiter_processing(metrics)
@@ -167,6 +171,7 @@ class TrainGenerator(TraingenUtils):
             kw = {}
             if self._val_has_postiter_processed:
                 x, self._y_true, self._val_sw = self.get_data(val=True)
+                sw = self._val_sw if self.val_class_weights else None
                 if self.iter_verbosity:
                     self._print_iter_progress(val=True)
 
@@ -174,7 +179,7 @@ class TrainGenerator(TraingenUtils):
                     self._y_preds = self.model.predict(x, batch_size=len(x))
                 elif self.eval_fn_name == 'evaluate':
                     kw['metrics'] = self.model.evaluate(
-                        x, self._y_true, sample_weight=self._val_sw,
+                        x, self._y_true, sample_weight=sw,
                         batch_size=len(x), verbose=0)
                 kw['batch_size'] = len(x)
                 self._val_has_postiter_processed = False
@@ -605,23 +610,14 @@ class TrainGenerator(TraingenUtils):
             print("%s initial data prepared" % ("Train" if not pf else "Val"))
 
     def _init_logger(self):
-        base_name = 'M%s' % self.model_num
-        _path = [os.path.join(self.logs_dir, filename) for filename in
-                 sorted(os.listdir(self.logs_dir)) if base_name in filename]
-
-        if _path == [] or self.make_new_logdir:
-            if self.make_new_logdir:
-                self.model_name = self.get_unique_model_name()
-                self.model_num = int(self.model_name.split('__')[0].replace(
-                    'M', ''))
-            _path = os.path.join(self.logs_dir, self.model_name)
-            os.makedirs(_path)
-            print("Logging ON; directory (new):", _path)
+        if not self.logdir:
+            self.model_name = self.get_unique_model_name()
+            self.model_num = int(self.model_name.split('__')[0].replace('M', ''))
+            self.logdir = os.path.join(self.logs_dir, self.model_name)
+            os.mkdir(self.logdir)
+            print("Logging ON; directory (new):", self.logdir)
         else:
-            print("Logging ON; directory (existing):", _path)
-
-        _path = _path[0] if isinstance(_path, list) else _path
-        self.logdir = _path
+            print("Logging ON; directory (existing):", self.logdir)
 
     def _init_and_validate_kwargs(self, kwargs):
         def _validate_kwarg_names(kwargs):

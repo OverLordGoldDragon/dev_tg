@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify
+from backend import BASEDIR, tempdir, notify, _get_test_names
 from deeptrain.util.misc import pass_on_error
 from deeptrain.util.algorithms import ordered_shuffle
 from deeptrain.util import data_loaders, labels_preloaders
@@ -32,9 +32,7 @@ DATAGEN_CFG = dict(
     shuffle=True,
 )
 
-tests_done = {name: None for name in ('advance_batch', 'shuffle', 'kwargs',
-                                      'data_loaders', 'labels_preloaders',
-                                      'infer_data_info')}
+tests_done = {}
 
 
 @notify(tests_done)
@@ -199,6 +197,8 @@ def test_infer_data_info():
     _test_empty_data_dir()
     _test_no_supported_file_ext()
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

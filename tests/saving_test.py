@@ -10,12 +10,12 @@ if sys.path[0] != filedir:
     sys.path.insert(0, filedir)
 
 import pytest
+import numpy as np
 
-from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify, make_classifier
-from backend import _init_session, _do_test_load, _get_test_names
+from backend import K, BASEDIR, tempdir, notify, make_classifier
+from backend import _init_session, _get_test_names
 
 
 #### CONFIGURE TESTING #######################################################
@@ -69,69 +69,61 @@ def init_session(C, weights_path=None, loadpath=None, model=None):
 ###############################################################################
 
 @notify(tests_done)
-def test_main():
-    t0 = time()
+def test_model_save():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        C['traingen']['epochs'] = 2
-        _test_main(C)
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
-
-
-def _test_main(C, new_model=False):
-    if new_model:
-        tg = init_session(C)
-    else:
         tg = init_session(C, model=classifier)
-    tg.train()
-    _test_load(tg, C)
+
+        if 'model:weights' in tg.saveskip_list:
+            tg.saveskip_list.pop(tg.saveskip_list.index('model:weights'))
+        if 'model' not in tg.saveskip_list:
+            tg.saveskip_list.append('model')
+
+        tg.train()
+        _validate_save_load(tg, C)
 
 
 @notify(tests_done)
-def _test_load(tg, C):
-    _do_test_load(tg, C, init_session)
-
-
-@notify(tests_done)
-def test_predict():
-    t0 = time()
+def test_model_save_weights():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        C['traingen']['eval_fn_name'] = 'predict'
-        # tests misc._validate_traingen_configs
-        C['traingen']['val_metrics'] = ['loss', 'acc']
-        _test_main(C)
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
+        tg = init_session(C, model=classifier)
+
+        if 'model' in tg.saveskip_list:
+            tg.saveskip_list.pop(tg.saveskip_list.index('model'))
+        if 'model:weights' not in tg.saveskip_list:
+            tg.saveskip_list.append('model:weights')
+
+        tg.train()
+        _validate_save_load(tg, C)
 
 
-@notify(tests_done)
-def test_group_batch():
-    t0 = time()
-    C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
-        for name in ('traingen', 'datagen', 'val_datagen'):
-            C[name]['batch_size'] = 64
-        C['model']['batch_shape'] = (64, width, height, channels)
-        _test_main(C, new_model=True)
+def _validate_save_load(tg, C):
+    # get behavior before saving, to ensure no changes presave-to-postload
+    Wm_save = tg.model.get_weights()
+    Wo_save = K.batch_get_value(tg.model.optimizer.weights)
+    preds_save = tg.model.predict(np.random.randn(*tg.model.input_shape))
 
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    tg.checkpoint()
+    logdir = tg.logdir
+    tg.destroy(confirm=True)
 
+    C['traingen']['logdir'] = logdir
+    tg = init_session(C, model=classifier)
+    tg.load()
 
-@notify(tests_done)
-def test_recursive_batch():
-    t0 = time()
-    C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
-        for name in ('traingen', 'datagen', 'val_datagen'):
-            C[name]['batch_size'] = 256
-        C['model']['batch_shape'] = (256, width, height, channels)
-        _test_main(C, new_model=True)
+    Wm_load = tg.model.get_weights()
+    Wo_load = K.batch_get_value(tg.model.optimizer.weights)
+    preds_load = tg.model.predict(np.random.randn(*tg.model.input_shape))
 
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
+    for wm_s, wm_l in zip(Wm_save, Wm_load):
+        assert np.allclose(wm_s, wm_l)
+    for wo_s, wo_l in zip(Wo_save, Wo_load):
+        assert np.allclose(wo_s, wo_l)
+    for p_s, p_l in zip(preds_save, preds_load):
+        assert np.allclose(wo_s, wo_l)
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

@@ -236,11 +236,12 @@ _DEFAULT_TRAINGEN_CFG = dict(
     max_checkpoints = 5,
     report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",
-    make_new_logdir = True,
     final_fig_dir   = None,
 
     loadskip_list = _DEFAULT_TRAINGEN_LOADSKIP_LIST,
     saveskip_list = _DEFAULT_TRAINGEN_SAVESKIP_LIST,
+    model_save_kw = {'save_format': 'h5', 'include_optimizer': True},
+    model_save_weights_kw = {'save_format': 'h5'},
     metric_to_alias     = _DEFAULT_METRIC_TO_ALIAS,
     alias_to_metric     = _DEFAULT_ALIAS_TO_METRIC,
     report_configs      = _DEFAULT_REPORT_CFG,

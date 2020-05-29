@@ -1,4 +1,5 @@
 import os
+import sys
 import contextlib
 import shutil
 import tempfile
@@ -107,6 +108,15 @@ def tempdir(dirpath=None):
         shutil.rmtree(dirpath)
 
 
+def _get_test_names(module_name):
+    module = sys.modules[module_name]
+    names = []
+    for name in dir(module):
+        if name.startswith('test_') or name.startswith('_test_'):
+            names.append(name.split('test_')[-1])
+    return names
+
+
 def notify(tests_done):
     def wrap(test_fn):
         def _notify(monkeypatch, *args, **kwargs):
@@ -124,7 +134,7 @@ def notify(tests_done):
 
             name = test_fn.__name__.split('test_')[-1]
             tests_done[name] = True
-            print("\n>%s TEST PASSED" % name.upper())
+            print("\n>>%s TEST PASSED\n" % name.upper())
 
             if all(tests_done.values()):
                 test_name = test_fn.__module__.replace(

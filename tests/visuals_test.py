@@ -12,13 +12,13 @@ if sys.path[0] != filedir:
 import pytest
 import numpy as np
 
-from backend import notify
+from backend import notify, _get_test_names
 from deeptrain.visuals import (
     viz_roc_auc,
     )
 
 
-tests_done = {name: None for name in ('viz_roc_auc',)}
+tests_done = {}
 
 
 @notify(tests_done)
@@ -27,6 +27,8 @@ def test_viz_roc_auc():
     y_pred = np.random.uniform(0, 1, 32)
     viz_roc_auc(y_true, y_pred)
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

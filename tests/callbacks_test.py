@@ -16,7 +16,7 @@ from time import time
 from copy import deepcopy
 
 from backend import BASEDIR, tempdir, notify, make_classifier
-from backend import _init_session, _do_test_load
+from backend import _init_session, _do_test_load, _get_test_names
 from see_rnn import get_weights, features_2D
 from deeptrain.callbacks import TraingenLogger, make_callbacks
 from deeptrain.callbacks import make_layer_hists_cb
@@ -65,7 +65,7 @@ VAL_DATAGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'traingen_logger')}
+tests_done = {}
 model = make_classifier(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
@@ -175,6 +175,8 @@ def test_traingen_logger():
         tg = init_session(C, model=model)
         tg.train()
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

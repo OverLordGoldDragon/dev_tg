@@ -16,8 +16,8 @@ from unittest.mock import patch
 from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify, pyxfail
-from backend import _init_session
+from backend import BASEDIR, tempdir, notify
+from backend import _init_session, _get_test_names
 from backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
 from deeptrain import metrics
@@ -77,16 +77,13 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in (
-    'datagen', 'visuals', 'util', 'data_to_hdf5', 'preprocessing',
-    'callbacks')}
+tests_done = {}
 classifier  = make_timeseries_classifier(**CL_CFG)
 autoencoder = make_autoencoder(**AE_CFG)
 
 init_session = _init_session
 ###############################################################################
 
-@pyxfail
 @notify(tests_done)
 def test_datagen():
     t0 = time()
@@ -146,7 +143,6 @@ def test_visuals():
         _layer_hists(model)
 
 
-@pyxfail
 @notify(tests_done)
 def test_util():
     t0 = time()
@@ -507,6 +503,8 @@ def test_callbacks():  # [deeptrain.callbacks]
     pass_on_error(callbacks.make_callbacks, [lambda: []])
     pass_on_error(callbacks.make_callbacks, [lambda: 'a'])
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

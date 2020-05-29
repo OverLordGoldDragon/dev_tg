@@ -64,13 +64,13 @@ def get_module_methods(module):
         if ((str(obj).startswith('<function')
              and isinstance(obj, LambdaType)) # is a function
             and module.__name__ == getattr(obj, '__module__', '')  # same module
-            and name in str(getattr(obj, '__code__'))  # not a duplicate
+            and name in str(getattr(obj, '__code__', ''))  # not a duplicate
             and not (  # not a magic method
                 obj_name.startswith('__')
                 and obj_name.endswith('__')
                 and len(obj_name) >= 5
             )
-            and '<lambda>' not in str(getattr(obj, '__code__'))  # not a lambda
+            and '<lambda>' not in str(getattr(obj, '__code__', ''))  # not lambda
         ):
             output[name] = obj
     return output

@@ -17,6 +17,8 @@ import pandas as pd
 from pathlib import Path
 from types import LambdaType
 
+from backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
+from backend import _get_test_names
 from deeptrain.util import searching
 from deeptrain.util import misc
 from deeptrain.util import logging
@@ -27,12 +29,9 @@ from deeptrain.util.misc import pass_on_error
 from deeptrain import metrics
 from deeptrain import preprocessing
 from tests import _methods_dummy
-from backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
 
 
-tests_done = {name: None for name in ('searching', 'misc', 'configs', 'saving',
-                                      'training', 'preprocessing', 'logging',
-                                      'deeplen', 'introspection')}
+tests_done = {}
 
 
 @notify(tests_done)
@@ -302,6 +301,8 @@ def test_preprocessing(monkeypatch):
     _test_numpy2D_to_csv(datadir)
     shutil.rmtree(datadir)
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

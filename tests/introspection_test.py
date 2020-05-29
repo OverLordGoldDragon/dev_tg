@@ -14,10 +14,9 @@ import pytest
 from copy import deepcopy
 
 from backend import Adam
-from backend import BASEDIR, notify, pyxfail, make_autoencoder
-from backend import _init_session
+from backend import BASEDIR, notify, make_autoencoder
+from backend import _init_session, _get_test_names
 
-pytestmark = pyxfail
 
 #### CONFIGURE TESTING #######################################################
 batch_size = 128
@@ -60,8 +59,7 @@ TRAINGEN_CFG = dict(
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in
-              ('gather_over_dataset', 'print_dead_nan')}
+tests_done = {}
 model = make_autoencoder(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
@@ -104,6 +102,8 @@ def test_print_dead_nan():
     _test_print_nan_weights()
     _test_print_dead_weights()
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

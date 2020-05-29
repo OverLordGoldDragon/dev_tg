@@ -17,13 +17,12 @@ from collections.abc import Iterable
 from copy import deepcopy
 from time import time
 
-from backend import notify
+from backend import notify, _get_test_names
 from deeptrain.util.algorithms import deeplen, deepmap, deepcopy_v2
 from deeptrain.util.algorithms import nCk, ordered_shuffle
 
 
-tests_done = {name: None for name in ('nCk', 'ordered_shuffle',
-                                      'deeplen', 'deepmap', 'deepcopy_v2')}
+tests_done = {}
 
 
 def _make_bignest():
@@ -153,6 +152,8 @@ def test_deepcopy_v2():
                            "'d': 9}, {}, '[[7 5]\\n [1 8]]', ())")
     assert str(obj) == str(obj_orig)  # deepcopy_v2 should not mutate original obj
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

@@ -79,7 +79,7 @@ def _update_temp_history(self, metrics, val=False):
 
 
 def get_sample_weight(self, class_labels, val=False, slice_idx=None,
-                       force_unweighted=False):
+                      force_unweighted=False):
     def _get_unweighted(class_labels, val):
         class_labels = _unroll_into_samples(len(self.model.output_shape),
                                             class_labels)
@@ -396,9 +396,9 @@ def _weighted_normalize_preds(self, preds_all):
         assert (n_slices == spb), ("`n_slices` inferred from `preds_all` differs"
                                    " from `val_datagen.slices_per_batch` "
                                    "(%s != %s)" % (n_slices, spb))
-        assert (np.asarray(preds_all).max() < 1.01), (
+        assert (np.asarray(preds_all).max() <= 1), (
             "`max(preds_all) > 1`; can only normalize in (0, 1) range")
-        assert (np.asarray(preds_all).min() > -.01), (
+        assert (np.asarray(preds_all).min() >= 0), (
             "`min(preds_all) < 0`; can only normalize in (0, 1) range")
 
     n_slices = preds_all.shape[1]
