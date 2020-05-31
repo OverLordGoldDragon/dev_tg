@@ -229,7 +229,7 @@ def get_unique_model_name(self):
         filenames = ['M0']
         if self.logs_dir is not None:
             filenames = [name for name in sorted(os.listdir(self.logs_dir))
-                         if 'M' in name]
+                         if name.startswith('M')]
         if self.model_num_continue_from_max:
             if len(filenames) != 0:
                 model_num = np.max([int(name.split('__')[0].replace('M', ''))

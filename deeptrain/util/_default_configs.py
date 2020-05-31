@@ -240,8 +240,8 @@ _DEFAULT_TRAINGEN_CFG = dict(
 
     loadskip_list = _DEFAULT_TRAINGEN_LOADSKIP_LIST,
     saveskip_list = _DEFAULT_TRAINGEN_SAVESKIP_LIST,
-    model_save_kw = {'save_format': 'h5', 'include_optimizer': True},
-    model_save_weights_kw = {'save_format': 'h5'},
+    model_save_kw = None,
+    model_save_weights_kw = None,
     metric_to_alias     = _DEFAULT_METRIC_TO_ALIAS,
     alias_to_metric     = _DEFAULT_ALIAS_TO_METRIC,
     report_configs      = _DEFAULT_REPORT_CFG,

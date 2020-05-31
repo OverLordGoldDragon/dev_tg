@@ -46,19 +46,19 @@ def test_searching():
 
 @notify(tests_done)
 def test_misc():
-    def _test_train_on_batch_dummy():
+    def _test_init_optimizer():
         model = ModelDummy()
         model.loss = 'sparse_categorical_crossentropy'
-        misc._train_on_batch_dummy(model)
+        misc._init_optimizer(model)
         model.loss = 'hinge'
-        misc._train_on_batch_dummy(model)
+        misc._init_optimizer(model)
         model.loss = 'poisson'
-        misc._train_on_batch_dummy(model)
+        misc._init_optimizer(model)
         model.loss = 'categorical_crossentropy'
-        misc._train_on_batch_dummy(model, class_weights={0: 1, 1: 5})
-        misc._train_on_batch_dummy(model, class_weights=None)
+        misc._init_optimizer(model, class_weights={0: 1, 1: 5})
+        misc._init_optimizer(model, class_weights=None)
         model.loss = 'goblin'
-        pass_on_error(misc._train_on_batch_dummy, model)
+        pass_on_error(misc._init_optimizer, model)
 
     def _test_make_plot_configs_from_metrics():
         tg = TraingenDummy()
@@ -91,7 +91,7 @@ def test_misc():
         assert args['*args'] == (4,)
         assert args['g'] == 6
 
-    _test_train_on_batch_dummy()
+    _test_init_optimizer()
     _test_make_plot_configs_from_metrics()
     _test_get_module_methods()
     _test_capture_args()

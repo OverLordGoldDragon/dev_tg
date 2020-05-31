@@ -13,7 +13,7 @@ from termcolor import cprint
 #### Environment configs ######################################################
 # for testing locally
 os.environ['TF_KERAS'] = os.environ.get("TF_KERAS", '1')
-os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '0')
+os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '1')
 
 BASEDIR = str(Path(__file__).parents[1])
 TF_KERAS = bool(os.environ['TF_KERAS'] == '1')
@@ -55,7 +55,7 @@ if TF_KERAS:
     from tensorflow.keras.layers import Activation
     from tensorflow.keras.regularizers import l2
     from tensorflow.keras.optimizers import Adam
-    from tensorflow.keras.models import Model
+    from tensorflow.keras.models import Model, load_model
 else:
     from keras import backend as K
     from keras import losses as keras_losses
@@ -65,7 +65,7 @@ else:
     from keras.layers import Activation
     from keras.regularizers import l2
     from keras.optimizers import Adam
-    from keras.models import Model
+    from keras.models import Model, load_model
 
 
 def _init_session(C, weights_path=None, loadpath=None, model=None,

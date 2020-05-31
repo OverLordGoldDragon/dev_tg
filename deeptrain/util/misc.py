@@ -14,8 +14,8 @@ from collections.abc import Mapping
 from deeptrain.backend import model_util
 from .algorithms import deepmap, deepcopy_v2, deep_isinstance
 from .algorithms import builtin_or_npscalar
-from .configs import _PLOT_CFG
-from ._backend import WARN, NOTE
+from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
+from ._backend import K, WARN, NOTE, TF_KERAS
 
 if tf.__version__[0] == '2':
     from tensorflow.python.keras.engine.training import _minimize
@@ -135,62 +135,26 @@ def exclude_unpickleable(obj):
     return pickleable
 
 
-def _train_on_batch_dummy(model, class_weights=None, input_as_labels=False,
+def _init_optimizer(model, class_weights=None, input_as_labels=False,
                           alias_to_metric_name_fn=None):
-    """Instantiates trainer & optimizer, but does NOT train (update weights)"""
-    def _make_toy_inputs(batch_size, input_shape):
-        return np.random.uniform(0, 1, (batch_size, *input_shape[1:]))
-
-    def _make_toy_labels(batch_size, output_shape, loss):
-        n_classes = output_shape[-1]  # if appicable
-
-        if loss == 'binary_crossentropy':
-            return np.random.randint(0, 2, (batch_size, 1))
-        elif loss == 'categorical_crossentropy':
-            class_labels = np.random.randint(0, n_classes, batch_size)
-            return np.eye(n_classes)[class_labels]
-        elif loss == 'sparse_categorical_crossentropy':
-            return np.random.randint(0, n_classes, (batch_size, 1))
-        elif loss in ('mean_squared_error', 'mean_absolute_error',
-                      'mean_squared_logarithmic_error',
-                      'mean_absolute_percentage_error',
-                      'logcosh', 'kullback_leibler_divergence'):
-            return np.random.randn(batch_size, 10, 4)
-        elif loss in ('squared_hinge', 'hinge', 'categorical_hinge'):
-            return np.array([-1, 1])[np.random.randint(0, 2, (batch_size, 1))]
-        elif loss in ('poisson', 'cosine_similarity'):
-            return np.random.uniform(0, 10, batch_size)
-        else:
-            raise ValueError("unknown loss: '{}'".format(loss))
-
-    batch_size = model.output_shape[0]
-    if batch_size is None:
-        batch_size = 32
+    """Instantiates optimizer (and maybe trainer), but does NOT train
+       (update weights)"""
     loss = model.loss
+    if not isinstance(loss, str):
+        if not hasattr(loss, '__name__'):
+            raise Exception("unable to instantiate optimizer; open an Issue "
+                            "with a minimally-reproducible example")
+        loss = loss.__name__
+
     if alias_to_metric_name_fn is not None:
-        loss = alias_to_metric_name_fn(loss)
-
-    toy_inputs = _make_toy_inputs(batch_size, model.input_shape)
-    toy_labels = _make_toy_labels(batch_size, model.output_shape, loss)
-    if input_as_labels:
-        toy_labels = toy_inputs
-
-    if not hasattr(model, '_standardize_user_data'):
-        iterator = data_adapter.single_batch_iterator(
-            model.distribute_strategy, toy_inputs, toy_labels)
-        data = next(iterator)
-        data = data_adapter.expand_1d(data)
-        x, _, sample_weight = data_adapter.unpack_x_y_sample_weight(data)
-
-        with tf.GradientTape() as tape:
-            y_pred = model(x, training=True)
-            loss = model.compiled_loss(y_pred, y_pred)  # zero loss
-        # 'updates' weights with zero gradients, instantiating optimizer
-        _minimize(model.distribute_strategy, tape, model.optimizer, loss,
-                  model.trainable_variables)
+        loss = alias_to_metric_name_fn(model.loss)
     else:
-        model._standardize_user_data(toy_inputs, toy_labels)
+        loss = _ALIAS_TO_METRIC.get(model.loss, model.loss)
+
+    if hasattr(model, '_make_train_function'):
         model._make_train_function()
+    else:
+        model.optimizer._create_all_weights(model.trainable_weights)
 
 
 def _make_plot_configs_from_metrics(self):
@@ -491,6 +455,20 @@ def _validate_traingen_configs(self):
                                      + ', '.join(supported))
                 _validate_types(cb, stage)
 
+    def _validate_model_save_kw():
+        if self.model_save_kw is None:
+            self.model_save_kw = {'include_optimizer': True}
+            if TF_KERAS:
+                self.model_save_kw['save_format'] = 'h5'
+        elif 'save_format' in self.model_save_kw and not TF_KERAS:
+            raise ValueError(f"`keras` `model.save()` does not support "
+                             "'save_format' kwarg, defaulting to 'h5'")
+        if self.model_save_weights_kw is None:
+            self.model_save_weights_kw = {'save_format': 'h5'} if TF_KERAS else {}
+        elif 'save_format' in self.model_save_weights_kw and not TF_KERAS:
+            raise ValueError("f`keras` `model.save_weights()` does not support "
+                             "'save_format' kwarg, defaulting to 'h5'")
+
     _validate_metrics()
     _validate_directories()
     _validate_optimizer_saving_configs()
@@ -503,3 +481,4 @@ def _validate_traingen_configs(self):
     _validate_or_make_plot_configs()
     _validate_metric_printskip_configs()
     _validate_callbacks()
+    _validate_model_save_kw()

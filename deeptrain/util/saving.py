@@ -7,7 +7,7 @@ import tensorflow as tf
 from pathlib import Path
 from ._backend import K, WARN
 from ..visuals import _get_history_fig
-from .misc import pass_on_error, _train_on_batch_dummy, exclude_unpickleable
+from .misc import pass_on_error, _init_optimizer, exclude_unpickleable
 from ..backend import tensor_util
 
 
@@ -150,12 +150,14 @@ def _make_model_save_fns(self, basepath):
         name = 'model'
         if not self.model_save_kw.get('include_optimizer', True):
             name += '_noopt'
+        name += '.' + self.model_save_kw.get('save_format', 'h5')
         save_fns.append((
             basepath + name,
             lambda path: self.model.save(path, **self.model_save_kw)))
     if 'model:weights' not in self.saveskip_list:
+        name = 'weights.' + self.model_save_weights_kw.get('save_format', 'h5')
         save_fns.append((
-            basepath + 'weights.h5',
+            basepath + name,
             lambda path: self.model.save_weights(
                 path, **self.model_save_weights_kw)))
     return save_fns
@@ -353,7 +355,7 @@ def load(self, filepath=None, passed_args=None):
             else:
                 print(WARN, "'optimizer_state' not found in loadfile; skipping."
                       " (optimizer will still instantiate before .train())")
-                _train_on_batch_dummy(
+                _init_optimizer(
                     self.model, self.class_weights,
                     input_as_labels=self.input_as_labels,
                     alias_to_metric_name_fn=self._alias_to_metric_name)
@@ -394,7 +396,7 @@ def _load_optimizer_state(self):
         else:
             setattr(opt, name, value)
 
-    _train_on_batch_dummy(self.model, self.class_weights,
+    _init_optimizer(self.model, self.class_weights,
                           input_as_labels=self.input_as_labels,
                           alias_to_metric_name_fn=self._alias_to_metric_name)
     if 'weights' in self.optimizer_state:
