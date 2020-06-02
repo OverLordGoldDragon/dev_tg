@@ -4,6 +4,8 @@
         - self.callbacks(stage='__init__') ?
     - random seeds management in TrainGenerator?
     - metrics .__module__ problem upon superreload
+    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
+    - 'min' for `max_is_best=False` in model naming
     - MetaTrainer
 """
 
@@ -525,40 +527,13 @@ class TrainGenerator(TraingenUtils):
                on stage=='train:epoch'.
         """
         def _get_matching_stage(cb_keys, stage):
-            """A key in `stage` must match one in `cb_keys`; a tuple in `cb_keys`
-              counts as a (one) key.
-                1. cb.keys() == ['train:epoch', 'val:batch']
-                   stage == ('val_end', 'train:epoch')
-                   -> 'train:epoch'
-                2. cb.keys() == ['train:epoch', 'val:batch']
-                   stage == 'val_end'
-                   -> None
-                3. cb.keys() == [('val_end', 'train:epoch'), 'train:batch']
-                   stage == 'val_end'
-                   -> None
-                4. cb.keys() == [('val_end', 'train:epoch'), 'train:batch']
-                   stage == 'train:batch'
-                   -> 'train:batch'
-                5. cb.keys() == [('val_end', 'train:epoch'), 'train:batch']
-                   stage == ('val_end', 'train:epoch')
-                   -> ('val_end', 'train:epoch')
-            """
-            # TODO reformat? Only one `stage` tuple case
-            def _pack_stages(cb_stage, stage):
-                cb_stages = []
-                for cbs in cb_stage:
-                    if not isinstance(cbs, tuple):
-                        # ensure entire string is compared against
-                        # rather than its chars when iterating
-                        cbs = (cbs,)
-                    cb_stages.append(cbs)
-                stages = stage if isinstance(stage, tuple) else (stage,)
-                return tuple(cb_stages), stages
-
-            cb_stages, stages = _pack_stages(cb_keys, stage)
-            for cbs in cb_stages:
-                if cbs and all(x in stages for x in cbs):
-                    return cbs if len(cbs) > 1 else cbs[0]
+            if stage in cb_keys:
+                return stage
+            elif stage == ('val_end', 'train:epoch'):
+                if 'val_end' in cb_keys:
+                    return 'val_end'
+                elif 'train:epoch' in cb_keys:
+                    return 'train:epoch'
             return None
 
         if not hasattr(self, 'cb_alias'):
@@ -597,9 +572,17 @@ class TrainGenerator(TraingenUtils):
         self._init_callbacks_called = True
 
     ########################## MISC METHODS ##########################
-    # very fast, inexpensive
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
                      notify_detected_only=True):
+        """Check whether any layer weights have 'zeros' or NaN weights;
+           very fast.
+              - dead_threshold: float. Count values below this as zeros.
+              - dead_notify_above_frac: float. If fraction of values exceeds
+                    this, print it and the weight's name.
+              - notify_detected_only: bool.
+                    True  -> print only if dead/NaN found
+                    False -> print a 'not found' message
+        """
         print_dead_weights(self.model, dead_threshold, dead_notify_above_frac,
                            notify_detected_only)
         print_nan_weights(self.model, notify_detected_only)
@@ -615,6 +598,12 @@ class TrainGenerator(TraingenUtils):
         return metric_name
 
     def destroy(self, confirm=False, verbose=1):
+        """Class 'destructor'. Set own, datagen's, and val_datagen's attributes
+        to [] (which can free memory of arrays), then delete them. Also deletes
+        'model' attribute, but this has no effect on memory allocation until
+        it's dereferenced globally and the TensorFlow/Keras graph is cleared
+        (best bet is to restart the Python kernel).
+        """
         def _destroy():
             for obj in (self.datagen, self.val_datagen, self):
                 attrs = list(vars(obj))

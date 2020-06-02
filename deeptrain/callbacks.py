@@ -11,48 +11,6 @@ from .util._backend import NOTE
 from .util.misc import argspec
 
 
-# def make_callbacks(cb_makers):
-#     """cb_makers must return: `callbacks` and `callbacks_init`, or `callbacks`.
-#         callbacks: dict.
-#           keys: callback names. Names can be of any type, but if values'
-#                 methods use an object, must match name in `callbacks_init`.
-#           values: dicts of stage-method(s) pairs. Methods can be functions or
-#                 class methods; if latter uses a class instance not defined in
-#                 TrainGenerator, must instantiate it.
-#         callbacks_init: dict. Instantiate class instances used in `callbacks`,
-#                 which will be packed in `TrainGenerator.callback_objs`.
-#           keys: callback object names. See `callbacks`.
-#           values: objects / class instances to be instantiated. TrainGenerator's
-#                 `self` will be passed to the constructor (__init__(self)).
-#           Can be an empty dict, {}, None, or not returned at all.
-#     See examples in util.callbacks.
-#     """
-#     def _unpack_returned(returned):
-#         tp = lambda x: type(x).__name__
-#         if not isinstance(returned, (tuple, list)):
-#             assert isinstance(returned, dict), (
-#                 "`cb_makers` must return 2 or 1 dicts, or 1 dict and 1 None"
-#                 " - got: %s" % tp(returned))
-#             return returned, None
-#         elif len(returned) == 2:
-#             assert all(isinstance(x, (dict, type(None))) for x in returned), (
-#                 "`cb_makers` must return 2 or 1 dicts, or 1 dict and 1 None"
-#                 " - got: %s, %s" % (tp(returned[0]), tp(returned[1])))
-#             return returned
-#         else:
-#             raise ValueError("`cb_makers` must return 2 or 1 dicts - got "
-#                              "%s items" % len(returned))
-
-#     callbacks, callbacks_init = {}, {}
-#     for make_cb in cb_makers:
-#         returned = make_cb()
-#         cb, cbi = _unpack_returned(returned)
-#         callbacks.update(cb)
-#         if isinstance(cbi, dict):
-#             callbacks_init.update(cbi)
-#     return callbacks, callbacks_init
-
-
 def predictions_per_iteration_cb(self):
     show_predictions_per_iteration(self._labels_cache, self._preds_cache)
 
