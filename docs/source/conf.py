@@ -17,12 +17,12 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'dev_tg'
+project = 'DeepTrain'
 copyright = '2020, OverLordGoldDragon'
 author = 'OverLordGoldDragon'
 
 # The full version, including alpha/beta/rc tags
-release = '0.01'
+release = '0.0.1'
 
 
 # -- General configuration ---------------------------------------------------
