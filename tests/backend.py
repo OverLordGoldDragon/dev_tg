@@ -17,7 +17,7 @@ os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '0')
 
 BASEDIR = str(Path(__file__).parents[1])
 TF_KERAS = bool(os.environ['TF_KERAS'] == '1')
-TF_EAGER = bool(os.environ['TF_EAGER'] == '0')
+TF_EAGER = bool(os.environ['TF_EAGER'] == '1')
 TF_2 = bool(tf.__version__[0] == '2')
 
 if TF_2:
