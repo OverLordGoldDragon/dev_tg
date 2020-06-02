@@ -151,24 +151,51 @@ class TrainGenerator(TraingenUtils):
 
     ########################## MAIN METHODS ##########################
     def train(self):
-        if not self._has_trained:
-            while self.epoch < self.epochs:
+        """The main loop.
+            - Fetches data from `get_data`
+            - Fits data via `fin_fn`
+            - Processes fit metrics in `_train_postiter_processing`
+            - Stores metrics in `history`
+            - Applies 'train:iter', 'train:batch', and 'train:epoch' callbacks
+            - Calls `validate` when appropriate
+
+        Interruption:
+            - Safest: during `get_data`, which can be called indefinitely
+            without changing any attributes.
+            - Worst: during `_train_postiter_processing`, where `fit_fn` is
+            applied and weights are updated - but metrics aren't stored, and
+            `_has_postiter_processed=False`, restarting the loop without
+            recording progress.
+        """
+        while self.epoch < self.epochs:
+            if not self._has_trained:
                 if self._has_postiter_processed:
                     x, y, sample_weight = self.get_data(val=False)
                     sw = sample_weight if self.class_weights else None
                     if self.iter_verbosity:
                         self._print_iter_progress()
-
                     metrics = self.fit_fn(x, y, sample_weight=sw)
-                    self._has_postiter_processed = False
 
-                self._train_postiter_processing(metrics)
+                self._has_postiter_processed = False
+                self._train_postiter_processing(metrics)  # may call `validate`
                 self._has_postiter_processed = True
-        else:
-            self.validate()
-            self.train()
+            else:
+                self.validate()
+                self.train()
+
+        print("Training has concluded.")
 
     def validate(self, record_progress=True, clear_cache=True):
+        """Validation loop.
+            - Fetches data from `get_data`
+            - Applies function based on `eval_fn_name`
+            - Processes and caches metrics/predictions in
+              `_val_postiter_processing`
+            - Applies 'val:iter', 'val:batch', and 'val:epoch' callbacks
+            - Calls `_on_val_end` at end of validation to compute metrics
+              and store them in `val_history`
+            - Applies 'val_end' and maybe ('val_end': 'train:epoch') callbacks
+        """
         txt = ("Validating" if not self._has_validated else
                "Finishing post-val processing")
         print("\n\n{}...".format(txt))
@@ -188,8 +215,8 @@ class TrainGenerator(TraingenUtils):
                         x, self._y_true, sample_weight=sw,
                         batch_size=len(x), verbose=0)
                 kw['batch_size'] = len(x)
-                self._val_has_postiter_processed = False
 
+            self._val_has_postiter_processed = False
             self._val_postiter_processing(record_progress, **kw)
             self._val_has_postiter_processed = True
 
@@ -353,7 +380,7 @@ class TrainGenerator(TraingenUtils):
         self._has_validated = False
         self._has_trained = False
 
-    def clear_cache(self, reset_val_flags=False):
+    def clear_cache(self, reset_val_flags=False):  # to `validate` from scratch
         attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',
                           '_class_labels_cache',
                           '_set_name_cache', '_val_set_name_cache',
