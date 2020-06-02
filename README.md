@@ -1,0 +1,2 @@
+# dev_tg
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/bc9b44233a2e467e969064b6777f9a3e)](https://app.codacy.com/manual/OverLordGoldDragon/dev_tg?utm_source=github.com&utm_medium=referral&utm_content=OverLordGoldDragon/dev_tg&utm_campaign=Badge_Grade_Dashboard)
