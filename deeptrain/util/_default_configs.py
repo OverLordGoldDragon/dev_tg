@@ -56,8 +56,7 @@ _DEFAULT_REPORT_CFG = {
              'history', 'val_history', 'temp_history', 'val_temp_history',
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
              'report_configs', 'datagen', 'val_datagen', 'logdir', 'logs_dir',
-             'best_models_dir', 'fit_fn', 'eval_fn',
-             'callbacks', 'callbacks_init', 'callback_objs',
+             'best_models_dir', 'fit_fn', 'eval_fn', 'callbacks',
              '_history_fig', 'metric_printskip_configs', '_inferred_batch_size',
              'plot_first_pane_max_vals', '_imports', 'iter_verbosity',
              '_max_set_name_chars', '_val_max_set_name_chars',
@@ -83,7 +82,6 @@ _DEFAULT_REPORT_CFG = {
 _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
     'model',
     'callbacks',
-    'callbacks_init',
     'key_metric_fn',
     'custom_metrics',
     'use_passed_dirs_over_loaded',
@@ -93,8 +91,6 @@ _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
     'name_process_key_fn',
     'fit_fn',
     'eval_fn',
-    'callback_objs',
-    'optimizer_state',  # is overridden anyway
 
     '_labels',
     '_preds',

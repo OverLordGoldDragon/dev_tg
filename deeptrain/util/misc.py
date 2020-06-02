@@ -2,7 +2,6 @@
 import builtins
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
 import deeptrain.metrics
 
 from types import LambdaType
@@ -15,11 +14,7 @@ from deeptrain.backend import model_util
 from .algorithms import deepmap, deepcopy_v2, deep_isinstance
 from .algorithms import builtin_or_npscalar
 from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
-from ._backend import K, WARN, NOTE, TF_KERAS
-
-if tf.__version__[0] == '2':
-    from tensorflow.python.keras.engine.training import _minimize
-    from tensorflow.python.keras.engine import data_adapter
+from ._backend import WARN, NOTE, TF_KERAS
 
 
 def pass_on_error(fn, *args, **kwargs):
@@ -431,22 +426,30 @@ def _validate_traingen_configs(self):
 
     def _validate_callbacks():
         def _validate_types(cb, stage):
-            errmsg = ("`callbacks` stage values must be functions, or list "
-                      "or tuple of functions")
             if not isinstance(cb[stage], (list, tuple)):
                 cb[stage] = (cb[stage],)
             for fn in cb[stage]:
                 if not isinstance(fn, LambdaType):
-                    raise ValueError(errmsg)
+                    raise ValueError("`callbacks` dict values must be "
+                                     "functions, or list or tuple of functions.")
 
         supported = ('save', 'load', 'val_end',
                      'train:iter', 'train:batch', 'train:epoch',
                      'val:iter', 'val:batch', 'val:epoch')
-        assert isinstance(self.callbacks, dict), ("`callbacks` must be "
-                                                 "of type dict")
-        for cb in self.callbacks.values():
-            assert isinstance(cb, dict), ("`callbacks` values must be "
-                                          "of type dict")
+        assert isinstance(self.callbacks, (list, tuple, dict)), (
+            "`callbacks` must be list, tuple, or dict "
+            "- got %s" % type(self.callbacks))
+        if isinstance(self.callbacks, dict):
+            self.callbacks = [self.callbacks]
+
+        from ..callbacks import TraingenCallback
+
+        for cb in self.callbacks:
+            assert isinstance(cb, (dict, TraingenCallback)), (
+                "`callbacks` items must be dict or subclass TraingenCallback, "
+                "got %s" % type(cb))
+            if isinstance(cb, TraingenCallback):
+                continue
             for stage in cb:
                 stages = stage if isinstance(stage, tuple) else (stage,)
                 if not all(s in supported for s in stages):

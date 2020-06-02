@@ -365,7 +365,7 @@ def load(self, filepath=None, passed_args=None):
     self._prepare_initial_data(from_load=True)
     print("... finished--")
 
-    if not getattr(self, 'callback_objs', None):  # if not already initialized
+    if not self._init_callbacks_called:
         self._init_callbacks()
     self._apply_callbacks(stage='load')
 

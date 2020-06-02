@@ -498,12 +498,6 @@ def test_preprocessing():  # [deeptrain.preprocessing]
     preprocessing.lz4f = lz4f_cache
 
 
-@notify(tests_done)
-def test_callbacks():  # [deeptrain.callbacks]
-    pass_on_error(callbacks.make_callbacks, [lambda: []])
-    pass_on_error(callbacks.make_callbacks, [lambda: 'a'])
-
-
 tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':

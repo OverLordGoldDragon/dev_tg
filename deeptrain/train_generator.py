@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """TODO:
+    - unify `callbacks` and `callbacks_init`
+        - self.callbacks(stage='__init__') ?
+    - random seeds management in TrainGenerator?
+    - metrics .__module__ problem upon superreload
     - MetaTrainer
 """
 
@@ -35,6 +39,7 @@ from .util.training import _get_api_metric_name
 from .util.misc     import pass_on_error, capture_args
 from .introspection import print_dead_weights, print_nan_weights
 from .              import metrics as metrics_fns
+from .callbacks     import TraingenCallback
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 from .backend import model_util
 
@@ -49,7 +54,6 @@ class TrainGenerator(TraingenUtils):
                  best_models_dir=None,
                  loadpath=None,
                  callbacks=None,
-                 callbacks_init=None,
 
                  fit_fn_name='train_on_batch',
                  eval_fn_name='evaluate',
@@ -85,8 +89,7 @@ class TrainGenerator(TraingenUtils):
         self.logs_dir=logs_dir
         self.best_models_dir=best_models_dir
         self.loadpath=loadpath
-        self.callbacks=callbacks or {}
-        self.callbacks_init=callbacks_init or {}
+        self.callbacks=callbacks or []
 
         self.fit_fn_name=fit_fn_name
         self.eval_fn_name=eval_fn_name
@@ -130,6 +133,7 @@ class TrainGenerator(TraingenUtils):
             print(NOTE, "logging OFF")
             self.logdir = None
 
+        self._init_callbacks_called = False
         if self.loadpath:
             self.load(passed_args=self._passed_args)
         else:
@@ -504,52 +508,93 @@ class TrainGenerator(TraingenUtils):
 
     ########################## CALLBACK METHODS ######################
     def _apply_callbacks(self, stage):
-        def _get_matching_stage(cb, stage):
-            """Examples:
-                1. cb.keys() == ('train:epoch', 'val:batch')
+        """Callbacks. See examples/callbacks
+
+        Two approaches:
+            1. Class-based: inherit deeptrain.callbacks.TraingenCallback,
+               define stage-based methods, e.g. on_train_epoch_end. Methods
+               also take `stage` argument for further control, e.g. to only
+               call on_train_epoch_end when stage == ('val_end', 'train:epoch').
+            2. Function-based: make a dict of stage-function call pairs, e.g.:
+                {'train:epoch': (fn1, fn2),
+                 'val_batch': fn3,
+                 ('on_val_end': 'train:epoch"): fn4
+                }
+               `stage` is controlled such that (fn1, fn2) will also be called
+               on stage==('on_val_end', 'train:epoch') - but fn4 won't be,
+               on stage=='train:epoch'.
+        """
+        def _get_matching_stage(cb_keys, stage):
+            """A key in `stage` must match one in `cb_keys`; a tuple in `cb_keys`
+              counts as a (one) key.
+                1. cb.keys() == ['train:epoch', 'val:batch']
                    stage == ('val_end', 'train:epoch')
                    -> 'train:epoch'
-                2. cb.keys() == ('train:epoch', 'val:batch')
+                2. cb.keys() == ['train:epoch', 'val:batch']
                    stage == 'val_end'
                    -> None
-                3. cb.keys() == (('val_end', 'train:epoch'), 'train:batch')
+                3. cb.keys() == [('val_end', 'train:epoch'), 'train:batch']
                    stage == 'val_end'
                    -> None
-                4. cb.keys() == (('val_end', 'train:epoch'), 'train:batch')
+                4. cb.keys() == [('val_end', 'train:epoch'), 'train:batch']
                    stage == 'train:batch'
                    -> 'train:batch'
-                5. cb.keys() == (('val_end', 'train:epoch'), 'train:batch')
+                5. cb.keys() == [('val_end', 'train:epoch'), 'train:batch']
                    stage == ('val_end', 'train:epoch')
-                   -> ('train:epoch', 'val_end')
+                   -> ('val_end', 'train:epoch')
             """
-            def _pack_stages(cb, stage):
+            # TODO reformat? Only one `stage` tuple case
+            def _pack_stages(cb_stage, stage):
                 cb_stages = []
-                for cb_stage in cb:
-                    if not isinstance(cb_stage, tuple):
-                        cb_stage = (cb_stage,)
-                    cb_stages.append(cb_stage)
+                for cbs in cb_stage:
+                    if not isinstance(cbs, tuple):
+                        # ensure entire string is compared against
+                        # rather than its chars when iterating
+                        cbs = (cbs,)
+                    cb_stages.append(cbs)
                 stages = stage if isinstance(stage, tuple) else (stage,)
                 return tuple(cb_stages), stages
 
-            cb_stages, stages = _pack_stages(cb, stage)
+            cb_stages, stages = _pack_stages(cb_keys, stage)
             for cbs in cb_stages:
-                if all(x in stages for x in cbs):
+                if cbs and all(x in stages for x in cbs):
                     return cbs if len(cbs) > 1 else cbs[0]
+            return None
 
-        for name, cb in self.callbacks.items():
-            _stage = _get_matching_stage(cb, stage)
-            if _stage is None:
-                continue
-            for fn in cb[_stage]:
-                if name in self.callback_objs:
-                    fn(self.callback_objs[name])
-                else:
-                    fn(self)
+        if not hasattr(self, 'cb_alias'):
+            self.cb_alias = {'train:iter':  'on_train_iter_end',
+                             'train:batch': 'on_train_batch_end',
+                             'train:epoch': 'on_train_epoch_end',
+                             'val:iter':    'on_val_iter_end',
+                             'val:batch':   'on_val_batch_end',
+                             'val:epoch':   'on_val_epoch_end',
+                             'val_end':     'on_val_end',
+                             'save':        'on_save',
+                             'load':        'on_load'}
+
+        for cb in self.callbacks:
+            if isinstance(cb, TraingenCallback):
+                _stage = stage if not isinstance(stage, tuple) else stage[0]
+                fn = getattr(cb, self.cb_alias[_stage])
+                try:
+                    fn(stage)
+                except NotImplementedError:
+                    pass
+            elif isinstance(cb, dict):
+                _stage = _get_matching_stage(list(cb), stage)
+                if _stage is not None:
+                    for fn in cb[_stage]:
+                        fn(self)
+            else:
+                raise Exception("unsupported callback type: %s" % type(cb)
+                                + "; must be either dict, or subclass "
+                                "TraingenCallback.")
 
     def _init_callbacks(self):
-        self.callback_objs = {}
-        for name, init in self.callbacks_init.items():
-            self.callback_objs[name] = init(self)
+        for cb in self.callbacks:
+            if isinstance(cb, TraingenCallback):
+                cb.init_with_traingen(self)
+        self._init_callbacks_called = True
 
     ########################## MISC METHODS ##########################
     # very fast, inexpensive
@@ -579,7 +624,7 @@ class TrainGenerator(TraingenUtils):
                 del obj
             gc.collect()
             if verbose:
-                print(">> TrainGenerator SELF-DESTRUCTED <<")
+                print(">>>TrainGenerator SELF-DESTRUCTED")
 
         if confirm:
             _destroy()

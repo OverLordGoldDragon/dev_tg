@@ -8,49 +8,49 @@ from .visuals import show_predictions_per_iteration
 from .visuals import show_predictions_distribution
 from .visuals import comparative_histogram, layer_hists
 from .util._backend import NOTE
-from .util import argspec
+from .util.misc import argspec
 
 
-def make_callbacks(cb_makers):
-    """cb_makers must return: `callbacks` and `callbacks_init`, or `callbacks`.
-        callbacks: dict.
-          keys: callback names. Names can be of any type, but if values'
-                methods use an object, must match name in `callbacks_init`.
-          values: dicts of stage-method(s) pairs. Methods can be functions or
-                class methods; if latter uses a class instance not defined in
-                TrainGenerator, must instantiate it.
-        callbacks_init: dict. Instantiate class instances used in `callbacks`,
-                which will be packed in `TrainGenerator.callback_objs`.
-          keys: callback object names. See `callbacks`.
-          values: objects / class instances to be instantiated. TrainGenerator's
-                `self` will be passed to the constructor (__init__(self)).
-          Can be an empty dict, {}, None, or not returned at all.
-    See examples in util.callbacks.
-    """
-    def _unpack_returned(returned):
-        tp = lambda x: type(x).__name__
-        if not isinstance(returned, (tuple, list)):
-            assert isinstance(returned, dict), (
-                "`cb_makers` must return 2 or 1 dicts, or 1 dict and 1 None"
-                " - got: %s" % tp(returned))
-            return returned, None
-        elif len(returned) == 2:
-            assert all(isinstance(x, (dict, type(None))) for x in returned), (
-                "`cb_makers` must return 2 or 1 dicts, or 1 dict and 1 None"
-                " - got: %s, %s" % (tp(returned[0]), tp(returned[1])))
-            return returned
-        else:
-            raise ValueError("`cb_makers` must return 2 or 1 dicts - got "
-                             "%s items" % len(returned))
+# def make_callbacks(cb_makers):
+#     """cb_makers must return: `callbacks` and `callbacks_init`, or `callbacks`.
+#         callbacks: dict.
+#           keys: callback names. Names can be of any type, but if values'
+#                 methods use an object, must match name in `callbacks_init`.
+#           values: dicts of stage-method(s) pairs. Methods can be functions or
+#                 class methods; if latter uses a class instance not defined in
+#                 TrainGenerator, must instantiate it.
+#         callbacks_init: dict. Instantiate class instances used in `callbacks`,
+#                 which will be packed in `TrainGenerator.callback_objs`.
+#           keys: callback object names. See `callbacks`.
+#           values: objects / class instances to be instantiated. TrainGenerator's
+#                 `self` will be passed to the constructor (__init__(self)).
+#           Can be an empty dict, {}, None, or not returned at all.
+#     See examples in util.callbacks.
+#     """
+#     def _unpack_returned(returned):
+#         tp = lambda x: type(x).__name__
+#         if not isinstance(returned, (tuple, list)):
+#             assert isinstance(returned, dict), (
+#                 "`cb_makers` must return 2 or 1 dicts, or 1 dict and 1 None"
+#                 " - got: %s" % tp(returned))
+#             return returned, None
+#         elif len(returned) == 2:
+#             assert all(isinstance(x, (dict, type(None))) for x in returned), (
+#                 "`cb_makers` must return 2 or 1 dicts, or 1 dict and 1 None"
+#                 " - got: %s, %s" % (tp(returned[0]), tp(returned[1])))
+#             return returned
+#         else:
+#             raise ValueError("`cb_makers` must return 2 or 1 dicts - got "
+#                              "%s items" % len(returned))
 
-    callbacks, callbacks_init = {}, {}
-    for make_cb in cb_makers:
-        returned = make_cb()
-        cb, cbi = _unpack_returned(returned)
-        callbacks.update(cb)
-        if isinstance(cbi, dict):
-            callbacks_init.update(cbi)
-    return callbacks, callbacks_init
+#     callbacks, callbacks_init = {}, {}
+#     for make_cb in cb_makers:
+#         returned = make_cb()
+#         cb, cbi = _unpack_returned(returned)
+#         callbacks.update(cb)
+#         if isinstance(cbi, dict):
+#             callbacks_init.update(cbi)
+#     return callbacks, callbacks_init
 
 
 def predictions_per_iteration_cb(self):
@@ -81,39 +81,81 @@ def make_layer_hists_cb(_id='*', mode='weights', x=None, y=None,
     return layer_hists_cb
 
 
-class TraingenLogger():
-    def __init__(self, traingen, savedir, configs,
+class TraingenCallback():
+    def __init__(self):
+        pass
+
+    def init_with_traingen(self, traingen=None):
+        raise NotImplementedError
+
+    def on_train_iter_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_train_batch_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_train_epoch_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_val_iter_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_val_batch_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_val_epoch_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_val_end(self, stage=None):
+        raise NotImplementedError
+
+    def on_save(self, stage=None):
+        raise NotImplementedError
+
+    def on_load(self, stage=None):
+        raise NotImplementedError
+
+
+class TraingenLogger(TraingenCallback):
+    def __init__(self, savedir, configs,
                  loadpath=None,
                  get_data_fn=None,
                  get_labels_fn=None,
                  gather_fns=None,
                  logname='datalog_',
                  init_log_id=None):
-        self.tg=traingen
         self.savedir=savedir
         self.configs=configs
         self.loadpath=loadpath
         self.logname=logname
 
-        self.m = traingen.model
+        self.get_data_fn=get_data_fn
+        self.get_labels_fn=get_labels_fn
+        self.gather_fns=gather_fns
+        self.init_log_id=init_log_id
+        self.configs=configs
+
+    def init_with_traingen(self, traingen):
+        self.tg = traingen
+        self.model = traingen.model
         self.weights = {}
         self.outputs = {}
         self.gradients = {}
         self._loggables = ('weights', 'outputs', 'gradients')
 
         self._process_args(dict(
-            configs=configs,
-            get_data_fn=get_data_fn,
-            get_labels_fn=get_labels_fn,
-            gather_fns=gather_fns,
-            init_log_id=init_log_id,
+            configs=self.configs,
+            get_data_fn=self.get_data_fn,
+            get_labels_fn=self.get_labels_fn,
+            gather_fns=self.gather_fns,
+            init_log_id=self.init_log_id,
             ))
 
     def log(self, _id=None):
         def _gather(key, _id):
             def _get_args(key, name_or_idx):
                 kw = self.configs.get(f'{key}-kw', {}).copy()
-                kw['model'] = self.m
+                kw['model'] = self.model
                 kw['_id'] = name_or_idx
                 kw['as_dict'] = True
                 if 'input_data' in argspec(self.gather_fns[key]):

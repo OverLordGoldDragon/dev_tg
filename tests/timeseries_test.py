@@ -57,9 +57,9 @@ TRAINGEN_CFG = dict(
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,
     model_configs=MODEL_CFG,
-    callbacks={'ch': {'val_end': comparative_histogram_cb},
-               'ppi': {'val_end': predictions_per_iteration_cb},
-               'pd': {'val_end': predictions_distribution_cb}},
+    callbacks={'val_end': [comparative_histogram_cb,
+                           predictions_per_iteration_cb,
+                           predictions_distribution_cb]},
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
