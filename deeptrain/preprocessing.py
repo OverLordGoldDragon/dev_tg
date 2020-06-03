@@ -109,16 +109,15 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
     """Convert data to hdf5-group (.h5) format, in `batch_size` sample sets.
 
     Arguments:
-        - savepath: str. Absolute path to where to save file.
-        - batch_size: int. Number of samples (dim0 slices) to save per file.
-        - loaddir: str. Absolute path to directory from which to load data.
-        - compression: str. Compression type to use. kwarg to
-        h5py.File().create_dataset().
-        - dtype: str / np.dtype. Savefile dtype; kwarg to .create_dataset().
-        Defaults to data's dtype.
-        - load_fn: function/callable. Used on supported paths* in `loaddir`
-        to load data.
-        -
+        - savepath (str): Absolute path to where to save file.
+        - batch_size (int): Number of samples (dim0 slices) to save per file.
+        - loaddir (str): Absolute path to directory from which to load data.
+        - compression (str): Compression type to use. kwarg to
+          `h5py.File().create_dataset()`.
+        - dtype (str / np.dtype): Savefile dtype; kwarg to `.create_dataset()`.
+          Defaults to data's dtype.
+        - load_fn (function / callable): Used on supported paths [1]_ in
+          `loaddir` to load data.
 
     - `data`, or loaded data, is assumed to have samples along dim 0 - so
     if `len(data) == 320` and `batch_size == 32`, will make a 10-set h5 file.
@@ -127,7 +126,8 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
     multiple of `batch_size`, <= 1. So `batch_size == 32` and `len() == 16`
     works, but `len() == 48` or `len() == 24` doesn't.
 
-    * .npy
+    .. [1] Numpy
+
     """
     def _validate_args(savepath, loaddir, data, load_fn):
         def _validate_extensions(loaddir):

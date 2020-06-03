@@ -160,12 +160,12 @@ class TrainGenerator(TraingenUtils):
             - Calls `validate` when appropriate
 
         Interruption:
-            - Safe: during `get_data`, which can be called indefinitely
-            without changing any attributes.
-            - Avoid: during `_train_postiter_processing`, where `fit_fn` is
-            applied and weights are updated - but metrics aren't stored, and
-            `_has_postiter_processed=False`, restarting the loop without
-            recording progress.
+            - *Safe*: during `get_data`, which can be called indefinitely
+              without changing any attributes.
+            - *Avoid*: during `_train_postiter_processing`, where `fit_fn` is
+              applied and weights are updated - but metrics aren't stored, and
+              `_has_postiter_processed=False`, restarting the loop without
+              recording progress.
         """
         while self.epoch < self.epochs:
             if not self._has_trained:
@@ -197,14 +197,14 @@ class TrainGenerator(TraingenUtils):
             - Applies 'val_end' and maybe ('val_end': 'train:epoch') callbacks
 
         Interruption:
-            - Safe: during `get_data`, which can be called indefinitely
-            without changing any attributes.
-            - Avoid: during `_val_postiter_processing`. Model remains unaffected*,
-            but caches are updated; a restart may yield duplicate appending,
-            which will error or yield inaccuracies.
-            (* forward pass may consume random seed if random ops are used)
-            - In practice: prefer interrupting immediately after
-            `_print_iter_progress` executes
+            - *Safe*: during `get_data`, which can be called indefinitely
+              without changing any attributes.
+            - *Avoid*: during `_val_postiter_processing`. Model remains
+              unaffected*, but caches are updated; a restart may yield duplicate
+              appending, which will error or yield inaccuracies.
+              (* forward pass may consume random seed if random ops are used)
+            - *In practice*: prefer interrupting immediately after
+              `_print_iter_progress` executes
         """
         txt = ("Validating" if not self._has_validated else
                "Finishing post-val processing")
