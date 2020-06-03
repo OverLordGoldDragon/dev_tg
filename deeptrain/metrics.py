@@ -3,19 +3,19 @@ import os
 import numpy as np
 
 
-# def __getattr__(name):  # TODO
-#     """If not implemented, get from sklearn.metrics"""
-#     try:
-#         import sklearn.metrics
-#     except:
-#         raise ValueError("metrics '{name}' unsupported by deeptrain.metrics, "
-#                          "and `sklearn` is not installed; to include "
-#                          "sklearn.metrics, install sklearn.")
-#     try:
-#         return getattr(sklearn.metrics, name)
-#     except:
-#         raise ValueError(f"metric '{name}' is unsupported by deeptrain.metrics "
-#                          "and/or sklearn.metrics")
+def __getattr__(name):  # TODO
+    """If not implemented, get from sklearn.metrics"""
+    try:
+        import sklearn.metrics
+    except:
+        raise ValueError("metrics '{name}' unsupported by deeptrain.metrics, "
+                          "and `sklearn` is not installed; to include "
+                          "sklearn.metrics, install sklearn.")
+    try:
+        return getattr(sklearn.metrics, name)
+    except:
+        raise ValueError(f"metric '{name}' is unsupported by deeptrain.metrics "
+                          "and/or sklearn.metrics")
 
 PREC = os.environ.get('PRECISION', 'float32')
 EPS = 1e-7  # epsilon (keras default, K.epsilon())
