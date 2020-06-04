@@ -270,26 +270,26 @@ def test_preprocessing(monkeypatch):
             x1 = df['0'][16:].to_numpy()
             return x0, x1
 
-        def _test_batch_dim_0(savepath):
+        def _test_sample_dim_0(savepath):
             X = np.random.randint(0, 2, (16, 4))
             preprocessing.numpy2D_to_csv(data=X, savepath=savepath,
-                                         batch_size=32, batch_dim=0)
+                                         batch_size=32, sample_dim=0)
             x0, x1 = _batches_from_df(savepath)
             assert np.sum(np.abs(x0 - X[:, 0])) == 0
             assert np.sum(np.abs(x1 - X[:, 1])) == 0
 
-        def _test_batch_dim_1(savepath):
+        def _test_sample_dim_1(savepath):
             X = np.random.randint(0, 2, (4, 16))
             preprocessing.numpy2D_to_csv(data=X, savepath=savepath,
-                                         batch_size=32, batch_dim=1)
+                                         batch_size=32, sample_dim=1)
             x0, x1 = _batches_from_df(savepath)
             assert np.sum(np.abs(x0 - X[0])) == 0
             assert np.sum(np.abs(x1 - X[1])) == 0
 
         os.mkdir(datadir)
         savepath = os.path.join(datadir, "labels.csv")
-        _test_batch_dim_0(savepath)
-        _test_batch_dim_1(savepath)
+        _test_sample_dim_0(savepath)
+        _test_sample_dim_1(savepath)
 
     datadir = os.path.join(BASEDIR, "_data")
 

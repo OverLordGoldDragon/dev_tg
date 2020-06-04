@@ -13,6 +13,7 @@
 import sys
 from pathlib import Path
 rootdir = str(Path(__file__).parents[2])
+sys.path.insert(0, str(Path(Path(rootdir).parent, "see-rnn")))
 sys.path.insert(0, rootdir)
 
 
@@ -33,7 +34,6 @@ release = '0.0.1'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'guzzle_sphinx_theme',  # to generate sitemap.xml
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -62,6 +62,8 @@ html_css_files = [
     'css/custom.css',
 ]
 
+# Make "footnote [1]_" appear as "footnote[1]_"
+trim_footnote_reference_space = True
 
 # ReadTheDocs sets master doc to index.rst, whereas Sphinx expects it to be
 # contents.rst:
@@ -74,7 +76,7 @@ default_role = 'literal'
 pygments_style = 'sphinx'
 
 
-# -- Themeconfiguration ------------------------------------------------------
+# -- Theme configuration -----------------------------------------------------
 # import guzzle_sphinx_theme
 # html_theme_path = guzzle_sphinx_theme.html_theme_path()
 # html_theme = 'guzzle_sphinx_theme'
@@ -86,3 +88,14 @@ html_theme = 'sphinx_rtd_theme'
 # html_theme_options = {
 #     "project_nav_name": 'DeepTrain',
 # }
+
+# -- Autodoc configuration ---------------------------------------------------
+def skip(app, what, name, obj, would_skip, options):
+    # do not pull sklearn metrics docs in deeptrain.metrics
+    if getattr(obj, '__module__', '').startswith('sklearn.metrics'):
+        return True
+    return would_skip
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)
+

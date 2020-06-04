@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 ## TODO
 """- random seeds management in TrainGenerator?
-   - metrics .__module__ problem upon superreload
+   - metrics.py
+       - .__module__ problem upon superreload
+       - pulls sklearn.metrics docs
    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - 'min' for `max_is_best=False` in model naming
    - Handle KeyboardInterrupt - with, finally?

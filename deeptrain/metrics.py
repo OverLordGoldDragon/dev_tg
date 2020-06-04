@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 
-def __getattr__(name):  # TODO
+def __getattr__(name):
     """If not implemented, get from sklearn.metrics"""
     try:
         import sklearn.metrics
