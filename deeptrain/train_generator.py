@@ -535,6 +535,12 @@ class TrainGenerator(TraingenUtils):
 
     ########################## VISUAL/CALC METHODS ##########################
     def plot_history(self, update_fig=True, w=1, h=1):
+        """Plots train & validation history (from `history` and `val_history`).
+
+        - `update_fig=True` -> store latest fig in `_history_fig`.
+        - `w` & `h` scale the width & height, respectively, of the figure.
+        - Plots configured by `plot_configs`.
+        """
         def _show_closed_fig(fig):
             _fig = plt.figure()
             manager = _fig.canvas.manager
@@ -615,12 +621,16 @@ class TrainGenerator(TraingenUtils):
                      notify_detected_only=True):
         """Check whether any layer weights have 'zeros' or NaN weights;
            very fast.
-              - dead_threshold: float. Count values below this as zeros.
-              - dead_notify_above_frac: float. If fraction of values exceeds
-                    this, print it and the weight's name.
-              - notify_detected_only: bool.
-                    True  -> print only if dead/NaN found
-                    False -> print a 'not found' message
+
+        Arguments:
+            dead_threshold: float
+                Count values below this as zeros.
+            dead_notify_above_frac: float
+                If fraction of values exceeds this, print it and
+                the weight's name.
+            notify_detected_only: bool
+                True  -> print only if dead/NaN found
+                False -> print a 'not found' message
         """
         print_dead_weights(self.model, dead_threshold, dead_notify_above_frac,
                            notify_detected_only)
