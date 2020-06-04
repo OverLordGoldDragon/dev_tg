@@ -39,9 +39,13 @@ setup(
         "tensorflow keras deep-learning"
     ),
     install_requires=get_requirements('requirements.txt'),
+    extras_require={
+        "docs": ["keras"],
+        "travis": get_requirements('requirements-dev.txt'),
+        },
+    tests_require=["pytest>=4.0", "pytest-cov"],
     include_package_data=True,
     zip_safe=True,
-    tests_require=["pytest>=4.0", "pytest-cov"],
     classifiers=[
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
