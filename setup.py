@@ -40,7 +40,7 @@ setup(
     ),
     install_requires=get_requirements('requirements.txt'),
     extras_require={
-        "docs": ["keras"],
+        "docs": ["keras", "pandas"],
         "travis": get_requirements('requirements-dev.txt'),
         },
     tests_require=["pytest>=4.0", "pytest-cov"],
