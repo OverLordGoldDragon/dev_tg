@@ -92,8 +92,8 @@ def test_weighted_slices():
     C['traingen'].update(dict(eval_fn_name='predict',
                               loss_weighted_slices_range=(.5, 1.5),
                               pred_weighted_slices_range=(.5, 1.5)))
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=model)
         tg.train()
     print("\nTime elapsed: {:.3f}".format(time() - t0))
@@ -103,8 +103,8 @@ def test_weighted_slices():
 def test_predict():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         C['traingen'].update(dict(eval_fn_name='predict',
                                   key_metric='f1_score',
                                   val_metrics=('loss', 'tnr', 'tpr'),

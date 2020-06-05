@@ -155,8 +155,9 @@ layer_hists_cbs = [
 def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']), tempdir(logger_savedir):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']), \
+            tempdir(logger_savedir):
         callbacks = [_make_logger_cb(), _make_2Dviz_cb(), *layer_hists_cbs]
         C['traingen']['callbacks'] = callbacks
 
@@ -175,8 +176,9 @@ def _test_load(tg, C):
 @notify(tests_done)
 def test_traingen_logger():
     C = deepcopy(CONFIGS) # TODO star tuple with?
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']), tempdir(logger_savedir):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']), \
+            tempdir(logger_savedir):
         batch_shape = (batch_size, width, height, channels)
 
         n_classes = C['model']['num_classes']

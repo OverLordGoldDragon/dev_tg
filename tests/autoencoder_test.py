@@ -80,8 +80,8 @@ def init_session(C, weights_path=None, loadpath=None, model=None):
 def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
@@ -104,8 +104,8 @@ def _test_load(tg, C):
 def test_predict():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         C['traingen']['eval_fn_name'] = 'predict'
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))

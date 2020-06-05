@@ -271,6 +271,7 @@ class TraingenDummy():
 
         self.val_metrics = []
         self._sw_cache = []
+        self.custom_metrics = []
 
         self.logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
         self.best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs',

@@ -72,8 +72,8 @@ def init_session(C, weights_path=None, loadpath=None, model=None):
 @notify(tests_done)
 def test_model_save():
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=classifier)
 
         if 'model:weights' in tg.saveskip_list:
@@ -88,8 +88,8 @@ def test_model_save():
 @notify(tests_done)
 def test_model_save_weights():
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=classifier)
 
         if 'model' in tg.saveskip_list:

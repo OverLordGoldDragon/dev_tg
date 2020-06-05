@@ -3,6 +3,7 @@
 """- random seeds management in TrainGenerator?
    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - 'min' for `max_is_best=False` in model naming
+   - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?
    - Replace fit_fn_name w/ fit_fn?
@@ -90,7 +91,7 @@ class TrainGenerator(TraingenUtils):
         key_metric: str
             Name of metric to track for saving best model; will store in
             `key_metric_history`.
-            See :func:`~deeptrain.util.saving._save_best_model`
+            See :func:`~deeptrain.util.saving._save_best_model`.
         key_metric_fn: function / None
             Custom function to compute key metric; overrides `key_metric` if
             not None.
@@ -98,7 +99,18 @@ class TrainGenerator(TraingenUtils):
             Names of metrics to track during validation. Is overridden by
             model metrics (`model.compile(metrics=...)`)
             if `eval_fn_name != 'predict'`.
-        custom
+        custom_metrics: dict[str: function]
+            Name-function pairs of custom functions to use for gathering metrics.
+            Functions must obey `(y_true, y_pred)` input signature for first two
+            arguments. They may additionally supply `sample_weight` and
+            `pred_threshold`, which will be detected and used automatically.
+        input_as_labels: bool
+            Feed model input also to its output. Ex: autoencoders.
+        max_is_best: bool
+            Whether to consider greater `key_metric` as better in saving best
+            model. See :func:`~deeptrain.util.saving._save_best_model`.
+        val_freq: dict
+            pass
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,

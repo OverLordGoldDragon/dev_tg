@@ -97,8 +97,8 @@ def _test_load(tg, C):
 def test_predict():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         C['traingen']['eval_fn_name'] = 'predict'
         # tests misc._validate_traingen_configs
         C['traingen']['val_metrics'] = ['loss', 'acc']
@@ -110,8 +110,8 @@ def test_predict():
 def test_group_batch():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         for name in ('traingen', 'datagen', 'val_datagen'):
             C[name]['batch_size'] = 64
         C['model']['batch_shape'] = (64, width, height, channels)
@@ -124,8 +124,8 @@ def test_group_batch():
 def test_recursive_batch():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         for name in ('traingen', 'datagen', 'val_datagen'):
             C[name]['batch_size'] = 256
         C['model']['batch_shape'] = (256, width, height, channels)

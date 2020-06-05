@@ -22,7 +22,6 @@ from backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
-from deeptrain import callbacks
 from deeptrain import DataGenerator
 from deeptrain.visuals import layer_hists
 from deeptrain.util.misc import pass_on_error
@@ -88,8 +87,8 @@ init_session = _init_session
 def test_datagen():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=autoencoder)
         tg.train()
 
@@ -136,8 +135,8 @@ def test_visuals():
         pass_on_error(layer_hists, model, '*', mode='skeletons')
 
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=autoencoder)
         model = tg.model
         _layer_hists(model)
@@ -428,8 +427,8 @@ def test_util():
                   _validate_callbacks,
                   ]
     for _test in tests_all:
-        with tempdir(CONFIGS['traingen']['logs_dir']), tempdir(
-                CONFIGS['traingen']['best_models_dir']):
+        with tempdir(CONFIGS['traingen']['logs_dir']), \
+            tempdir(CONFIGS['traingen']['best_models_dir']):
             C = deepcopy(CONFIGS)  # reset dict
             _test(C)
             print("Passed", _test.__name__)
