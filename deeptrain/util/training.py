@@ -314,7 +314,6 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
     metric_names = self.val_metrics.copy()
     metrics = {}
     for name in metric_names:
-        api_name = _get_api_metric_name(name, self.model.loss)
         data = dict(y_true=labels_all_norm,
                     y_pred=preds_all_norm,
                     sample_weight=sample_weight_all,
@@ -324,7 +323,11 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
             metrics[name] = _compute_metric(data, metric_fn=self.key_metric_fn)
             if name == 'loss' or name[-1] == '*':
                 metrics[name] += weight_loss(self.model)
+        elif name in self.custom_metrics:
+            metrics[name] = _compute_metric(data,
+                                            metric_fn=self.custom_metrics[name])
         else:
+            api_name = _get_api_metric_name(name, self.model.loss)
             metrics[name] = _compute_metric(data, metric_name=api_name)
 
     metrics = _ensure_scalar_metrics(metrics)

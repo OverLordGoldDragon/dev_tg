@@ -256,16 +256,25 @@ def _validate_traingen_configs(self):
                 # check against alias since converted internally when computing
                 getattr(deeptrain.metrics, self._alias_to_metric_name(metric))
             except:
-                raise ValueError(failmsg)
+                if (not self.custom_metrics or
+                    (self.custom_metrics and metric not in self.custom_metrics)):
+                    raise ValueError(failmsg)
 
         model_metrics = model_util.get_model_metrics(self.model)
 
         vm_set_and_evaluate = self.val_metrics and self.eval_fn_name == 'evaluate'
-        if self.val_metrics is None or vm_set_and_evaluate:
-            if vm_set_and_evaluate:
-                print(WARN, "will override `val_metrics` with model metrics "
-                      "for `eval_fn_name` == 'evaluate'")
-            self.val_metrics = model_metrics.copy()
+        if self.val_metrics is None or '*' in self.val_metrics or (
+                vm_set_and_evaluate):
+            if self.val_metrics is None or vm_set_and_evaluate:
+                if vm_set_and_evaluate:
+                    print(WARN, "will override `val_metrics` with model metrics "
+                          "for `eval_fn_name == 'evaluate'`")
+                self.val_metrics = model_metrics.copy()
+            elif '*' in self.val_metrics:
+                for metric in model_metrics:
+                    # insert model metrics at wildcard's index
+                    self.val_metrics.insert(self.val_metrics.index('*'), metric)
+                self.val_metrics.pop(self.val_metrics.index('*'))
 
         for name in ('train_metrics', 'val_metrics'):
             value = getattr(self, name)

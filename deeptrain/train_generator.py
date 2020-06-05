@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 ## TODO
 """- random seeds management in TrainGenerator?
-   - metrics.py
-       - .__module__ problem upon superreload
-       - pulls sklearn.metrics docs
    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - 'min' for `max_is_best=False` in model naming
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?
+   - Replace fit_fn_name w/ fit_fn?
    - MetaTrainer
 """
 
@@ -51,6 +49,57 @@ sys.stdout = Unbuffered(sys.stdout)
 
 
 class TrainGenerator(TraingenUtils):
+    """The central DeepTrain class. Interfaces training, validation,
+    checkpointing, data loading, and progress tracking.
+
+    Arguments:
+        model: models.Model / models.Sequential [keras / tf.keras]
+            The model to train.
+        datagen: :class:`~deeptrain.data_generator.DataGenerator`
+            Train data generator; fetches inputs and labels, handles
+            preprocessing, shuffling, stateful formats, and informing
+            TrainGenerator when a dataset is exhausted (epoch end).
+        val_datagen: :class:`~deeptrain.data_generator.DataGenerator`
+            Validation data generator.
+        epochs: int
+            Number of train epochs.
+        logs_dir: str / None
+            Path to directory where to generate log directories, that include
+            TrainGenerator state, state report, model data, and others; see
+            :func:`~deeptrain.util.saving.checkpoint`. If `None`, will not
+            checkpoint - but model saving still possible via `best_models_dir`.
+        best_models_dir: str / None
+            Path to directory where to save best model. "Best" means having new
+            highest (`max_is_best==True`) or lowest (`max_is_best==False`)
+            entry in `key_metric_history`.
+            See :func:`~deeptrain.util.saving._save_best_model`.
+        loadpath: str / None
+            Path to .h5 file containing TrainGenerator state to load (postfixed
+            `'__state.h5'` by default). See :func:`~deeptrain.util.saving.load`.
+        callbacks: dict[str: function] /
+        :class:`~deeptrain.callbacks.TraingenCallback` / None
+            Functions to apply at various stages, including training, validation,
+            saving, loading, and `__init__`.
+            See :class:`~deeptrain.callbacks.TraingenCallback`.
+        fit_fn_name: str
+            Name of model method to feed data to during training; internally,
+            will define `fit_fn = getattr(model, 'fit')` (example).
+        eval_fn_name: str.
+            Name of model method to feed data to during validation; internally,
+            will define `eval_fn = getattr(model, 'evaluate')` (example).
+        key_metric: str
+            Name of metric to track for saving best model; will store in
+            `key_metric_history`.
+            See :func:`~deeptrain.util.saving._save_best_model`
+        key_metric_fn: function / None
+            Custom function to compute key metric; overrides `key_metric` if
+            not None.
+        val_metrics: list[str] / None
+            Names of metrics to track during validation. Is overridden by
+            model metrics (`model.compile(metrics=...)`)
+            if `eval_fn_name != 'predict'`.
+        custom
+    """
     @capture_args
     def __init__(self, model, datagen, val_datagen,
                  epochs=1,
@@ -101,7 +150,7 @@ class TrainGenerator(TraingenUtils):
         self.key_metric_fn=key_metric_fn
         self.train_metrics = model_util.get_model_metrics(model)
         self.val_metrics=val_metrics
-        self.custom_metrics=custom_metrics
+        self.custom_metrics=custom_metrics or {}
         self.input_as_labels=input_as_labels
         if max_is_best is None:
             value = False if self.key_metric == 'loss' else True
@@ -153,15 +202,18 @@ class TrainGenerator(TraingenUtils):
 
     ########################## MAIN METHODS ##########################
     def train(self):
-        """The main loop.
+        """The train loop.
+
             - Fetches data from `get_data`
             - Fits data via `fin_fn`
             - Processes fit metrics in `_train_postiter_processing`
             - Stores metrics in `history`
-            - Applies 'train:iter', 'train:batch', and 'train:epoch' callbacks
+            - Applies `'train:iter'`, `'train:batch'`, and `'train:epoch'`
+              callbacks
             - Calls `validate` when appropriate
 
-        Interruption:
+        **Interruption**:
+
             - *Safe*: during `get_data`, which can be called indefinitely
               without changing any attributes.
             - *Avoid*: during `_train_postiter_processing`, where `fit_fn` is
@@ -189,14 +241,15 @@ class TrainGenerator(TraingenUtils):
 
     def validate(self, record_progress=True, clear_cache=True):
         """Validation loop.
+
             - Fetches data from `get_data`
             - Applies function based on `eval_fn_name`
             - Processes and caches metrics/predictions in
               `_val_postiter_processing`
-            - Applies 'val:iter', 'val:batch', and 'val:epoch' callbacks
+            - Applies `'val:iter'`, `'val:batch'`, and `'val:epoch'` callbacks
             - Calls `_on_val_end` at end of validation to compute metrics
               and store them in `val_history`
-            - Applies 'val_end' and maybe ('val_end': 'train:epoch') callbacks
+            - Applies `'val_end'` and maybe `('val_end': 'train:epoch')` callbacks
 
         Interruption:
             - *Safe*: during `get_data`, which can be called indefinitely
@@ -561,15 +614,17 @@ class TrainGenerator(TraingenUtils):
             1. Class-based: inherit deeptrain.callbacks.TraingenCallback,
                define stage-based methods, e.g. on_train_epoch_end. Methods
                also take `stage` argument for further control, e.g. to only
-               call on_train_epoch_end when stage == ('val_end', 'train:epoch').
+               call `on_train_epoch_end` when
+               `stage == ('val_end', 'train:epoch')`.
             2. Function-based: make a dict of stage-function call pairs, e.g.:
-                {'train:epoch': (fn1, fn2),
-                 'val_batch': fn3,
-                 ('on_val_end': 'train:epoch"): fn4
-                }
-               `stage` is controlled such that (fn1, fn2) will also be called
-               on stage==('on_val_end', 'train:epoch') - but fn4 won't be,
-               on stage=='train:epoch'.
+
+               >>> {'train:epoch': (fn1, fn2),
+               ... 'val_batch': fn3,
+               ... ('on_val_end': "train:epoch"): fn4}
+
+               `stage` is controlled such that `(fn1, fn2)` will also be called
+               on `stage==('on_val_end', 'train:epoch')` - but `fn4` won't be,
+               on `stage=='train:epoch'`.
         """
         def _get_matching_stage(cb_keys, stage):
             if stage in cb_keys:
@@ -620,7 +675,7 @@ class TrainGenerator(TraingenUtils):
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
                      notify_detected_only=True):
         """Check whether any layer weights have 'zeros' or NaN weights;
-           very fast.
+        very fast.
 
         Arguments:
             dead_threshold: float
@@ -717,10 +772,14 @@ class TrainGenerator(TraingenUtils):
 
         def _maybe_set_key_metric_fn():
             if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
-                km_name = _get_api_metric_name(self.key_metric, self.model.loss,
-                                               self._alias_to_metric_name)
-                # if None, will catch in `_validate_traingen_configs`
-                self.key_metric_fn = getattr(metrics_fns, km_name, None)
+                if self.key_metric not in self.custom_metrics:
+                    km_name = _get_api_metric_name(self.key_metric,
+                                                   self.model.loss,
+                                                   self._alias_to_metric_name)
+                    # if None, will catch in `_validate_traingen_configs`
+                    self.key_metric_fn = getattr(metrics_fns, km_name, None)
+                else:
+                    self.key_metric_fn = self.custom_metrics[self.key_metric]
 
         _validate_kwarg_names(kwargs)
         _set_kwargs(kwargs)

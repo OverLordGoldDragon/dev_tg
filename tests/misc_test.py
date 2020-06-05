@@ -19,6 +19,7 @@ from backend import BASEDIR, tempdir, notify, make_classifier
 from backend import _init_session, _do_test_load, _get_test_names
 from deeptrain.util.logging import _log_init_state
 from deeptrain.util.misc import pass_on_error
+from deeptrain import metrics
 
 
 #### CONFIGURE TESTING #######################################################
@@ -76,8 +77,8 @@ def init_session(C, weights_path=None, loadpath=None, model=None):
 def test_main():
     t0 = time()
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']), tempdir(
-            C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         C['traingen'].update(dict(
             val_freq={'batch': 20},
             plot_history_freq={'val': 2},
@@ -127,8 +128,8 @@ def test_checkpoint():
                     if f.is_file() and not f.name[0] == '.'])  # omit dir & hidden
 
     C = deepcopy(CONFIGS)
-    with tempdir(C['traingen']['logs_dir']
-                 ), tempdir(C['traingen']['best_models_dir']):
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
         C['traingen']['max_checkpoints'] = 2
         tg = init_session(C, model=classifier)
         tg.train()
@@ -162,6 +163,40 @@ def test_checkpoint():
             "`max_checkpoints`==0 should behave like ==1, but number of "
             "files in `logdir` differs from that in first checkpoint "
             "({} -> {})".format(nfiles_1, nfiles_5))
+
+
+@notify(tests_done)
+def test_custom_metrics():
+    C = deepcopy(CONFIGS)
+    def f05_score(y_true, y_pred, pred_threshold=.5):
+        return metrics.f1_score(y_true, y_pred, pred_threshold, beta=.5)
+
+    def _test_eval_mode():
+        with tempdir(C['traingen']['logs_dir']), \
+            tempdir(C['traingen']['best_models_dir']):
+            C['traingen']['custom_metrics'] = {'f.5_score': f05_score}
+            C['traingen']['val_metrics'] = ['*', 'f.5_score']
+            C['traingen']['eval_fn_name'] = 'evaluate'
+            tg = init_session(C, model=classifier)
+
+            # should be dropped in _validate_traingen_configs:_validate_metrics
+            assert 'f.5 score' not in tg.val_metrics
+            tg.train()
+
+    def _test_predict_mode():
+        with tempdir(C['traingen']['logs_dir']), \
+            tempdir(C['traingen']['best_models_dir']):
+            C['traingen']['custom_metrics'] = {'f.5_score': f05_score}
+            C['traingen']['val_metrics'] = ['*', 'f.5_score']
+            C['traingen']['eval_fn_name'] = 'predict'
+            tg = init_session(C, model=classifier)
+
+            # model metrics should be inserted at wildcard
+            assert tg.val_metrics[-1] == 'f.5_score'
+            tg.train()
+
+    _test_eval_mode()
+    _test_predict_mode()
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

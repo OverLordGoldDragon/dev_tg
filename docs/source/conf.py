@@ -12,15 +12,17 @@
 #
 import sys
 from pathlib import Path
+from datetime import datetime
+
 rootdir = str(Path(__file__).parents[2])
-sys.path.insert(0, str(Path(Path(rootdir).parent, "see-rnn")))
+sys.path.insert(0, str(Path(Path(rootdir).parent, "see-rnn")))  # for local
 sys.path.insert(0, rootdir)
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'DeepTrain'
-copyright = '2020, OverLordGoldDragon'
+copyright = "%s, OverLordGoldDragon" % datetime.now().year
 author = 'OverLordGoldDragon'
 
 # The full version, including alpha/beta/rc tags
@@ -90,10 +92,18 @@ html_theme = 'sphinx_rtd_theme'
 # }
 
 # -- Autodoc configuration ---------------------------------------------------
+
+# Document module / class methods in order of writing (rather than alphabetically)
+autodoc_member_order = 'bysource'
+
+
 def skip(app, what, name, obj, would_skip, options):
     # do not pull sklearn metrics docs in deeptrain.metrics
     if getattr(obj, '__module__', '').startswith('sklearn.metrics'):
         return True
+    # include private methods
+    if name.startswith('_'):
+        return False
     return would_skip
 
 def setup(app):
