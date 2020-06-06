@@ -7,6 +7,7 @@
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?
    - Replace fit_fn_name w/ fit_fn?
+   - Doesn't work -- :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`
    - MetaTrainer
 """
 
@@ -44,7 +45,7 @@ from .introspection import print_dead_weights, print_nan_weights
 from .              import metrics as metrics_fns
 from .callbacks     import TraingenCallback
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
-from .backend import model_util
+from .backend import model_utils
 
 sys.stdout = Unbuffered(sys.stdout)
 
@@ -109,23 +110,25 @@ class TrainGenerator(TraingenUtils):
         max_is_best: bool
             Whether to consider greater `key_metric` as better in saving best
             model. See :func:`~deeptrain.util.saving._save_best_model`.
-        val_freq: dict[str: int] / None
-            How frequently to validate. Valid keys: `{'iter', 'batch', 'epoch',
-            'val'}`. Ex: `{'epoch': 1}` -> every epoch; `{'iter': 24}` -> every
-            24 train iterations. Only one key-value pair supported. If None,
-            won't validate.
-        plot_history_freq: dict[str: int] / None
-            How frequently to plot train & validation history. Valid keys:
-            same as `val_freq`'s. If None, won't plot history.
-        unique_checkpoint_freq: dict[str: int] / None
+        val_freq: None / dict[str: int], str in {'iter', 'batch', 'epoch', 'val'}
+            How frequently to validate. `{'epoch': 1}` -> every epoch;
+            `{'iter': 24}` -> every 24 train iterations. Only one key-value
+            pair supported. If None, won't validate.
+        plot_history_freq: None / dict[str: int], str in {'iter', 'batch', \
+        'epoch', 'val'}
+            How frequently to plot train & validation history. Only one key-value
+            pair supported. If None, won't plot history.
+        unique_checkpoint_freq: None / dict[str: int], str in {'iter', \
+        'batch', 'epoch', 'val'}
             How frequently to make checkpoints with unique savefile names, as
-            opposed to temporary ones which are overwritten each time. Valid keys:
-            same as `val_freq`'s. If None, won't make unique checkpoints.
-        temp_checkpoint_freq: dict[str: int] / None
+            opposed to temporary ones which are overwritten each time. Only one
+            key-value pair supported. If None, won't make unique checkpoints.
+        temp_checkpoint_freq: None / dict[str: int], str in {'iter', 'batch', \
+        'epoch', 'val'}
             How frequently to make checkpoints with the same predefined name,
             to be overwritten ("temporary"); serves as an intermediate
-            checkpoint to unique ones, if needed. Valid keys: same as
-            `val_freq`'s. If None, won't make temporary checkpoints.
+            checkpoint to unique ones, if needed. Only one key-value pair
+            supported. If None, won't make temporary checkpoints.
         class_weights: dict[int: int] / None
             Integer-mapping of class labels to their "weights"; if not None,
             will feed `sample_weight` mediated by the weights to train function
@@ -140,7 +143,7 @@ class TrainGenerator(TraingenUtils):
         reset_statefuls: bool
             Whether to call `model.reset_states()` at the end of every batch
             (train and val).
-        iter_verbosity: int
+        iter_verbosity: int in {0, 1, 2}
             - 0: print no iteration info
             - 1: print name of set being fit / validated, metric names and values,
                  and `model.reset_states()` being called
@@ -160,6 +163,29 @@ class TrainGenerator(TraingenUtils):
             Dict specifying :func:`~deeptrain.visuals.get_history_fig` behavior.
             See :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`, and
             :meth:`~deeptrain.util.misc._make_plot_configs_from_metrics`.
+        model_configs: dict / None
+            Dict specifying model information. Intended usage is: create `model`
+            according to the dict, specifying hyperparameters, loss function, etc.
+
+            >>> def make_model(batch_shape, units, optimizer, loss):
+            ...     ipt = Input(batch_shape=batch_shape)
+            ...     out = Dense(units)(ipt)
+            ...     model = Model(ipt, out)
+            ...     model.compile(optimizer, loss)
+            ...     return model
+            ...
+            >>> model_configs = {'batch_shape': (32, 16), 'units': 8,
+            ...                  'optimizer': 'adam', 'loss': 'mse'}
+            >>> model = make_model(**model_configs)
+
+            Checkpoints will include an image report with the entire dict;
+            the larger the portion of the model that's created according to
+            `model_configs`, the more will be documented for easy reference.
+        kwargs: keyword arguments.
+            See :data:`~deeptrain.util._default_configs._DEFAULT_TRAINGEN_CFG`.
+            `kwargs` and all other arguments are subject to validation and
+            correction by
+            :meth:`~deeptrain.util.misc._validate_traingen_configs`.
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,
@@ -209,7 +235,7 @@ class TrainGenerator(TraingenUtils):
         self.eval_fn_name=eval_fn_name
         self.key_metric=key_metric
         self.key_metric_fn=key_metric_fn
-        self.train_metrics = model_util.get_model_metrics(model)
+        self.train_metrics = model_utils.get_model_metrics(model)
         self.val_metrics=val_metrics
         self.custom_metrics=custom_metrics or {}
         self.input_as_labels=input_as_labels
@@ -506,7 +532,46 @@ class TrainGenerator(TraingenUtils):
         self._has_validated = False
         self._has_trained = False
 
+    def get_data(self, val=False):
+        """Get train (`val=False`) or validation (`val=True`) data from
+        `datagen` or `val_datagen`, respectively.
+        See :class:`~deeptrain.data_generator.DataGenerator`.
+
+        `DataGenerator.get()` returns `x, labels`; if `input_as_data == True`,
+        sets `y = x` - else, `y = labels`. Either way, sets
+        `class_labels = labels`. Generates `sample_weight` from `class_labels`.
+        """
+        def _standardize_shape(labels):
+            class_labels = labels
+            # broadcast `labels` to same rank as `model.output_shape`
+            while len(labels.shape) < len(self.model.output_shape):
+                class_labels = np.expand_dims(labels, -1)
+            return class_labels
+
+        datagen = self.val_datagen if val else self.datagen
+        if datagen.batch_exhausted:
+            datagen.advance_batch()
+            setattr(self, '_val_set_name' if val else '_set_name',
+                    datagen.set_name)
+
+        x, labels = datagen.get()
+        y = labels if not self.input_as_labels else x
+
+        class_labels = _standardize_shape(labels)
+        slice_idx = getattr(datagen, 'slice_idx', None)
+        sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
+
+        return x, y, sample_weight
+
     def clear_cache(self, reset_val_flags=False):  # to `validate` from scratch
+        """Call to reset cache attributes accumulated during validation; useful
+        for "restarting" validation (before calling
+        :meth:`TrainGenerator.validate`).
+
+        Attributes set to `[]`: `{'_preds_cache', '_labels_cache', '_sw_cache',
+        '_class_labels_cach', '_set_name_cache', '_val_set_name_cach',
+        '_y_true', '_val_sw'}`.
+        """
         attrs_to_clear = ('_preds_cache', '_labels_cache', '_sw_cache',
                           '_class_labels_cache',
                           '_set_name_cache', '_val_set_name_cache',
@@ -538,31 +603,10 @@ class TrainGenerator(TraingenUtils):
         elif freq_mode == 'val':
             return (self._times_validated % freq_value == 0)
 
-    ########################## DATA_GET METHODS ##########################
-    def get_data(self, val=False):
-        def _standardize_shape(class_labels):
-            while len(class_labels.shape) < len(self.model.output_shape):
-                class_labels = np.expand_dims(class_labels, -1)
-            return class_labels
-
-        datagen = self.val_datagen if val else self.datagen
-        if datagen.batch_exhausted:
-            datagen.advance_batch()
-            setattr(self, '_val_set_name' if val else '_set_name',
-                    datagen.set_name)
-
-        x, labels = datagen.get()
-        y = labels if not self.input_as_labels else x
-
-        class_labels = _standardize_shape(labels)
-        slice_idx = getattr(datagen, 'slice_idx', None)
-        sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
-
-        return x, y, sample_weight
-
     ########################## LOG METHODS ################################
     def _update_val_iter_cache(self):
         def _standardize_shapes(*data):
+            # ensure shapes are in format expected by methods in util.training
             ls = []
             for x in data:
                 while len(x.shape) < len(self.model.output_shape):
@@ -581,6 +625,8 @@ class TrainGenerator(TraingenUtils):
             return
 
         if getattr(self.val_datagen, 'slice_idx', None) == 0:
+            # if using sliced batches, append a container to accumulate
+            # data for the multiple iterations (slices) per batch
             self._labels_cache.append([])
             self._class_labels_cache.append([])
             self._sw_cache.append([])
@@ -855,48 +901,48 @@ class TrainGenerator(TraingenUtils):
         self.eval_fn = getattr(self.model, self.eval_fn_name)
 
     def _init_class_vars(self):
-        def _init_misc():
-            self.best_key_metric=0 if self.max_is_best else 999
-            self.epoch=0
-            self.val_epoch=0
-            self._set_name=None
-            self._val_set_name=None
-            self.model_name=self.get_unique_model_name()
-            self.model_num=int(self.model_name.split('__')[0].replace('M', ''))
-            self._imports = IMPORTS.copy()
+        """Instantiates various internal attributes. Most of these are saved
+        and loaded by default."""
+        #### init misc attributes ############################################
+        self.best_key_metric=0 if self.max_is_best else 999
+        self.epoch=0
+        self.val_epoch=0
+        self._set_name=None
+        self._val_set_name=None
+        self.model_name=self.get_unique_model_name()
+        self.model_num=int(self.model_name.split('__')[0].replace('M', ''))
+        self._imports = IMPORTS.copy()
 
-            self._history_fig=None
-            self._times_validated=0
-            self._batches_fit=0
-            self._batches_validated=0
-            self._fit_iters=0
-            self._val_iters=0
-            self._has_trained=False
-            self._has_validated=False
-            self._has_postiter_processed=True
-            self._val_has_postiter_processed=True
-            self._train_has_notified_of_new_batch=False
-            self._val_has_notified_of_new_batch=False
-            self._inferred_batch_size=None
+        self._history_fig=None
+        self._times_validated=0
+        self._batches_fit=0
+        self._batches_validated=0
+        self._fit_iters=0
+        self._val_iters=0
+        self._has_trained=False
+        self._has_validated=False
+        self._has_postiter_processed=True
+        self._val_has_postiter_processed=True
+        self._train_has_notified_of_new_batch=False
+        self._val_has_notified_of_new_batch=False
+        self._inferred_batch_size=None
 
-            as_empty_list = [
-                'key_metric_history', 'best_subset_nums', '_labels',
-                '_preds_cache', '_labels_cache', '_sw_cache',
-                '_class_labels_cache',
-                '_set_name_cache', '_val_set_name_cache',
-                '_hist_vlines', '_val_hist_vlines',
-                '_train_x_ticks', '_train_val_x_ticks',
-                '_val_x_ticks', '_val_train_x_ticks',
-                ]
-            [setattr(self, name, []) for name in as_empty_list]
+        as_empty_list = [
+            'key_metric_history', 'best_subset_nums', '_labels',
+            '_preds_cache', '_labels_cache', '_sw_cache',
+            '_class_labels_cache',
+            '_set_name_cache', '_val_set_name_cache',
+            '_hist_vlines', '_val_hist_vlines',
+            '_train_x_ticks', '_train_val_x_ticks',
+            '_val_x_ticks', '_val_train_x_ticks',
+            ]
+        [setattr(self, name, []) for name in as_empty_list]
 
-        def _init_histories():
-            self.history          = {name: [] for name in self.train_metrics}
-            self.temp_history     = {name: [] for name in self.train_metrics}
-            self.val_history      = {name: [] for name in self.val_metrics}
-            self.val_temp_history = {name: [] for name in self.val_metrics}
-            self._temp_history_empty     = deepcopy(self.temp_history)
-            self._val_temp_history_empty = deepcopy(self.val_temp_history)
+        #### init histories ##################################################
+        self.history          = {name: [] for name in self.train_metrics}
+        self.temp_history     = {name: [] for name in self.train_metrics}
+        self.val_history      = {name: [] for name in self.val_metrics}
+        self.val_temp_history = {name: [] for name in self.val_metrics}
+        self._temp_history_empty     = deepcopy(self.temp_history)
+        self._val_temp_history_empty = deepcopy(self.val_temp_history)
 
-        _init_misc()
-        _init_histories()

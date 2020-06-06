@@ -10,7 +10,7 @@ from inspect import getfullargspec
 from copy import deepcopy
 from collections.abc import Mapping
 
-from deeptrain.backend import model_util
+from deeptrain.backend import model_utils
 from .algorithms import deepmap, deepcopy_v2, deep_isinstance
 from .algorithms import builtin_or_npscalar
 from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
@@ -260,7 +260,7 @@ def _validate_traingen_configs(self):
                     (self.custom_metrics and metric not in self.custom_metrics)):
                     raise ValueError(failmsg)
 
-        model_metrics = model_util.get_model_metrics(self.model)
+        model_metrics = model_utils.get_model_metrics(self.model)
 
         vm_set_and_evaluate = self.val_metrics and self.eval_fn_name == 'evaluate'
         if self.val_metrics is None or '*' in self.val_metrics or (

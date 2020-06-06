@@ -8,7 +8,7 @@ from pathlib import Path
 from ._backend import K, WARN
 from ..visuals import get_history_fig
 from .misc import pass_on_error, _init_optimizer, exclude_unpickleable
-from ..backend import tensor_util
+from ..backend import tensor_utils
 
 
 def _save_best_model(self, del_previous_best=False):
@@ -200,7 +200,7 @@ def save(self, savepath=None):
 
             value = getattr(opt, name, None)
             if isinstance(value, tf.Variable):
-                state[name] = tensor_util.eval_tensor(value, backend=K)
+                state[name] = tensor_utils.eval_tensor(value, backend=K)
             else:
                 state[name] = value
         return state

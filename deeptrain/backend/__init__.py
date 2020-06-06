@@ -11,7 +11,7 @@ else:
     import keras.backend as K
 
 ###############################################################################
-from . import model_util
+from . import model_utils
 
-from .model_util import *
+from .model_utils import *
 
