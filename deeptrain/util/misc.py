@@ -481,16 +481,15 @@ def _validate_traingen_configs(self):
             raise ValueError("f`keras` `model.save_weights()` does not support "
                              "'save_format' kwarg, defaulting to 'h5'")
 
-    _validate_metrics()
-    _validate_directories()
-    _validate_optimizer_saving_configs()
-    _validate_saveskip_list()
-    _validate_loadskip_list()
-    _validate_weighted_slices_range()
-    _validate_class_weights()
-    _validate_best_subset_size()
-    _validate_dynamic_predict_threshold_min_max()
-    _validate_or_make_plot_configs()
-    _validate_metric_printskip_configs()
-    _validate_callbacks()
-    _validate_model_save_kw()
+    def _validate_freq_configs():
+        for name in ('val_freq', 'plot_history_freq', 'unique_checkpoint_freq',
+                     'temp_checkpoint_freq'):
+            attr = getattr(self, name)
+            assert isinstance(attr, (dict, type(None))
+                              ), f"{name} must be dict or None (got: {attr})"
+            assert len(attr) <= 1, (
+                f"{name} supports up to one key-value pair (got: {attr})")
+
+    for name, fn in locals().items():
+        if name.startswith('_validate_'):
+            fn()

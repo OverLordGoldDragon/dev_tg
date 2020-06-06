@@ -109,8 +109,27 @@ class TrainGenerator(TraingenUtils):
         max_is_best: bool
             Whether to consider greater `key_metric` as better in saving best
             model. See :func:`~deeptrain.util.saving._save_best_model`.
-        val_freq: dict
+        val_freq: dict[str: int] / None
+            How frequently to validate. Valid keys: `{'iter', 'batch', 'epoch',
+            'val'}`. Ex: `{'epoch': 1}` -> every epoch; `{'iter': 24}` -> every
+            24 train iterations. Only one key-value pair supported. If None,
+            won't validate.
+        plot_history_freq: dict[str: int] / None
+            How frequently to plot train & validation history. Valid keys:
+            same as `val_freq`'s. If None, won't plot history.
+        unique_checkpoint_freq: dict[str: int] / None
+            How frequently to make checkpoints with unique savefile names, as
+            opposed to temporary ones which are overwritten each time. Valid keys:
+            same as `val_freq`'s. If None, won't make unique checkpoints.
+        temp_checkpoint_freq: dict[str: int] / None
+            How frequently to make checkpoints with the same predefined name,
+            to be overwritten ("temporary"); serves as an intermediate
+            checkpoint to unique ones, if needed. Valid keys: same as
+            `val_freq`'s. If None, won't make temporary checkpoints.
+        class_weights: dict[int: int] / None
             pass
+
+
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,
