@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""**! DO NOT MODIFY !**
+Used internally by classes to validate input arguments.
+Effective configurations are in configs.py. Can serve as user reference.
+"""
 import numpy as np
 from .fonts import fontsdir
 

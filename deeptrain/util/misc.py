@@ -487,8 +487,9 @@ def _validate_traingen_configs(self):
             attr = getattr(self, name)
             assert isinstance(attr, (dict, type(None))
                               ), f"{name} must be dict or None (got: {attr})"
-            assert len(attr) <= 1, (
-                f"{name} supports up to one key-value pair (got: {attr})")
+            if isinstance(attr, dict):
+                assert len(attr) <= 1, (
+                    f"{name} supports up to one key-value pair (got: {attr})")
 
     for name, fn in locals().items():
         if name.startswith('_validate_'):

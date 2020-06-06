@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from pathlib import Path
 from ._backend import K, WARN
-from ..visuals import _get_history_fig
+from ..visuals import get_history_fig
 from .misc import pass_on_error, _init_optimizer, exclude_unpickleable
 from ..backend import tensor_util
 
@@ -41,7 +41,7 @@ def _save_best_model(self, del_previous_best=False):
     for path, save_fn in save_fns:
         save_fn(path)
 
-    self._history_fig = _get_history_fig(self)
+    self._history_fig = get_history_fig(self)
     self._history_fig.savefig(basepath + '.png')
 
     self.save(basepath + '__state.h5')

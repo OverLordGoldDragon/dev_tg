@@ -77,7 +77,7 @@ class TrainGenerator(TraingenUtils):
         loadpath: str / None
             Path to .h5 file containing TrainGenerator state to load (postfixed
             `'__state.h5'` by default). See :func:`~deeptrain.util.saving.load`.
-        callbacks: dict[str: function] /
+        callbacks: dict[str: function] /\
         :class:`~deeptrain.callbacks.TraingenCallback` / None
             Functions to apply at various stages, including training, validation,
             saving, loading, and `__init__`.
@@ -127,9 +127,39 @@ class TrainGenerator(TraingenUtils):
             checkpoint to unique ones, if needed. Valid keys: same as
             `val_freq`'s. If None, won't make temporary checkpoints.
         class_weights: dict[int: int] / None
-            pass
+            Integer-mapping of class labels to their "weights"; if not None,
+            will feed `sample_weight` mediated by the weights to train function
+            (`fit_fn`).
 
+            >>> class_weights = {0: 4, 1: 1}
+            >>> labels        == [1, 1, 0, 1]  # if
+            >>> sample_weight == [4, 4, 1, 4]  # then
 
+        val_class_weights: dict[int: int] / None
+            `class_weights` for validation function (`eval_fn`).
+        reset_statefuls: bool
+            Whether to call `model.reset_states()` at the end of every batch
+            (train and val).
+        iter_verbosity: int
+            - 0: print no iteration info
+            - 1: print name of set being fit / validated, metric names and values,
+                 and `model.reset_states()` being called
+            - 2: print a `'.'` at every iteration (useful if having multiple
+              iterations per batch)
+        logdir: str / None
+            Directory where to write logs to (see `logs_dir`). Use to specify
+            an existing directory (to, for example, resume training and logging
+            in original folder). Overrides `logs_dir`.
+        optimizer_save_configs: dict / None
+            Dict specifying which optimizer attributes to include or exclude
+            when saving. See :func:`~deeptrain.util.saving.save`.
+        optimizer_load_configs: dict / None
+            Dict specifying which optimizer attributes to include or exclude
+            when loading. See :func:`~deeptrain.util.saving.load`.
+        plot_configs: dict / None
+            Dict specifying :func:`~deeptrain.visuals.get_history_fig` behavior.
+            See :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`, and
+            :meth:`~deeptrain.util.misc._make_plot_configs_from_metrics`.
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,
@@ -632,7 +662,7 @@ class TrainGenerator(TraingenUtils):
             fig.set_canvas(manager.canvas)
             plt.show()
 
-        fig = self._get_history_fig(self.plot_configs, w, h)
+        fig = self.get_history_fig(self.plot_configs, w, h)
         if update_fig:
             self._history_fig = fig
         _show_closed_fig(fig)

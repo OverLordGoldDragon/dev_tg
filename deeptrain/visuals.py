@@ -174,7 +174,7 @@ def viz_roc_auc(y_true, y_pred):
     _plot(pts, score)
 
 
-def _get_history_fig(self, plot_configs=None, w=1, h=1):
+def get_history_fig(self, plot_configs=None, w=1, h=1):
     def _unpack_plot_kw(config):
         reserved_keys = ('metrics', 'x_ticks', 'vhlines',
                          'mark_best_cfg', 'ylims', 'legend_kw')
