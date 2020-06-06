@@ -544,8 +544,8 @@ class TrainGenerator(TraingenUtils):
         def _standardize_shape(labels):
             class_labels = labels
             # broadcast `labels` to same rank as `model.output_shape`
-            while len(labels.shape) < len(self.model.output_shape):
-                class_labels = np.expand_dims(labels, -1)
+            while len(class_labels.shape) < len(self.model.output_shape):
+                class_labels = np.expand_dims(class_labels, -1)
             return class_labels
 
         datagen = self.val_datagen if val else self.datagen
