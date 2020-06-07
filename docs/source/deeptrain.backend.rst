@@ -4,18 +4,18 @@ deeptrain.backend package
 Submodules
 ----------
 
-deeptrain.backend.model\_util module
-------------------------------------
+deeptrain.backend.model\_utils module
+-------------------------------------
 
-.. automodule:: deeptrain.backend.model_util
+.. automodule:: deeptrain.backend.model_utils
    :members:
    :undoc-members:
    :show-inheritance:
 
-deeptrain.backend.tensor\_util module
--------------------------------------
+deeptrain.backend.tensor\_utils module
+--------------------------------------
 
-.. automodule:: deeptrain.backend.tensor_util
+.. automodule:: deeptrain.backend.tensor_utils
    :members:
    :undoc-members:
    :show-inheritance:

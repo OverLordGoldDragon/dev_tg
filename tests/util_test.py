@@ -186,6 +186,11 @@ def test_training():
 
 
 @notify(tests_done)
+def test_cust():
+    pass
+
+
+@notify(tests_done)
 def test_configs():
     for name_fn in (configs._NAME_PROCESS_KEY_FN,
                     _default_configs._DEFAULT_NAME_PROCESS_KEY_FN):

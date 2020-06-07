@@ -2,6 +2,12 @@
 import numpy as np
 from .fonts import fontsdir
 
+#: Doc comment etc
+PUB_DICT = {
+    'a': 1
+}
+"""Docstring"""
+
 
 _PLOT_CFG = {
 '1': {

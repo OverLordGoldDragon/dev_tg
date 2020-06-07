@@ -186,6 +186,9 @@ class TrainGenerator(TraingenUtils):
             `kwargs` and all other arguments are subject to validation and
             correction by
             :meth:`~deeptrain.util.misc._validate_traingen_configs`.
+            :data:`~deeptrain.util.misc.configs.PUB_DICT`
+            :data:`~deeptrain.util.misc._default_configs.PUB_DICT`
+            :data:`~deeptrain.util.misc._default_configs._PRIV_DICT`
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,
@@ -431,6 +434,20 @@ class TrainGenerator(TraingenUtils):
 
     def _val_postiter_processing(self, record_progress=True, metrics=None,
                                  batch_size=None):
+        """Procedures done after every validation iteration. Unless marked
+        "always", are conditional and may skip.
+
+            - Update temp val history (always)
+            - Update `val_datagen` state (alwawys)
+            - Update val cache (preds, labels, etc)
+            - Update val history
+            - Reset statefuls
+            - Print progress
+            - Apply callbacks
+
+        Executes internal "callbacks" when appropriate: `_on_iter_end`,
+        `_on_batch_end`, `_on_epoch_end`. List not exhaustive.
+        """
         def _on_iter_end(metrics=None, batch_size=None):
             if metrics is not None:
                 self._update_temp_history(metrics, val=True)
@@ -475,6 +492,19 @@ class TrainGenerator(TraingenUtils):
 
 
     def _on_val_end(self, record_progress, clear_cache):
+        """Procedures done after :meth:`~validate`. Unless marked "always", are
+        conditional and may skip. List not exhaustive.
+
+            - Update train/val history
+            - Clear cache
+            - Plot history
+            - Checkpoint
+            - Apply callbacks
+            - Check model health
+            - Validate `batch_size` (always)
+            - Reset validation flags: `_inferred_batch_size`, `_has_validated`,
+              `_has_trained` (always)
+        """
         def _record_progress():
             self._times_validated += 1
             self.val_epoch = self.val_datagen.on_epoch_end()
@@ -495,7 +525,7 @@ class TrainGenerator(TraingenUtils):
                     self.checkpoint()
 
         def _print_best_subset():
-            best_nums = ", ".join([str(x) for x in self.best_subset_nums])
+            best_nums = ", ".join(map(str, self.best_subset_nums))
             best_size = self.best_subset_size
             print("Best {}-subset: {}".format(best_size, best_nums))
 
@@ -566,7 +596,7 @@ class TrainGenerator(TraingenUtils):
     def clear_cache(self, reset_val_flags=False):  # to `validate` from scratch
         """Call to reset cache attributes accumulated during validation; useful
         for "restarting" validation (before calling
-        :meth:`TrainGenerator.validate`).
+        :meth:`validate`).
 
         Attributes set to `[]`: `{'_preds_cache', '_labels_cache', '_sw_cache',
         '_class_labels_cach', '_set_name_cache', '_val_set_name_cach',

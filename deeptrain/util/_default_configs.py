@@ -6,6 +6,18 @@ Effective configurations are in configs.py. Can serve as user reference.
 import numpy as np
 from .fonts import fontsdir
 
+#: Doc comment etc
+PUB_DICT = {
+    'a': 1
+}
+"""Docstring"""
+
+#: Doc comment etc
+_PRIV_DICT = {
+    'a': 1
+}
+"""Docstring"""
+
 
 _DEFAULT_PLOT_CFG = {
 '1': {
