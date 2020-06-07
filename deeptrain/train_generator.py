@@ -186,9 +186,6 @@ class TrainGenerator(TraingenUtils):
             `kwargs` and all other arguments are subject to validation and
             correction by
             :meth:`~deeptrain.util.misc._validate_traingen_configs`.
-            :data:`~deeptrain.util.misc.configs.PUB_DICT`
-            :data:`~deeptrain.util.misc._default_configs.PUB_DICT`
-            :data:`~deeptrain.util.misc._default_configs._PRIV_DICT`
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,

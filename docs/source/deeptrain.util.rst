@@ -35,6 +35,8 @@ deeptrain.util.\_default\_configs module
    :undoc-members:
    :show-inheritance:
 
+.. pprint:: deeptrain.util._default_configs._DEFAULT_TRAINGEN_CFG
+
 deeptrain.util.data\_loaders module
 -----------------------------------
 

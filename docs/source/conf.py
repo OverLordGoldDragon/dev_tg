@@ -91,6 +91,47 @@ def skip(app, what, name, obj, would_skip, options):
         return False
     return would_skip
 
+from importlib import import_module
+from docutils.parsers.rst import Directive
+from docutils import nodes
+from sphinx import addnodes
+from inspect import getsource
+
+
+class PrettyPrintIterable(Directive):
+    required_arguments = 1
+
+    def run(self):
+        def _get_var_source(src, varname):
+            # 1. identifies target iterable by variable name, (cannot be spaced)
+            # 2. determines iter source code start & end by tracking brackets
+            # 3. returns source code between found start & end
+            start = end = None
+            open_brackets = closed_brackets = 0
+            for i, line in enumerate(src):
+                if line.startswith(varname):
+                    if start is None:
+                        start = i
+                if start is not None:
+                    open_brackets   += sum(line.count(b) for b in "([{")
+                    closed_brackets += sum(line.count(b) for b in ")]}")
+
+                if open_brackets > 0 and (open_brackets - closed_brackets == 0):
+                    end = i + 1
+                    break
+            return '\n'.join(src[start:end])
+
+        module_path, member_name = self.arguments[0].rsplit('.', 1)
+        src = getsource(import_module(module_path)).split('\n')
+        code = _get_var_source(src, member_name)
+
+        literal = nodes.literal_block(code, code)
+        literal['language'] = 'python'
+
+        return [addnodes.desc_name(text=member_name),
+                addnodes.desc_content('', literal)]
+
 def setup(app):
     app.add_stylesheet("style.css")
+    app.add_directive('pprint', PrettyPrintIterable)
     app.connect("autodoc-skip-member", skip)

@@ -2,13 +2,8 @@
 import numpy as np
 from .fonts import fontsdir
 
-#: Doc comment etc
-PUB_DICT = {
-    'a': 1
-}
-"""Docstring"""
 
-
+#:
 _PLOT_CFG = {
 '1': {
     'metrics': None,
@@ -219,7 +214,7 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
 
     return "_{}{}".format(alias, val)
 
-
+#:
 _TRAINGEN_CFG = dict(
     dynamic_predict_threshold_min_max = None,
     checkpoints_overwrite_duplicates  = True,

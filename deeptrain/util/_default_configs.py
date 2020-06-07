@@ -6,19 +6,8 @@ Effective configurations are in configs.py. Can serve as user reference.
 import numpy as np
 from .fonts import fontsdir
 
-#: Doc comment etc
-PUB_DICT = {
-    'a': 1
-}
-"""Docstring"""
 
-#: Doc comment etc
-_PRIV_DICT = {
-    'a': 1
-}
-"""Docstring"""
-
-
+#:
 _DEFAULT_PLOT_CFG = {
 '1': {
     'metrics': None,
@@ -229,7 +218,7 @@ def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, configs):
 
     return "_{}{}".format(alias, val)
 
-
+#:
 _DEFAULT_TRAINGEN_CFG = dict(
     dynamic_predict_threshold_min_max = None,
     checkpoints_overwrite_duplicates  = True,
@@ -237,7 +226,7 @@ _DEFAULT_TRAINGEN_CFG = dict(
     pred_weighted_slices_range  = None,
     logs_use_full_model_name    = True,
     model_num_continue_from_max = True,
-    dynamic_predict_threshold   = 0.5,  # initial
+    dynamic_predict_threshold   = 0.5,  # initia
     plot_first_pane_max_vals    = 2,
     _val_max_set_name_chars     = 2,
     _max_set_name_chars  = 3,
