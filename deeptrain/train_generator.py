@@ -6,7 +6,6 @@
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?
-   - Replace fit_fn_name w/ fit_fn?
    - Doesn't work -- :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`
    - support all fit & eval fns
    - MetaTrainer
@@ -84,12 +83,12 @@ class TrainGenerator(TraingenUtils):
             Functions to apply at various stages, including training, validation,
             saving, loading, and `__init__`.
             See :class:`~deeptrain.callbacks.TraingenCallback`.
-        fit_fn_name: str
-            Name of model method to feed data to during training; internally,
-            will define `fit_fn = getattr(model, 'fit')` (example).
-        eval_fn_name: str.
-            Name of model method to feed data to during validation; internally,
-            will define `eval_fn = getattr(model, 'evaluate')` (example).
+        fit_fn: str / function
+            Function, or name of model method to feed data to during training;
+            if str, will define `fit_fn = getattr(model, 'fit')` (example).
+        eval_fn: str / function
+            Name of model method to feed data to during validation;
+            if str, will define `eval_fn = getattr(model, 'evaluate')` (example).
         key_metric: str
             Name of metric to track for saving best model; will store in
             `key_metric_history`.
@@ -100,7 +99,7 @@ class TrainGenerator(TraingenUtils):
         val_metrics: list[str] / None
             Names of metrics to track during validation. Is overridden by
             model metrics (`model.compile(metrics=...)`)
-            if `eval_fn_name != 'predict'`.
+            if `'predict' not in `eval_fn.__name__`.
         custom_metrics: dict[str: function]
             Name-function pairs of custom functions to use for gathering metrics.
             Functions must obey `(y_true, y_pred)` input signature for first two
@@ -269,10 +268,13 @@ class TrainGenerator(TraingenUtils):
                                              ) else getattr(model, fit_fn)
         self.eval_fn=eval_fn if not isinstance(eval_fn, str
                                                ) else getattr(model, eval_fn)
-        self._fit_fn_args = argspec(self.fit_fn)
-        self._eval_fn_args = argspec(self.eval_fn)
         self._fit_fn_name = self.fit_fn.__qualname__.split('.')[-1]
         self._eval_fn_name = self.eval_fn.__qualname__.split('.')[-1]
+
+        # omit args not used internally for speedup in `_get_inputs`
+        usable = ['x', 'y', 'sample_weight', 'batch_size', 'verbose']
+        self._fit_fn_args = [a for a in argspec(self.fit_fn) if a in usable]
+        self._eval_fn_args = [a for a in argspec(self.eval_fn) if a in usable]
 
         #### loading, logging, callbacks, kwargs init #########################
         self._passed_args = kwargs.pop('_passed_args', None)

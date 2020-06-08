@@ -99,7 +99,7 @@ def test_predict():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
-        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['eval_fn'] = 'predict'
         # tests misc._validate_traingen_configs
         C['traingen']['val_metrics'] = ['loss', 'acc']
         _test_main(C)

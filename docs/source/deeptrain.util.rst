@@ -27,8 +27,8 @@ deeptrain.util.configs module
    :undoc-members:
    :show-inheritance:
 
-deeptrain.util.\_default\_configs module
-----------------------------------------
+``deeptrain.util._default_configs`` module
+------------------------------------------
 
 .. automodule:: deeptrain.util._default_configs
    :members:

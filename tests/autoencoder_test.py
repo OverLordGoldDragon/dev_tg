@@ -106,7 +106,7 @@ def test_predict():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
-        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['eval_fn'] = 'predict'
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

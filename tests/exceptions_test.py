@@ -247,7 +247,7 @@ def test_util():
 
     def _validate_weighted_slices_range(C):  # [util.misc]
         C['traingen']['pred_weighted_slices_range'] = (.5, 1.5)
-        C['traingen']['eval_fn_name'] = 'evaluate'
+        C['traingen']['eval_fn'] = 'evaluate'
         pass_on_error(_util_make_autoencoder, C)
 
         C = deepcopy(CONFIGS)
@@ -259,11 +259,11 @@ def test_util():
         pass_on_error(tg._validate_traingen_configs)
 
         C['traingen']['max_is_best'] = True
-        C['traingen']['eval_fn_name'] = 'evaluate'
+        C['traingen']['eval_fn'] = 'evaluate'
         C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
         pass_on_error(_util_make_classifier, C)
 
-        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['eval_fn'] = 'predict'
         pass_on_error(_util_make_classifier, C)
 
         C = deepcopy(CONFIGS)
@@ -315,7 +315,7 @@ def test_util():
         pass_on_error(tg._update_temp_history, metrics=[[1, 2]], val=False)
 
     def _validate_metrics(C):  # [util.misc]
-        C['traingen']['eval_fn_name'] = 'evaluate'
+        C['traingen']['eval_fn'] = 'evaluate'
         C['traingen']['key_metric'] = 'hinge'
         pass_on_error(_util_make_autoencoder, C)
 
@@ -325,7 +325,7 @@ def test_util():
         C = deepcopy(CONFIGS)
         C['traingen']['key_metric'] = 'swordfish'
         C['traingen']['key_metric_fn'] = None
-        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['eval_fn'] = 'predict'
         pass_on_error(_util_make_autoencoder, C)
 
         C = deepcopy(CONFIGS)
@@ -337,12 +337,12 @@ def test_util():
         _util_make_autoencoder(C)
 
         C = deepcopy(CONFIGS)
-        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['eval_fn'] = 'predict'
         C['traingen']['val_metrics'] = 'cosine_similarity'
         pass_on_error(_util_make_autoencoder, C)
 
         C = deepcopy(CONFIGS)
-        C['traingen']['eval_fn_name'] = 'predict'
+        C['traingen']['eval_fn'] = 'predict'
         tg = _util_make_autoencoder(C)
         tg.model.loss = 'hl2'
         pass_on_error(tg._validate_traingen_configs)

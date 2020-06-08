@@ -176,7 +176,7 @@ def test_custom_metrics():
             tempdir(C['traingen']['best_models_dir']):
             C['traingen']['custom_metrics'] = {'f.5_score': f05_score}
             C['traingen']['val_metrics'] = ['*', 'f.5_score']
-            C['traingen']['eval_fn_name'] = 'evaluate'
+            C['traingen']['eval_fn'] = 'evaluate'
             tg = init_session(C, model=classifier)
 
             # should be dropped in _validate_traingen_configs:_validate_metrics
@@ -188,7 +188,7 @@ def test_custom_metrics():
             tempdir(C['traingen']['best_models_dir']):
             C['traingen']['custom_metrics'] = {'f.5_score': f05_score}
             C['traingen']['val_metrics'] = ['*', 'f.5_score']
-            C['traingen']['eval_fn_name'] = 'predict'
+            C['traingen']['eval_fn'] = 'predict'
             tg = init_session(C, model=classifier)
 
             # model metrics should be inserted at wildcard

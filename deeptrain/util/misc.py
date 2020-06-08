@@ -289,7 +289,7 @@ def _validate_traingen_configs(self):
 
         if 'evaluate' in self._eval_fn_name:
             basemsg = ("must be in one of metrics returned by model, "
-                       "when using `eval_fn_name='evaluate'`. "
+                       "when using 'evaluate' in `eval_fn.__name__`. "
                        "(model returns: %s)" % ', '.join(model_metrics))
             if self.key_metric not in model_metrics:
                 raise ValueError(f"key_metric {self.key_metric} " + basemsg)
