@@ -253,7 +253,7 @@ def test_util():
         C = deepcopy(CONFIGS)
         tg = _util_make_autoencoder(C)
         tg.pred_weighted_slices_range = (.5, 1.5)
-        tg.eval_fn_name = 'predict'
+        tg._eval_fn_name = 'predict'
         tg.datagen.slices_per_batch = None
         tg.val_datagen.slices_per_batch = None
         pass_on_error(tg._validate_traingen_configs)
@@ -283,12 +283,12 @@ def test_util():
         tg.key_metric = 'f1_score'
         tg.val_temp_history = {'f1_score': []}
         tg.key_metric_fn = metrics.f1_score
-        tg.eval_fn_name = 'predict'
+        tg._eval_fn_name = 'predict'
         tg.dynamic_predict_threshold_min_max = None
 
         tg._get_best_subset_val_history()
 
-        tg.eval_fn_name = 'superfit'
+        tg._eval_fn_name = 'superfit'
         pass_on_error(tg._get_best_subset_val_history)
 
     def _update_temp_history(C):  # [util.training]

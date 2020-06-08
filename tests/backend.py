@@ -254,7 +254,7 @@ class TraingenDummy():
         self.datagen = TraingenDummy.Datagen()
         self.val_datagen = TraingenDummy.Datagen()
 
-        self.eval_fn_name = 'predict'
+        self._eval_fn_name = 'predict'
         self.key_metric = 'f1_score'
         self.key_metric_fn = metrics.f1_score
         self.class_weights = None

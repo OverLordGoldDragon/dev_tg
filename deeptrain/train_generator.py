@@ -8,6 +8,7 @@
    - Safe to interrupt flags print option?
    - Replace fit_fn_name w/ fit_fn?
    - Doesn't work -- :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`
+   - support all fit & eval fns
    - MetaTrainer
 """
 
@@ -40,7 +41,7 @@ from .util.configs  import _TRAINGEN_CFG
 from .util._traingen_utils import TraingenUtils
 from .util.logging  import _log_init_state
 from .util.training import _get_api_metric_name
-from .util.misc     import pass_on_error, capture_args
+from .util.misc     import pass_on_error, capture_args, argspec
 from .introspection import print_dead_weights, print_nan_weights
 from .              import metrics as metrics_fns
 from .callbacks     import TraingenCallback
@@ -195,8 +196,8 @@ class TrainGenerator(TraingenUtils):
                  loadpath=None,
                  callbacks=None,
 
-                 fit_fn_name='train_on_batch',
-                 eval_fn_name='evaluate',
+                 fit_fn='train_on_batch',
+                 eval_fn='evaluate',
                  key_metric='loss',
                  key_metric_fn=None,
                  val_metrics=None,
@@ -231,8 +232,7 @@ class TrainGenerator(TraingenUtils):
         self.loadpath=loadpath
         self.callbacks=callbacks or []
 
-        self.fit_fn_name=fit_fn_name
-        self.eval_fn_name=eval_fn_name
+        #### metrics ##########################################################
         self.key_metric=key_metric
         self.key_metric_fn=key_metric_fn
         self.train_metrics = model_utils.get_model_metrics(model)
@@ -245,11 +245,13 @@ class TrainGenerator(TraingenUtils):
         else:
             self.max_is_best = max_is_best
 
+        #### internal callback frequencies ####################################
         self.val_freq=val_freq
         self.plot_history_freq=plot_history_freq
         self.unique_checkpoint_freq=unique_checkpoint_freq
         self.temp_checkpoint_freq=temp_checkpoint_freq
 
+        #### misc #############################################################
         self.class_weights=class_weights
         self.val_class_weights=val_class_weights
 
@@ -262,10 +264,20 @@ class TrainGenerator(TraingenUtils):
         self.model_configs = model_configs
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
 
+        #### fit & eval fn ####################################################
+        self.fit_fn=fit_fn if not isinstance(fit_fn, str
+                                             ) else getattr(model, fit_fn)
+        self.eval_fn=eval_fn if not isinstance(eval_fn, str
+                                               ) else getattr(model, eval_fn)
+        self._fit_fn_args = argspec(self.fit_fn)
+        self._eval_fn_args = argspec(self.eval_fn)
+        self._fit_fn_name = self.fit_fn.__qualname__.split('.')[-1]
+        self._eval_fn_name = self.eval_fn.__qualname__.split('.')[-1]
+
+        #### loading, logging, callbacks, kwargs init #########################
         self._passed_args = kwargs.pop('_passed_args', None)
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
-        self._init_fit_and_pred_fns()
 
         if self.logdir or self.logs_dir:
             self._init_logger()
@@ -287,7 +299,7 @@ class TrainGenerator(TraingenUtils):
             pass_on_error(_log_init_state, self, kwargs, savedir=savedir,
                           errmsg=WARN + " could not log init state - skipping")
 
-    ########################## MAIN METHODS ##########################
+    ###### MAIN METHODS #######################################################
     def train(self):
         """The train loop.
 
@@ -308,6 +320,16 @@ class TrainGenerator(TraingenUtils):
               `_has_postiter_processed=False`, restarting the loop without
               recording progress.
         """
+        def _get_inputs(x, y, sw):
+            ins = {'x': x, 'y': y, 'sample_weight': sw}
+
+            # ~1.8x faster to append conditionally than to make full dict then del
+            if 'batch_size' in self._fit_fn_args:
+                ins['batch_size'] = len(x)
+            if 'verbose' in self._fit_fn_args:
+                ins['verbose'] = 0
+            return ins
+
         while self.epoch < self.epochs:
             if not self._has_trained:
                 if self._has_postiter_processed:
@@ -315,7 +337,8 @@ class TrainGenerator(TraingenUtils):
                     sw = sample_weight if self.class_weights else None
                     if self.iter_verbosity:
                         self._print_iter_progress()
-                    metrics = self.fit_fn(x, y, sample_weight=sw)
+                    ins = _get_inputs(x, y, sw)
+                    metrics = self.fit_fn(**ins)
 
                 self._has_postiter_processed = False
                 self._train_postiter_processing(metrics)  # may call `validate`
@@ -338,7 +361,8 @@ class TrainGenerator(TraingenUtils):
               and store them in `val_history`
             - Applies `'val_end'` and maybe `('val_end': 'train:epoch')` callbacks
 
-        Interruption:
+        **Interruption:**
+
             - *Safe*: during `get_data`, which can be called indefinitely
               without changing any attributes.
             - *Avoid*: during `_val_postiter_processing`. Model remains
@@ -348,35 +372,49 @@ class TrainGenerator(TraingenUtils):
             - *In practice*: prefer interrupting immediately after
               `_print_iter_progress` executes
         """
-        txt = ("Validating" if not self._has_validated else
-               "Finishing post-val processing")
-        print("\n\n{}...".format(txt))
+        def _get_inputs(x, y, sw):
+            ins = {'x': x}
+
+            # ~1.8x faster to append conditionally than to make full dict then del
+            if 'y' in self._eval_fn_args:
+                ins['y'] = y
+            if 'sample_weight' in self._eval_fn_args:
+                ins['sample_weight'] = sw
+            if 'batch_size' in self._eval_fn_args:
+                ins['batch_size'] = len(x)
+            if 'verbose' in self._eval_fn_args:
+                ins['verbose'] = 0
+            return ins
+
+        print("\n\nValidating..." if not self._has_validated else
+              "\n\nFinishing post-val processing...")
 
         while not self._has_validated:
-            kw = {}
+            data = {}
             if self._val_has_postiter_processed:
                 x, self._y_true, self._val_sw = self.get_data(val=True)
                 sw = self._val_sw if self.val_class_weights else None
                 if self.iter_verbosity:
                     self._print_iter_progress(val=True)
 
-                if self.eval_fn_name == 'predict':
-                    self._y_preds = self.model.predict(x, batch_size=len(x))
-                elif self.eval_fn_name == 'evaluate':
-                    kw['metrics'] = self.model.evaluate(
-                        x, self._y_true, sample_weight=sw,
-                        batch_size=len(x), verbose=0)
-                kw['batch_size'] = len(x)
+                ins = _get_inputs(x, self._y_true, sw)
+                data['metrics'] = self.eval_fn(**ins)
+                data['batch_size'] = len(x)
 
             self._val_has_postiter_processed = False
-            self._val_postiter_processing(record_progress, **kw)
+            self._val_postiter_processing(record_progress, **data)
             self._val_has_postiter_processed = True
 
         if self._has_validated:
             self._on_val_end(record_progress, clear_cache)
 
-    ######################### MAIN METHOD HELPERS ########################
+    ###### MAIN METHOD HELPERS ################################################
     def _train_postiter_processing(self, metrics):
+        """Procedures done after every train iteration. Unless marked
+        "always", are conditional and may skip. Similar to
+        :meth:`_val_postiter_processing`, except operating on train rather than
+        val variables, and calling :meth:`validate` when appropriate.
+        """
         def _on_iter_end(metrics):
             self._update_temp_history(metrics)
             self._fit_iters += 1
@@ -435,7 +473,7 @@ class TrainGenerator(TraingenUtils):
         "always", are conditional and may skip.
 
             - Update temp val history (always)
-            - Update `val_datagen` state (alwawys)
+            - Update `val_datagen` state (always)
             - Update val cache (preds, labels, etc)
             - Update val history
             - Reset statefuls
@@ -445,11 +483,14 @@ class TrainGenerator(TraingenUtils):
         Executes internal "callbacks" when appropriate: `_on_iter_end`,
         `_on_batch_end`, `_on_epoch_end`. List not exhaustive.
         """
-        def _on_iter_end(metrics=None, batch_size=None):
-            if metrics is not None:
+        def _on_iter_end(metrics, batch_size):
+            if 'predict' in self._eval_fn_name:
+                self._y_preds = metrics
+            elif 'evaluate' in self._eval_fn_name:
                 self._update_temp_history(metrics, val=True)
+
             self._val_iters += 1
-            if self.eval_fn_name == 'predict':
+            if 'predict' in self._eval_fn_name:
                 self._update_val_iter_cache()
             self.val_datagen.update_state()
 
@@ -613,6 +654,10 @@ class TrainGenerator(TraingenUtils):
             self._val_has_postiter_processed = True
 
     def _should_do(self, config, forced=False):
+        """Checks whether a counter meets a frequency as specified in
+        `val_freq`, `plot_history_freq`, `unique_checkpoint_freq`,
+        `temp_checkpoint_freq`.
+        """
         if forced:
             return True
         if config is None:
@@ -630,8 +675,18 @@ class TrainGenerator(TraingenUtils):
         elif freq_mode == 'val':
             return (self._times_validated % freq_value == 0)
 
-    ########################## LOG METHODS ################################
+    ###### LOG METHODS ########################################################
     def _update_val_iter_cache(self):
+        """Called by `_on_iter_end` within :meth:`_val_postiter_processing`;
+        updates validation cache variables (`_labels_cache`, `_preds_cache`,
+        `_class_labels_cache`, `_sw_cache`).
+
+        If `val_datagen` has a non-None `slice_idx`, will preserve batch-slice
+        structure:
+
+        >>> [[y00, y01, y02], [y10, y11, y12]]    # 2 batches, 3 slices/batch
+        >>> [[y00, y01], [y10, y11], [y20, y21]]  # 3 batches, 2 slices/batch
+        """
         def _standardize_shapes(*data):
             # ensure shapes are in format expected by methods in util.training
             ls = []
@@ -657,13 +712,13 @@ class TrainGenerator(TraingenUtils):
             self._labels_cache.append([])
             self._class_labels_cache.append([])
             self._sw_cache.append([])
-            if self.eval_fn_name == 'predict':
+            if 'predict' in self._eval_fn_name:
                 self._preds_cache.append([])
 
         self._sw_cache[-1].append(sample_weight)
         self._labels_cache[-1].append(y)
         self._class_labels_cache[-1].append(class_labels)
-        if self.eval_fn_name == 'predict':
+        if 'predict' in self._eval_fn_name:
             self._preds_cache[-1].append(self._y_preds)
 
     def _update_val_history(self):
@@ -720,7 +775,7 @@ class TrainGenerator(TraingenUtils):
         if self.iter_verbosity >= 2:
             print(end='.')
 
-    ########################## VISUAL/CALC METHODS ##########################
+    ###### VISUAL/CALC METHODS ################################################
     def plot_history(self, update_fig=True, w=1, h=1):
         """Plots train & validation history (from `history` and `val_history`).
 
@@ -740,7 +795,7 @@ class TrainGenerator(TraingenUtils):
             self._history_fig = fig
         _show_closed_fig(fig)
 
-    ########################## CALLBACK METHODS ######################
+    ###### CALLBACK METHODS ###################################################
     def _apply_callbacks(self, stage):
         """Callbacks. See examples/callbacks
 
@@ -800,12 +855,17 @@ class TrainGenerator(TraingenUtils):
                                 "TraingenCallback.")
 
     def _init_callbacks(self):
+        """Instantiates callback objects (must subclass
+        :class:`~callbacks.TraingenCallback`), passing in `TrainGenerator`
+        instance as first (and only) argument. Enables custom callbacks
+        utilizing `TrainGenerator` attributes and methods.
+        """
         for cb in self.callbacks:
             if isinstance(cb, TraingenCallback):
                 cb.init_with_traingen(self)
         self._init_callbacks_called = True
 
-    ########################## MISC METHODS ##########################
+    ###### MISC METHODS #######################################################
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
                      notify_detected_only=True):
         """Check whether any layer weights have 'zeros' or NaN weights;
@@ -836,8 +896,8 @@ class TrainGenerator(TraingenUtils):
         return metric_name
 
     def destroy(self, confirm=False, verbose=1):
-        """Class 'destructor'. Set own, datagen's, and val_datagen's attributes
-        to [] (which can free memory of arrays), then delete them. Also deletes
+        """Class 'destructor'. Sets own, datagen's, and val_datagen's attributes
+        to `[]` (which can free memory of arrays), then deletes them. Also deletes
         'model' attribute, but this has no effect on memory allocation until
         it's dereferenced globally and the TensorFlow/Keras graph is cleared
         (best bet is to restart the Python kernel).
@@ -864,8 +924,10 @@ class TrainGenerator(TraingenUtils):
         if response == 'y':
             _destroy()
 
-    ########################## INIT METHODS ##########################
+    ###### INIT METHODS #######################################################
     def _prepare_initial_data(self, from_load=False):
+        """Preloads first batch for training and validation, and superbatch
+        if available."""
         for dg_name in ('datagen', 'val_datagen'):
             dg = getattr(self, dg_name)
             if dg.superbatch_set_nums or dg.superbatch_dir:
@@ -882,6 +944,10 @@ class TrainGenerator(TraingenUtils):
             print("%s initial data prepared" % ("Train" if not pf else "Val"))
 
     def _init_logger(self):
+        """Instantiate log directory for checkpointing. If `logdir` was
+        provided at `__init__`, will use it - else, will make a directory
+        and assign its absolute path to `logdir`.
+        """
         if not self.logdir:
             self.model_name = self.get_unique_model_name()
             self.model_num = int(self.model_name.split('__')[0].replace('M', ''))
@@ -892,6 +958,9 @@ class TrainGenerator(TraingenUtils):
             print("Logging ON; directory (existing):", self.logdir)
 
     def _init_and_validate_kwargs(self, kwargs):
+        """Sets and validates `**kwargs`, raising exception if kwargs result
+        in an invalid configuration, or correcting them (and possibly notifying)
+        when possible. Also catches unused arguments."""
         def _validate_kwarg_names(kwargs):
             for kw in kwargs:
                 if kw not in _DEFAULT_TRAINGEN_CFG:
@@ -905,7 +974,7 @@ class TrainGenerator(TraingenUtils):
                 setattr(self, attribute, class_kwargs[attribute])
 
         def _maybe_set_key_metric_fn():
-            if self.eval_fn_name == 'predict' and self.key_metric_fn is None:
+            if 'predict' in self._eval_fn_name and self.key_metric_fn is None:
                 if self.key_metric not in self.custom_metrics:
                     km_name = _get_api_metric_name(self.key_metric,
                                                    self.model.loss,
@@ -919,13 +988,6 @@ class TrainGenerator(TraingenUtils):
         _set_kwargs(kwargs)
         _maybe_set_key_metric_fn()
         self._validate_traingen_configs()
-
-    def _init_fit_and_pred_fns(self):
-        self.fit_fn_name = self.fit_fn_name or 'train_on_batch'
-        self.eval_fn_name = self.eval_fn_name or 'evaluate'
-
-        self.fit_fn = getattr(self.model, self.fit_fn_name)
-        self.eval_fn = getattr(self.model, self.eval_fn_name)
 
     def _init_class_vars(self):
         """Instantiates various internal attributes. Most of these are saved
@@ -965,7 +1027,7 @@ class TrainGenerator(TraingenUtils):
             ]
         [setattr(self, name, []) for name in as_empty_list]
 
-        #### init histories ##################################################
+        #### init histories ###################################################
         self.history          = {name: [] for name in self.train_metrics}
         self.temp_history     = {name: [] for name in self.train_metrics}
         self.val_history      = {name: [] for name in self.val_metrics}

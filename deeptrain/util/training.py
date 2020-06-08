@@ -12,7 +12,7 @@ from .. import metrics as metric_fns
 def _update_temp_history(self, metrics, val=False):
     def _get_metric_names(metrics, val):
         metric_names = self.val_metrics if val else self.train_metrics
-        if not val or (val and self.eval_fn_name == 'evaluate'):
+        if not val or (val and 'evaluate' in self._eval_fn_name):
             assert len(metric_names) == len(metrics), (
                 f"{len(metric_names)} != {len(metrics)}, \n"
                 f"{metric_names}\n{metrics}")
@@ -152,7 +152,7 @@ def _get_val_history(self, for_current_iter=False):
     if self.best_subset_size and not for_current_iter:
         return _get_best_subset_val_history(self)
 
-    if self.eval_fn_name == 'evaluate':
+    if 'evaluate' in self._eval_fn_name:
         return {metric: np.mean(values) for metric, values in
                 self.val_temp_history.items()}
 
@@ -248,18 +248,18 @@ def _get_best_subset_val_history(self):
         return self._compute_metrics(labels_all_norm, preds_all_norm,
                                      sample_weight_all)
 
-    if self.eval_fn_name == 'evaluate':
+    if 'evaluate' in self._eval_fn_name:
         best_subset_idxs = _find_best_subset_from_history()
-    elif self.eval_fn_name == 'predict':
+    elif 'predict' in self._eval_fn_name:
         d = _unpack_and_transform_data()
         best_subset_idxs, pred_threshold = _find_best_subset_from_preds(d)
         if self.dynamic_predict_threshold_min_max is not None:
             self._set_predict_threshold(pred_threshold)
     else:
-        raise ValueError("unknown `eval_fn_name`: %s" % self.eval_fn_name)
+        raise ValueError("unknown `eval_fn_name`: %s" % self._eval_fn_name)
 
     self.best_subset_nums = np.array(self._val_set_name_cache)[best_subset_idxs]
-    if self.eval_fn_name == 'evaluate':
+    if 'evaluate' in self._eval_fn_name:
         return _best_subset_metrics_from_history(best_subset_idxs)
     else:
         return _best_subset_metrics_from_preds(d, best_subset_idxs)

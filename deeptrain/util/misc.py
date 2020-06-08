@@ -262,11 +262,10 @@ def _validate_traingen_configs(self):
 
         model_metrics = model_utils.get_model_metrics(self.model)
 
-        vm_set_and_evaluate = self.val_metrics and self.eval_fn_name == 'evaluate'
-        if self.val_metrics is None or '*' in self.val_metrics or (
-                vm_set_and_evaluate):
-            if self.val_metrics is None or vm_set_and_evaluate:
-                if vm_set_and_evaluate:
+        vm_and_eval = self.val_metrics and 'evaluate' in self._eval_fn_name
+        if self.val_metrics is None or '*' in self.val_metrics or vm_and_eval:
+            if self.val_metrics is None or vm_and_eval:
+                if vm_and_eval:
                     print(WARN, "will override `val_metrics` with model metrics "
                           "for `eval_fn_name == 'evaluate'`")
                 self.val_metrics = model_metrics.copy()
@@ -288,7 +287,7 @@ def _validate_traingen_configs(self):
                 getattr(self, name)[i] = self._alias_to_metric_name(maybe_alias)
         self.key_metric = self._alias_to_metric_name(self.key_metric)
 
-        if self.eval_fn_name == 'evaluate':
+        if 'evaluate' in self._eval_fn_name:
             basemsg = ("must be in one of metrics returned by model, "
                        "when using `eval_fn_name='evaluate'`. "
                        "(model returns: %s)" % ', '.join(model_metrics))
@@ -298,7 +297,7 @@ def _validate_traingen_configs(self):
         if self.key_metric not in self.val_metrics:
             self.val_metrics.append(self.key_metric)
 
-        if self.eval_fn_name == 'predict':
+        if 'predict' in self._eval_fn_name:
             for metric in self.val_metrics:
                 if metric == 'loss':
                     metric = self.model.loss
@@ -353,9 +352,9 @@ def _validate_traingen_configs(self):
 
     def _validate_weighted_slices_range():
         if self.pred_weighted_slices_range is not None:
-            if self.eval_fn_name != 'predict':
+            if 'predict' not in self._eval_fn_name:
                 raise ValueError("`pred_weighted_slices_range` requires "
-                                 "`eval_fn_name = 'predict'`")
+                                 "'predict' in `eval_fn_name`")
         if (self.pred_weighted_slices_range is not None or
             self.loss_weighted_slices_range is not None):
             if not (hasattr(self.datagen, 'slices_per_batch') and

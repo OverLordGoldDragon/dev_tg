@@ -34,7 +34,10 @@ deeptrain.util.\_default\_configs module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: _DEFAULT_TRAINGEN_CFG
 
+.. autodata:: deeptrain.util._default_configs._DEFAULT_TRAINGEN_CFG
+   :annotation: 
 .. pprint:: deeptrain.util._default_configs._DEFAULT_TRAINGEN_CFG
 
 deeptrain.util.data\_loaders module

@@ -78,19 +78,6 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_theme = 'sphinx_rtd_theme'
 
 ##### Autodoc configs ########################################################
-# Document module / class methods in order of writing (rather than alphabetically)
-autodoc_member_order = 'bysource'
-
-def skip(app, what, name, obj, would_skip, options):
-    # do not pull sklearn metrics docs in deeptrain.metrics
-    if getattr(obj, '__module__', '').startswith('sklearn.metrics'):
-        return True
-    # include private methods (but not magic)
-    if name.startswith('_') and not (name.startswith('__') and
-                                     name.endswith('__') and len(name) > 4):
-        return False
-    return would_skip
-
 from importlib import import_module
 from docutils.parsers.rst import Directive
 from docutils import nodes
@@ -98,11 +85,12 @@ from sphinx import addnodes
 from inspect import getsource
 
 
+# document lists, tuples, dicts, np.ndarray's exactly as in source code
 class PrettyPrintIterable(Directive):
     required_arguments = 1
 
     def run(self):
-        def _get_var_source(src, varname):
+        def _get_iter_source(src, varname):
             # 1. identifies target iterable by variable name, (cannot be spaced)
             # 2. determines iter source code start & end by tracking brackets
             # 3. returns source code between found start & end
@@ -123,13 +111,28 @@ class PrettyPrintIterable(Directive):
 
         module_path, member_name = self.arguments[0].rsplit('.', 1)
         src = getsource(import_module(module_path)).split('\n')
-        code = _get_var_source(src, member_name)
+        code = _get_iter_source(src, member_name)
 
         literal = nodes.literal_block(code, code)
         literal['language'] = 'python'
 
         return [addnodes.desc_name(text=member_name),
                 addnodes.desc_content('', literal)]
+
+
+# Document module / class methods in order of writing (rather than alphabetically)
+autodoc_member_order = 'bysource'
+
+def skip(app, what, name, obj, would_skip, options):
+    # do not pull sklearn metrics docs in deeptrain.metrics
+    if getattr(obj, '__module__', '').startswith('sklearn.metrics'):
+        return True
+    # include private methods (but not magic) if they have documentation
+    if name.startswith('_') and getattr(obj, '__doc__', '') and not (
+            name.startswith('__') and name.endswith('__') and len(name) > 4):
+        return False
+    return would_skip
+
 
 def setup(app):
     app.add_stylesheet("style.css")
