@@ -6,13 +6,29 @@ from see_rnn import get_weights, get_outputs, get_gradients
 from see_rnn import features_hist
 
 
-def show_predictions_per_iteration(_labels_cache, _preds_cache):
+def binary_preds_per_iteration(_labels_cache, _preds_cache):
+    """Plots binary preds vs. labels in a heatmap, separated by batches,
+    grouped by slices.
+
+    To be used with sigmoid outputs (1 unit).
+
+    Arguments:
+        _labels_cache: list[np.ndarray]
+            List of labels cached during training/validation; insertion order
+            must match that of `_preds_cache` (i.e., first array should
+            correspond to labels of same batch as predictions in `_preds_cache`).
+        _preds_cache: list[np.ndarray]
+            List of predictions cached during training/validation; see docs
+            on `_labels_cache`.
+    """
     for batch_idx, label in enumerate(_labels_cache):
         preds_per_batch = len(_preds_cache[batch_idx])
 
-        f, axes = plt.subplots(preds_per_batch + 1, 1,
-                     gridspec_kw={'height_ratios': [2] + [1]*preds_per_batch})
+        f, axes = plt.subplots(
+            preds_per_batch + 1, 1,
+            gridspec_kw={'height_ratios': [2] + [1]*preds_per_batch})
         f.set_size_inches(14, 0.75)
+
         label_2d = np.atleast_2d(np.asarray(label).T[:, 0])
         axes[0].imshow(label_2d, cmap='bwr')
         axes[0].set_axis_off()
@@ -27,12 +43,30 @@ def show_predictions_per_iteration(_labels_cache, _preds_cache):
         plt.show()
 
 
-def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
+def binary_preds_distribution(_labels_cache, _preds_cache, pred_th):
+    """Plots binary preds in a scatter plot, labeling dots according to
+    their labels, and showing `pred_th` as a vertical line. Positive class (1)
+    is labeled red, negative (0) blue; a red dot far left (close to 0) is
+    hence a strongly misclassified positive class, and vice versa.
+
+    To be used with sigmoid outputs (1 unit).
+
+    Arguments:
+        _labels_cache: list[np.ndarray]
+            List of labels cached during training/validation; insertion order
+            must match that of `_preds_cache` (i.e., first array should
+            correspond to labels of same batch as predictions in `_preds_cache`).
+        _preds_cache: list[np.ndarray]
+            List of predictions cached during training/validation; see docs
+            on `_labels_cache`.
+        pred_th: float
+            Predict threshold (e.g. 0.5), plotted as a vertical line.
+    """
     def _get_pred_colors(labels_f):
         labels_f = np.expand_dims(labels_f, -1)
         N = len(labels_f)
-        red  = np.array([1, 0, 0]*N).reshape(N, 3)
-        blue = np.array([0, 0, 1]*N).reshape(N, 3)
+        red  = np.array([1, 0, 0] * N).reshape(N, 3)
+        blue = np.array([0, 0, 1] * N).reshape(N, 3)
         return labels_f * red + (1 - labels_f) * blue
 
     def _make_alignment_array(labels_f, n_lines=10):
@@ -59,28 +93,107 @@ def show_predictions_distribution(_labels_cache, _preds_cache, pred_th):
     _plot(preds_flat, pred_th, alignment_arr, colors)
 
 
-def comparative_histogram(model, layer_name, data, keep_borders=True,
-                          bins=100, xlims=(0, 1), fontsize=14, vline=None,
-                          w=1, h=1):
-    outs = get_outputs(model, layer_name, data)
+def infer_train_hist(model, input_data, layer=None, keep_borders=True,
+                     bins=100, xlims=None, fontsize=14, vline=None,
+                     w=1, h=1):
+    """Histograms of flattened layer output values in inference and train mode.
+    Useful for comparing effect of layers that behave differently in train vs
+    infrence modes (Dropout, BatchNormalization, etc) on model prediction (or
+    intermediate activations).
 
+    Arguments:
+        model: models.Model / models.Sequential (keras / tf.keras)
+            The model.
+        input_data: np.ndarray / list[np.ndarray]
+            Data to feed to `model` to fetch outputs. List of arrays for
+            multi-input networks.
+        layer: layers.Layer / None
+            Layer whose outputs to fetch; defaults to last layer (output).
+        keep_borders: bool
+            Whether to keep the plots' bounding box.
+        bins: int
+            Number of histogram bins; kwarg to `plt.hist()`
+        xlims: tuple[float, float] / None
+            Histogram x limits. Defaults to min/max of flattened data per plot.
+        fontsize: int
+            Title font size.
+        vline: float / None
+            x-coordinate of vertical line to draw (e.g. predict threshold).
+        w, h: float
+            Scale figure width & height, respectively.
+    """
+    layer = layer or model.layers[-1]
+    outs = [get_outputs(model, layer.__name__, input_data, learning_phase=0),
+            get_outputs(model, layer.__name__, input_data, learning_phase=1)]
     _, axes = plt.subplots(2, 1, sharex=True, sharey=True,
                            figsize=(13 * w, 6 * h))
+
     for i, (ax, out) in enumerate(zip(axes.flat, outs)):
-        ax.hist(np.asarray(out).ravel(), bins=bins)
+        out = np.asarray(out).ravel()
+        ax.hist(out, bins=bins)
 
         mode = "ON" if i == 0 else "OFF"
-        ax.set_title("Train mode " + mode, weight='bold')
+        ax.set_title("Train mode " + mode, weight='bold', fontsize=fontsize)
         if not keep_borders:
             ax.box(on=None)
-        if vline:
+        if vline is not None:
             ax.axvline(vline, color='r', linewidth=2)
-        ax.set_xlim(*xlims)
+        _xlims = xlims or (out.min(), out.max())
+        ax.set_xlim(*_xlims)
     plt.show()
 
 
 def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
                 omit_names='bias', share_xy=(0, 0), configs=None, **kw):
+    """Histogram grid of layer weights, outputs, or gradients.
+
+    Arguments:
+        model: models.Model / models.Sequential (keras / tf.keras)
+            The model.
+        _id: str / int / list[str/int].
+            - int -> idx; str -> name
+            - idx: int. Index of layer to fetch, via model.layers[idx].
+            - name: str. Name of layer (full or substring) to be fetched.
+              Returns earliest match if multiple found.
+            - list[str/int] -> treat each str element as name, int as idx.
+              Ex: `['gru', 2]` gets (e.g.) weights of first layer with name
+              substring 'gru', then of layer w/ idx 2.
+            - `'*'` (wildcard) -> get (e.g.) outputs of all layers (except input)
+              with 'output' attribute.
+        mode: str in ('weights', 'outputs', 'gradients:weights',\
+        'gradients:outputs')
+            Whether to fetch layer weights, outputs, or gradients (w.r.t.
+            outputs or weights).
+        input_data: np.ndarray / list[np.ndarray] / None
+            Data to feed to `model` to fetch outputs / gradients. List of arrays
+            for multi-input networks. Ignored for `mode='weights'`.
+        labels: np.ndarray / list[np.ndarray]
+            Labels to feed to `model` to fetch gradients. List of arrays
+            for multi-output networks.
+            Ignored for `mode in ('weights', 'outputs')`.
+        omit_names: str / list[str] / tuple[str]
+            Names of weights to omit for `_id` specifying layer names. E.g.
+            for `Dense`, `omit_names='bias'` will fetch only kernel weights.
+            Ignored for `mode != 'weights'`.
+        share_xy: tuple[bool, bool] / tuple[str, str]
+            Whether to share x or y limits in histogram grid, respectively.
+            kwarg to `plt.subplots()`; can be `'col'` or `'row'` for sharing
+            along rows or columns, respectively.
+        configs: dict / None
+            kwargs to customize various plot schemes:
+
+            - `'plot'`: passed partly to `ax.hist()` in `see_rnn.hist_clipped()`;
+              include `peaks_to_clip` to adjust ylims with a
+              number of peaks disregarded. See `help(see_rnn.hist_clipped)`.
+              ax = subplots axis
+            - `'subplot'`: passed to `plt.subplots()`
+            - `'title'`: passed to `fig.suptitle()`; fig = subplots figure
+            - `'tight'`: passed to `fig.subplots_adjust()`
+            - `'annot'`: passed to `ax.annotate()`
+            - `'save'`: passed to `fig.savefig()` if `savepath` is not None.
+        kw: dict / kwargs
+            kwargs passed to `see_rnn.features_hist`.
+    """
     def _process_configs(configs, mode):
         defaults = {}
         if 'gradients' in mode or mode == 'outputs':
@@ -134,6 +247,7 @@ def layer_hists(model, _id='*', mode='weights', input_data=None, labels=None,
 
 
 def viz_roc_auc(y_true, y_pred):
+    """Plots the Receiver Operator Characteristic curve."""
     def _compute_roc_auc(y_true, y_pred):
         i_x = [(i, x) for (i, x) in enumerate(y_pred)]
         i_xs = list(sorted(i_x, key=lambda x: x[1], reverse=True))
@@ -175,6 +289,16 @@ def viz_roc_auc(y_true, y_pred):
 
 
 def get_history_fig(self, plot_configs=None, w=1, h=1):
+    """Plots train / validation history according to `plot_configs`.
+
+    Arguments:
+        plot_configs: dict / None
+            See :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`.
+            If None, defaults to `TrainGenerator.plot_configs` (which itself
+            defaults to :data:`~deeptrain.util.configs.PLOT_CFG`).
+        w, h: float
+            Scale figure width & height, respectively.
+    """
     def _unpack_plot_kw(config):
         reserved_keys = ('metrics', 'x_ticks', 'vhlines',
                          'mark_best_cfg', 'ylims', 'legend_kw')

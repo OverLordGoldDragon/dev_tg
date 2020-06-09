@@ -15,10 +15,10 @@ from time import time
 from copy import deepcopy
 
 from backend import BASEDIR, tempdir, notify, make_timeseries_classifier
-from backend import _init_session, _do_test_load
-from deeptrain.callbacks import predictions_per_iteration_cb
-from deeptrain.callbacks import predictions_distribution_cb
-from deeptrain.callbacks import comparative_histogram_cb
+from backend import _init_session, _do_test_load, _get_test_names
+from deeptrain.callbacks import binary_preds_per_iteration_cb
+from deeptrain.callbacks import binary_preds_distribution_cb
+from deeptrain.callbacks import infer_train_hist_cb
 
 
 #### CONFIGURE TESTING #######################################################
@@ -57,15 +57,14 @@ TRAINGEN_CFG = dict(
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,
     model_configs=MODEL_CFG,
-    callbacks={'val_end': [comparative_histogram_cb,
-                           predictions_per_iteration_cb,
-                           predictions_distribution_cb]},
+    callbacks={'val_end': [infer_train_hist_cb,
+                           binary_preds_per_iteration_cb,
+                           binary_preds_distribution_cb]},
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'weighted_slices',
-                                      'predict')}
+tests_done = {}
 model = make_timeseries_classifier(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
@@ -123,6 +122,8 @@ def test_predict():
 def _test_load(tg, C):
     _do_test_load(tg, C, init_session)
 
+
+tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':
     pytest.main([__file__, "-s"])

@@ -6,8 +6,9 @@
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?
-   - Doesn't work -- :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`
    - support all fit & eval fns
+   - examples/callbacks
+   - examples/visuals
    - MetaTrainer
 """
 
@@ -864,7 +865,10 @@ class TrainGenerator(TraingenUtils):
         """
         for cb in self.callbacks:
             if isinstance(cb, TraingenCallback):
-                cb.init_with_traingen(self)
+                try:
+                    cb.init_with_traingen(self)
+                except NotImplementedError:
+                    pass
         self._init_callbacks_called = True
 
     ###### MISC METHODS #######################################################
