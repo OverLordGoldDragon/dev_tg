@@ -123,8 +123,8 @@ def infer_train_hist(model, input_data, layer=None, keep_borders=True,
             Scale figure width & height, respectively.
     """
     layer = layer or model.layers[-1]
-    outs = [get_outputs(model, layer.__name__, input_data, learning_phase=0),
-            get_outputs(model, layer.__name__, input_data, learning_phase=1)]
+    outs = [get_outputs(model, '', input_data, layer, learning_phase=0),
+            get_outputs(model, '', input_data, layer, learning_phase=1)]
     _, axes = plt.subplots(2, 1, sharex=True, sharey=True,
                            figsize=(13 * w, 6 * h))
 
