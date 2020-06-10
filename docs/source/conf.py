@@ -133,8 +133,37 @@ def skip(app, what, name, obj, would_skip, options):
         return False
     return would_skip
 
+###############################################################################
+from sphinx.ext.intersphinx import missing_reference
+from docutils.nodes import Text
+
+# alias ref is mapped to a pair (real ref, text to render)
+reftarget_aliases = {
+    'TrainGenerator._train_postiter_processing': (
+        'deeptrain.train_generator.TrainGenerator._train_postiter_processing',
+        'TrainGenerator._train_postiter_processing()'),
+}
+
+
+def resolve_reftarget_aliases(app, env, node, contnode):
+    alias = node.get('reftarget', None)
+    if alias is not None and alias in reftarget_aliases:
+        real_ref, text_to_render = reftarget_aliases[alias]
+        # this will resolve the ref
+        node['reftarget'] = real_ref
+
+        # this will rewrite the rendered text:
+        # find the text node child
+        text_node = next(iter(contnode.traverse(lambda n: n.tagname == '#text')))
+        # remove the old text node, add new text node with custom text
+        text_node.parent.replace(text_node, Text(text_to_render, ''))
+
+        # delegate all the rest of dull work to intersphinx
+        return missing_reference(app, env, node, contnode)
+
 
 def setup(app):
     app.add_stylesheet("style.css")
     app.add_directive('pprint', PrettyPrintIterable)
+    app.connect('missing-reference', resolve_reftarget_aliases)
     app.connect("autodoc-skip-member", skip)

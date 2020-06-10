@@ -70,6 +70,7 @@ class TraingenCallback():
     def on_train_iter_end(self, stage=None):
         """Called by `_on_iter_end`,
         within `TrainGenerator.`:meth:`._train_postiter_processing`
+        :meth:`TrainGenerator._train_postiter_processing`
         with `stage='train:iter'`."""
         raise NotImplementedError
 

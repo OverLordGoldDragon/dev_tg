@@ -80,6 +80,33 @@ def _update_temp_history(self, metrics, val=False):
 
 def get_sample_weight(self, class_labels, val=False, slice_idx=None,
                       force_unweighted=False):
+    """Make `sample_weight` to feed to `model` based on `class_labels`
+    (and, if applicable, weighted slices).
+
+    Arguments:
+        class_labels: np.ndarray
+            Classification class labels to map sample weights according to
+            `class_weights`.
+
+            >>> class_weights = {0: 4, 1: 1, 2: 2.5}
+            >>> class_labels  == [1, 1, 0, 1, 2]    # if
+            >>> sample_weight == [4, 4, 1, 4, 2.5]  # then
+
+        val: bool
+            Whether to use `class_weights` (False) or `val_class_weights` (True).
+            If using sliced weights, whether to use `slices_per_batch` of
+            `datagen` (False) or `val_datagen` (False).
+            Further, if True, will get weighted `sample_weight` if either of
+            `loss_weighted_slices_range` or `pred_weighted_slices_range`
+            are set (False requires former to be set).
+        slice_idx: int / None
+            Index of slice to get `sample_weight` for, if using slices.
+            If None, will return all `slices_per_batch` number of `sample_weight`.
+        force_unweighted: bool
+            Get slice-unweighted `sample_weight` regardless of slice usage;
+            used internally by :func:`_get_weighted_sample_weight` to
+            break recursion.
+    """
     def _get_unweighted(class_labels, val):
         class_labels = _unroll_into_samples(len(self.model.output_shape),
                                             class_labels)
@@ -108,14 +135,16 @@ def get_sample_weight(self, class_labels, val=False, slice_idx=None,
 
 def _get_weighted_sample_weight(self, class_labels_all, val=False,
                                 weight_range=(0.5, 1.5), slice_idx=None):
+    """Gets `slices_per_batch` number of `sample_weight`, scaled linearly
+    from min to max of `weight_range`, over `slices_per_batch` number of steps.
+    """
     def _sliced_sample_weight(class_labels_all, slice_idx, val):
         sw_all = []
         for batch_labels in class_labels_all:
             sw_all.append([])
             for slice_labels in batch_labels:
-                sw = get_sample_weight(
-                    self, slice_labels, val, slice_idx,
-                    force_unweighted=True)  # break recursion
+                sw = get_sample_weight(self, slice_labels, val, slice_idx,
+                                       force_unweighted=True)  # break recursion
                 sw_all[-1].append(sw)
         sw_all = np.asarray(sw_all)
         if sw_all.ndim >= 3 and sw_all.shape[0] == 1:
@@ -127,14 +156,13 @@ def _get_weighted_sample_weight(self, class_labels_all, val=False,
     class_labels_all = self._validate_class_data_shapes(
         {'class_labels_all': class_labels_all}, validate_n_slices, val)
 
-    dg = self.val_datagen if val else self.datagen
-    n_slices = dg.slices_per_batch
+    n_slices = (self.val_datagen if val else self.datagen).slices_per_batch
 
     sw = _sliced_sample_weight(class_labels_all, slice_idx, val)
     sw = self._validate_class_data_shapes(
         {'sample_weight_all': sw}, validate_n_slices, val)
-    sw_weights = np.linspace(*weight_range, n_slices).reshape(
-        [1, n_slices] + [1]*(sw.ndim - 2))
+    sw_weights = np.linspace(*weight_range, n_slices
+                             ).reshape([1, n_slices] + [1] * (sw.ndim - 2))
 
     sw = sw * sw_weights
     if slice_idx is not None:
