@@ -74,10 +74,10 @@ def test_gather_over_dataset():
     tg.train()
 
     tg.gradient_norm_over_dataset(n_iters=None, prog_freq=3)
-    tg.gradients_sum_over_dataset(n_iters=5, prog_freq=3)
+    tg.gradient_sum_over_dataset(n_iters=5, prog_freq=3)
 
     x, y, sw = tg.get_data()
-    tg.compute_gradients_norm(x, y, sw)  # not gather, but test anyway
+    tg.compute_gradient_norm(x, y, sw)  # not gather, but test anyway
 
 
 @notify(tests_done)

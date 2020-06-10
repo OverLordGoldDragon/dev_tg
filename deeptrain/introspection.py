@@ -11,16 +11,127 @@ from see_rnn.utils import _get_params
 from .util._backend import K, WARN, TF_KERAS
 
 
-def compute_gradients_norm(self, input_data, labels, sample_weight=None,
-                           learning_phase=0, mode='weights', norm_fn=np.square):
-    grads = get_gradients(self.model, '*', input_data, labels, sample_weight,
+def compute_gradient_norm(self, input_data, labels, sample_weight=None,
+                          learning_phase=0, _id='*', mode='weights',
+                          norm_fn=(np.sqrt, np.square), scope='local'):
+    """Computes gradients w.r.t. layer weights or outputs per `_id`, and returns
+    norm according to `norm_fn` and `scope`.
+
+    Arguments:
+        input_data: np.ndarray / list[np.ndarray] / supported formats
+            Data w.r.t. which loss is to be computed for the gradient.
+            List of arrays for multi-input networks. "Supported formats"
+            is any valid input to `model`.
+        labels: np.ndarray / list[np.ndarray] / supported formats
+            Labels w.r.t. which loss is to be computed for the gradient.
+        sample_weight: np.ndarray / list[np.ndarray] / supported formats
+            kwarg to `model.fit()`, etc., weighting individual sample losses.
+        learning_phase: bool / int[bool]
+            - 1: use model in train mode
+            - 0: use model in inference mode
+        _id: str / int / list[str/int].
+            - int -> idx; str -> name
+            - idx: int. Index of layer to fetch, via model.layers[idx].
+            - name: str. Name of layer (full or substring) to be fetched.
+              Returns earliest match if multiple found.
+            - list[str/int] -> treat each str element as name, int as idx.
+              Ex: `['gru', 2]` gets (e.g.) weights of first layer with name
+              substring 'gru', then of layer w/ idx 2.
+            - `'*'` (wildcard) -> get (e.g.) outputs of all layers (except input)
+              with 'output' attribute.
+        mode: str in ('weights', 'outputs', 'gradients:weights',\
+        'gradients:outputs')
+            Whether to fetch layer weights, outputs, or gradients (w.r.t.
+            outputs or weights).
+        norm_fn: (function, function) / function
+            Norm function(s) to apply to gradients arrays when gathering.
+            `(np.sqrt, np.square)` for L2-norm, `np.abs` for L1-norm.
+            Computed as: `outer_fn(sum(inner_fn(x) for x in data))`, where
+            `outer_fn, inner_fn = norm_fn` if `norm_fn` is list/tuple, and
+            `inner_fn = norm_fn` and `outer_fn = lambda x: x` otherwise.
+        scope: str in ('local', 'global')
+            Whether to apply `stat_fn` on individual gradient arrays, or sum of.
+
+    Returns:
+        Gradient norm(s). List of float if `scope == 'local'` (norms of weights),
+        else float (`outer_fn(sum(sum(inner_fn(g)) for g in grads))`).
+
+    TensorFlow optimizers do gradient clipping according to the `clipnorm` setting
+    by comparing individual weights' L2-norms against `clipnorm`, and rescaling
+    if exceeding. These L2 norms can be obtained using
+    `norm_fn=(np.sqrt, np.square)` with `scope == 'local'` and `mode='weights'`.
+    See:
+        - `tensorflow.python.keras.optimizer_v2.optimizer_v2._clip_gradients`
+        - `keras.optimizers.clip_norm`
+        - `tensorflow.python.ops.clip_ops.clip_by_norm`
+    """
+    if scope not in ('local', 'global'):
+        raise ValueError("`scope` must be one of: 'local', 'global' "
+                         "(got '%s')" % scope)
+    if isinstance(norm_fn, (tuple, list)):
+        outer_fn, inner_fn = norm_fn
+    else:
+        outer_fn, inner_fn = lambda x: x, norm_fn
+
+    grads = get_gradients(self.model, _id, input_data, labels, sample_weight,
                           learning_phase, mode=mode, as_dict=False)
-    return np.sqrt(np.sum([np.sum(norm_fn(g)) for g in grads]))
+    inner_sum = [np.sum(inner_fn(g)) for g in grads]
+    if scope == 'local':
+        # same as e.g. [np.sqrt(np.sum(np.square(g))) for g in grads], but faster
+        return outer_fn(inner_sum)
+    else:
+        return outer_fn(np.sum(inner_sum))
 
 
 def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights',
-                               norm_fn=np.square, w=1, h=1, n_iters=None,
-                               prog_freq=10):
+                               norm_fn=(np.sqrt, np.square), stat_fn=np.median,
+                               n_iters=None, prog_freq=10, w=1, h=1):
+    """Aggregates gradient norms over dataset, one iteration at a time. Useful
+    for estimating value of gradient clipping, `clipnorm`, to use.
+    Plots a histogram of gathered data when finished. Also see
+    :func:`compute_gradient_norm`.
+
+    Arguments:
+        val: bool
+            - True:  gather over `val_datagen` batches
+            - False: gather over `datagen` batches
+        learning_phase: bool / int[bool]
+            - True:  get gradients of model in train mode
+            - False: get gradients of model in inference mode
+        mode: str in ('weights', 'outputs')
+            Whether to get gradients with respect to layer weights or outputs.
+        norm_fn: (function, function) / function
+            Norm function(s) to apply to gradients arrays when gathering.
+            `(np.sqrt, np.square)` for L2-norm, `np.abs` for L1-norm.
+            Computed as: `outer_fn(sum(inner_fn(g) for g in grads))`, where
+            `outer_fn, inner_fn = norm_fn` if `norm_fn` is list/tuple, and
+            `inner_fn = norm_fn` and `outer_fn = lambda x: x` otherwise.
+        stat_fn: function
+            Aggregate function to apply on computed norms. If `np.mean`,
+            will gather mean of gradients; if `np.median`, the median, etc.
+            Computed as: `stat_fn(outer_fn(sum(inner_fn(g) for g in grads)))`.
+        n_iters: int / None
+            Number of expected iterations over entire dataset. Can be used to
+            iterate over subset of entire dataset. If None, will return upon
+            `DataGenerator.all_data_exhausted`.
+        prog_freq: int
+            How often to print `f'|{batch_idx}'`, and `'.'` otherwise,
+            in terms of number of batches (*not* iterations, but are same if not
+            using slices). E.g. 5: `....|5....|10....|15`.
+        w, h: float
+            Scale figure width & height, respectively.
+
+    Returns:
+        grad_norms: np.ndarray
+            Norms of gradients for every iteration.
+            Shape: `(iters_processed, n_params)`, where `n_params` is number
+            of gradient arrays whose norm stats were computed at each iteration.
+        batches_processed: int
+            Number of batches processed.
+        iters_processed: int
+            Number of iterations processed (if using e.g. 4 slices per batch,
+            will equal `4 * batches_processed`).
+    """
     def _init_notify(learning_phase, val):
         dg_name = 'val_datagen' if val else 'datagen'
         mode_name = "train" if learning_phase == 1 else "inference"
@@ -40,16 +151,21 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
         plt.gcf().set_size_inches(9 * w, 4 * h)
         plt.show()
 
-    def _compute_gradients_norm(model, x, y, sw):
+    def _compute_gradient_norm_stat(model, x, y, sw):
         grads = grads_fn(x, y, sw)
-        return np.sqrt(np.sum([np.sum(norm_fn(g)) for g in grads]))
+        return stat_fn(outer_fn([np.sum(inner_fn(g)) for g in grads]))
 
     def gather_fn(data, model, x, y, sw):
-        newdata = _compute_gradients_norm(model, x, y, sw)
+        newdata = _compute_gradient_norm_stat(model, x, y, sw)
         data.append(newdata)
         return data
 
     _init_notify(learning_phase, val)
+    if isinstance(norm_fn, (tuple, list)):
+        outer_fn, inner_fn = norm_fn
+    else:
+        outer_fn, inner_fn = lambda x: x, norm_fn
+
     grads_fn = _make_gradients_fn(self.model, learning_phase, mode)
 
     grad_norms, batches_processed, iters_processed = _gather_over_dataset(
@@ -62,8 +178,44 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
     return grad_norms, batches_processed, iters_processed
 
 
-def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights',
-                               n_iters=None, prog_freq=10, plot_kw={}):
+def gradient_sum_over_dataset(self, val=False, learning_phase=0, mode='weights',
+                              n_iters=None, prog_freq=10, plot_kw={}):
+    """Computes cumulative sum of gradients over dataset, one iteration at a time,
+    preserving full array shapes. Useful for computing mean of gradients over
+    dataset, or other aggregate metrics.
+
+    Arguments:
+        val: bool
+            - True:  gather over `val_datagen` batches
+            - False: gather over `datagen` batches
+        learning_phase: bool / int[bool]
+            - True:  get gradients of model in train mode
+            - False: get gradients of model in inference mode
+        mode: str in ('weights', 'outputs')
+            Whether to get gradients with respect to layer weights or outputs.
+        n_iters: int / None
+            Number of expected iterations over entire dataset. Can be used to
+            iterate over subset of entire dataset. If None, will return upon
+            `DataGenerator.all_data_exhausted`.
+        prog_freq: int
+            How often to print `f'|{batch_idx}'`, and `'.'` otherwise,
+            in terms of number of batches (*not* iterations, but are same if not
+            using slices). E.g. 5: `....|5....|10....|15`.
+        plot_kw: dict
+            Kwargs to pass to `see_rnn.features_hist`; defaults to
+            `{'share_xy': False, 'center_zero': True}`.
+
+    Returns:
+        grad_sum: dict[str: np.ndarray]
+            Gradient arrays summed over dataset. Structure:
+            `{name: array, name: array, ...}`, where `name` is name of
+            weight array or layer output.
+        batches_processed: int
+            Number of batches processed.
+        iters_processed: int
+            Number of iterations processed (if using e.g. 4 slices per batch,
+            will equal `4 * batches_processed`).
+    """
     def _init_notify(learning_phase, val):
         dg_name = 'val_datagen' if val else 'datagen'
         mode_name = "train" if learning_phase == 1 else "inference"
@@ -107,9 +259,17 @@ def gradients_sum_over_dataset(self, val=False, learning_phase=0, mode='weights'
 
 
 def _gather_over_dataset(self, gather_fn, val=False, n_iters=None, prog_freq=10):
+    """Iterates over `DataGenerator`, applying `gather_fn` to every batch
+    (or slice). Stops after `n_iters`, or when `DataGenerator.all_data_exhausted`
+    if `n_iters is None`. Useful for monitoring quantities over the course of
+    training or inference,.
+
+    `gather_fn` recursively updates `data`; as such, it can be used to
+    append to a list, update a dictionary, operate on an array, etc. Review
+    source code for exact logic.
+    """
     def _init_notify(val):
-        dg_name = "val_datagen" if val else "datagen"
-        print(WARN, dg_name, "states will be reset")
+        print(WARN, "val_datagen" if val else "datagen", "states will be reset")
         print("'.' = slice processed, '|' = batch processed")
 
     def _print_progress(dg, batches_processed, prog_freq):
@@ -135,6 +295,7 @@ def _gather_over_dataset(self, gather_fn, val=False, n_iters=None, prog_freq=10)
         iters_processed = 0
 
         while cond(iters_processed, n_iters, dg):
+            # recursively update `gathered` according to `gather_fn`
             dg.advance_batch()
             x, y, sw = self.get_data(val=val)
             gathered = gather_fn(gathered, self.model, x, y, sw)
@@ -147,8 +308,8 @@ def _gather_over_dataset(self, gather_fn, val=False, n_iters=None, prog_freq=10)
     _init_notify(val)
 
     dg.reset_state()
-    gathered, batches_processed, iters_processed = _gather(gather_fn,
-                                                           n_iters, val)
+    (gathered, batches_processed, iters_processed
+     ) = _gather(gather_fn, n_iters, val)
     dg.reset_state()
 
     return gathered, batches_processed, iters_processed
@@ -203,6 +364,22 @@ def _make_gradients_fn(model, learning_phase, mode, return_names=False):
 
 def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,
                        notify_detected_only=False):
+    """Print names of dead weights and their proportions. Useful for debugging
+    vanishing and exploding gradients, or quantifying sparsity.
+
+    Arguments:
+        model: models.Model / models.Sequential (keras / tf.keras)
+            The model.
+        dead_threshold: float
+            Threshold below which to count the weight as "dead", in
+            absolute value.
+        notify_above_frac: float
+            Print only if fraction of weights counted "dead" exceeds this
+            (e.g. if there are 11 absolute values < `dead_threshold` out of 1000).
+        notify_detected_only: bool
+            - True:  print text only if dead weights are discovered
+            - False: print a "not found given thresholds" message when appropriate
+    """
     def _print_dead(frac_dead, w_name, notify_above_frac):
         precision = int(np.ceil(-np.log10(notify_above_frac)))
         perc_dead = f'%.{precision}f' % (100 * frac_dead) + '%'
@@ -226,7 +403,7 @@ def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,
             _print_dead(frac_dead, w_name, notify_above_frac)
 
     if has_dead_worth_notifying:
-        print("L = layer index, W = weight matrix index")
+        print("L = layer index, W = weight tensor index")
     elif not notify_detected_only:
         if has_dead:
             _txt = "Dead weights detected, but didn't notify; "
@@ -237,8 +414,18 @@ def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,
 
 
 def print_nan_weights(model, notify_detected_only=False):
+    """Print names of NaN weights and their proportions. Useful for debugging
+    exploding or buggy gradients.
+
+    Arguments:
+        model: models.Model / models.Sequential (keras / tf.keras)
+            The model.
+        notify_detected_only: bool
+            - True:  print text only if dead weights are discovered
+            - False: print a "none found" message if no NaNs were found
+    """
     weight_names   = [w.name for layer in model.layers for w in layer.weights]
-    weight_tensors = [w for layer in model.layers for w in layer.weights]
+    weight_tensors = [w      for layer in model.layers for w in layer.weights]
     weight_values  = K.batch_get_value(weight_tensors)
 
     has_nan = False
@@ -254,6 +441,6 @@ def print_nan_weights(model, notify_detected_only=False):
             has_nan = True
 
     if has_nan:
-        print("L = layer index, W = weight matrix index", end='')
+        print("L = layer index, W = weight tensor index", end='')
     elif not notify_detected_only:
         print("No NaN weights detected in any trainable layers")
