@@ -38,20 +38,6 @@ def _update_temp_history(self, metrics, val=False):
                 assert isinstance(temp_history[name], list)
         return temp_history
 
-    def _handle_non_scalar(name, value):
-        supported = ('binary_accuracy', 'categorical_accuracy',
-                     'sparse_categorical_accuracy')
-        assert (name in supported), (
-            f"got non-scalar value ({type(value)}) for metric {name}; "
-            "supported metrics for non-scalars: %s" % ', '.join(supported))
-
-        if not isinstance(value, (list, np.ndarray)):
-            raise ValueError(("unexpected non-scalar metric type: {}; must be "
-                              "one of: list, np.ndarray").format(type(value)))
-        value = np.asarray(value)
-        assert (value.ndim <= 1), ("unfamiliar metric.ndim: %s" % value.ndim)
-        return value.mean()
-
     def _try_append_with_fix(temp_history):
         try:
             temp_history[name][-1].append(value)
@@ -67,8 +53,8 @@ def _update_temp_history(self, metrics, val=False):
     no_slices, slice_idx, slices_per_batch = _get_slice_info(val)
 
     for name, value in zip(metric_names, metrics):
-        if np.ndim(value) != 0 or isinstance(value, dict):
-            value = _handle_non_scalar(name, value)
+        assert not (np.ndim(value) != 0 or isinstance(value, dict)
+                    ), f"got non-scalar value ({type(value)}) for metric {name}; "
 
         if no_slices or slice_idx == 0:
             temp_history[name].append([])
