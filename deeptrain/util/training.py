@@ -10,6 +10,9 @@ from .. import metrics as metric_fns
 
 
 def _update_temp_history(self, metrics, val=False):
+    """Updates temporary history given `metrics`. If using batch-slices, ensures
+    entries are grouped appropriately.
+    """
     def _get_metric_names(metrics, val):
         metric_names = self.val_metrics if val else self.train_metrics
         if not val or (val and 'evaluate' in self._eval_fn_name):
@@ -212,6 +215,14 @@ def _get_val_history(self, for_current_iter=False):
 
 
 def _get_best_subset_val_history(self):
+    """Returns history entry for best `best_subset_size` number of validation
+    batches, and sets `best_subset_nums`.
+
+    Ex: given 10 batches, a "best subset" of 5 is the set of 5 batches that
+    yields the best (highest/lowest depending on `max_is_best`) `key_metric`.
+    Useful for model ensembling in specializing member models on different
+    parts of data.
+    """
     def _unpack_and_transform_data():
         labels_all = self._labels_cache.copy()
         preds_all  = self._preds_cache.copy()

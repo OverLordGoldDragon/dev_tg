@@ -522,6 +522,7 @@ class TrainGenerator(TraingenUtils):
             self._apply_callbacks(stage='val:batch')
 
         def _on_epoch_end():
+            self.val_epoch = self.val_datagen.on_epoch_end()
             self._has_validated = True
             self._apply_callbacks(stage='val:epoch')
 
@@ -552,9 +553,10 @@ class TrainGenerator(TraingenUtils):
             self._val_x_ticks += [self._times_validated]
             self._val_train_x_ticks += [self._batches_fit]
 
-            new_best = bool(self.key_metric_history[-1] > self.best_key_metric)
-            if not self.max_is_best:
-                new_best = not new_best
+            if self.max_is_best:
+                new_best = (self.key_metric_history[-1] > self.best_key_metric)
+            else:
+                new_best = (self.key_metric_history[-1] < self.best_key_metric)
 
             if new_best and self.best_models_dir is not None:
                 self._save_best_model(del_previous_best=self.max_one_best_save)

@@ -12,6 +12,21 @@ from ..backend import tensor_utils
 
 
 def _save_best_model(self, del_previous_best=False):
+    """Saves `model`, history fig, `TrainGenerator` state, and report
+    if latest key metric is a new best (max/min, as per `max_is_best`).
+    Also deletes previous best saves if `max_one_best_save`.
+    """
+    def _validate_is_best():
+        """Enforce best model condition in case the method is called manually"""
+        if self.max_is_best:
+            new_best = (self.key_metric_history[-1] > self.best_key_metric)
+        else:
+            new_best = (self.key_metric_history[-1] < self.best_key_metric)
+        assert new_best, ("`_save_best_model` was called with latest key_metric "
+                          "not being a new best (new: {}, prev-best: {})"
+                          ).format(self.best_key_metric,
+                                   self.key_metric_history[-1])
+
     def _del_previous_best():
         def _get_prev_files():
             return [os.path.join(self.best_models_dir, name)
@@ -33,6 +48,7 @@ def _save_best_model(self, del_previous_best=False):
                   "skipping")
             print("Errmsg:", e)
 
+    _validate_is_best()
     self.best_key_metric = round(self.key_metric_history[-1], 6)
     _update_best_key_metric_in_model_name()
 
@@ -56,8 +72,12 @@ def _save_best_model(self, del_previous_best=False):
 
 
 def checkpoint(self, forced=False, overwrite=None):
-    """overwrite: bool/None. If None, set from `checkpoints_overwrite_duplicates`
-                             (else, override it).
+    """Yes
+
+    Arguments:
+        overwrite: bool / None
+            If None, set from `checkpoints_overwrite_duplicates`
+            (else, override it).
     """
     def _get_savename(do_temp, do_unique):
         if do_temp and not do_unique:  # give latter precedence
