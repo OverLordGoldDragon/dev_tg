@@ -410,7 +410,8 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
           See :meth:`._validate_data_shapes`.
         - Standardize `sample_weight` and `class_labels` shapes.
           See :meth:`._validate_class_data_shapes`.
-        - Unroll
+        - Unroll data into samples (merge batches, slices, and samples dims).
+          See :func:`_unroll_into_samples`
     """
     def _transform_labels_and_preds(labels_all, preds_all, sample_weight_all,
                                     class_labels_all):
@@ -435,7 +436,7 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
         if self.pred_weighted_slices_range is not None:
             # can no longer use slice-weighted sample weights, so just take mean
             d['sample_weight_all'] = d['sample_weight_all'].mean(axis=1)
-            d['class_labels_all'] = d['class_labels_all'][:, :1]
+            d['class_labels_all'] = d['class_labels_all'][:, 0]
 
         return (labels_all_norm, preds_all_norm, d['sample_weight_all'],
                 d['class_labels_all'])
