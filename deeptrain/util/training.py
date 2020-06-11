@@ -177,6 +177,14 @@ def _set_predict_threshold(self, predict_threshold, for_current_iter=False):
 
 
 def _get_val_history(self, for_current_iter=False):
+    """Compute validation metrics from history ('evaluate'-mode), or
+    cache ('predict'-mode).
+
+    `for_current_iter` is True when inside of :meth:`.validate` loop,
+    fitting individual batches/slices, and is False :meth:`_on_val_end`,
+    where metrics over the entire validation dataset are computed.
+    In latter, best subset is found (if applicable).
+    """
     if self.best_subset_size and not for_current_iter:
         return _get_best_subset_val_history(self)
 
@@ -363,11 +371,27 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
 
 
 def _unroll_into_samples(out_ndim, *arrs):
+    """Flatten samples, slices, and batches dims into one:
+        - `(batches, slices, samples, *output_shape)` ->
+          `(batches * slices * samples, *output_shape)`
+        - `(batches, samples, *output_shape)` ->
+          `(batches * samples, *output_shape)`
+
+    `*arrs` are standardized (fed after :meth:`_transform_eval_data`),
+    so the minimal case is `(1, 1, *output_shape)`, which still correctly
+    reshapes into `(1, *output_shape)`. Cases:
+
+    >>> x                 # (32, 1) [shape]
+    >>> x = x.reshape...  # (32, 1)
+    ...
+    >>> x                 # (1, 1, 32, 1)
+    >>> x = x.reshape...  # (32, 1)
+    ...
+    >>> x                 # (1, 32, 1)
+    >>> x = x.reshape...  # (32, 1)
+    """
     ls = []
     for x in arrs:
-        if x.shape == out_ndim:  # one batch, nothing to unroll
-            ls.append(x)
-            continue
         # unroll along non-out (except samples) dims
         x = x.reshape(-1, *x.shape[-(out_ndim - 1):])
         while x.shape[0] == 1:  # collapse non-sample dims
@@ -397,9 +421,10 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
         # if `loss_weighted_slices_range` but not `pred_weighted_slices_range`,
         # will apply weighted sample weights on non weight-normalized preds
         if self.pred_weighted_slices_range is not None:
+            # shapes: (batches, slices, samples, *) -> (batches, samples, *)
             preds_all_norm = self._weighted_normalize_preds(preds_all)
-            labels_all_norm = labels_all[:, :1]  # collapse but keep slices dim
-            assert (preds_all_norm.max() <= 1) and (preds_all_norm.min() >= 0)
+            labels_all_norm = labels_all[:, 0]  # collapse slices dim
+            assert (preds_all_norm.min() >= 0) and (preds_all_norm.max() <= 1)
         else:
             preds_all_norm = preds_all
             labels_all_norm = labels_all
@@ -407,10 +432,11 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
         d = self._validate_class_data_shapes(
             {'sample_weight_all': sample_weight_all,
              'class_labels_all': class_labels_all})
-
         if self.pred_weighted_slices_range is not None:
+            # can no longer use slice-weighted sample weights, so just take mean
             d['sample_weight_all'] = d['sample_weight_all'].mean(axis=1)
             d['class_labels_all'] = d['class_labels_all'][:, :1]
+
         return (labels_all_norm, preds_all_norm, d['sample_weight_all'],
                 d['class_labels_all'])
 

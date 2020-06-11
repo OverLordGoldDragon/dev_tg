@@ -148,11 +148,6 @@ def test_logging():
 
 @notify(tests_done)
 def test_training():
-    def _test_unroll_into_samples():
-        outs_ndim = (16, 100)
-        arrs = [np.random.randn(16, 100)] * 2
-        training._unroll_into_samples(outs_ndim, *arrs)
-
     def _test_weighted_normalize_preds():
         tg = TraingenDummy()
         tg.val_datagen.slices_per_batch = 1
@@ -178,16 +173,9 @@ def test_training():
         data = {'class_labels_all': np.random.uniform(0, 1, (3, 16, 100))}
         training._validate_class_data_shapes(tg, data, validate_n_slices=True)
 
-
-    _test_unroll_into_samples()
     _test_weighted_normalize_preds()
     _test_validate_data_shapes()
     _test_validate_class_data_shapes()
-
-
-@notify(tests_done)
-def test_cust():
-    pass
 
 
 @notify(tests_done)
