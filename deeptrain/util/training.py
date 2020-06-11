@@ -104,7 +104,7 @@ def get_sample_weight(self, class_labels, val=False, slice_idx=None,
             If None, will return all `slices_per_batch` number of `sample_weight`.
         force_unweighted: bool
             Get slice-unweighted `sample_weight` regardless of slice usage;
-            used internally by :func:`_get_weighted_sample_weight` to
+            used internally by :meth:`._get_weighted_sample_weight` to
             break recursion.
     """
     def _get_unweighted(class_labels, val):
@@ -154,13 +154,13 @@ def _get_weighted_sample_weight(self, class_labels_all, val=False,
     # `None` as in not passed in, not datagen-absent
     validate_n_slices = slice_idx is None
     class_labels_all = self._validate_class_data_shapes(
-        {'class_labels_all': class_labels_all}, validate_n_slices, val)
+        {'class_labels_all': class_labels_all}, val, validate_n_slices)
 
     n_slices = (self.val_datagen if val else self.datagen).slices_per_batch
 
     sw = _sliced_sample_weight(class_labels_all, slice_idx, val)
-    sw = self._validate_class_data_shapes(
-        {'sample_weight_all': sw}, validate_n_slices, val)
+    sw = self._validate_class_data_shapes({'sample_weight_all': sw},
+                                          val, validate_n_slices)
     sw_weights = np.linspace(*weight_range, n_slices
                              ).reshape([1, n_slices] + [1] * (sw.ndim - 2))
 
@@ -379,6 +379,15 @@ def _unroll_into_samples(out_ndim, *arrs):
 def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
                          class_labels_all, return_as_dict=True,
                          unroll_into_samples=True):
+    """Prepare data for feeding to metrics computing methods.
+        - Stanardize labels and preds shapes to the expected
+          `(batches, *model.output_shape)`, or
+          `(batches, slices, *model.output_shape)` if slices are used.
+          See :meth:`._validate_data_shapes`.
+        - Standardize `sample_weight` and `class_labels` shapes.
+          See :meth:`._validate_class_data_shapes`.
+        - Unroll
+    """
     def _transform_labels_and_preds(labels_all, preds_all, sample_weight_all,
                                     class_labels_all):
         d = self._validate_data_shapes({'labels_all': labels_all,
@@ -422,6 +431,19 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
 
 
 def _weighted_normalize_preds(self, preds_all):
+    """Given batch-slices predictions, "weighs" binary (sigmoid) class predictions
+    linearly according to `pred_weighted_slices_range`, in `slices_per_batch`
+    steps. In effect, 0-class predictions from later slices are weighted
+    greater than those from earlier, and likewise for 1-class.
+
+    Norm logic: "0-class" is defined as predicting <0.5. 1 is subtracted
+    from all predictions, so that 0-class preds are negative, and 1-class are
+    positive. Preds are then *scaled* according to slice weights, so that
+    greater weights correspond to more negative and more positive values. Preds
+    are then shifted back to original [0, 1]. More negative values in shifted
+    domain thus correspond to values closer to 0 in original domain, in a manner
+    that weighs 0-class preds and 1-class preds equally.
+    """
     def _validate_data(preds_all, n_slices):
         spb = self.val_datagen.slices_per_batch
         assert (n_slices == spb), ("`n_slices` inferred from `preds_all` differs"
@@ -454,8 +476,32 @@ def _weighted_normalize_preds(self, preds_all):
     return preds_norm
 
 
-def _validate_data_shapes(self, data, validate_n_slices=True, val=True):
-    """Ensures `data` entires are shaped (batches, slices, *model.output_shape)
+def _validate_data_shapes(self, data, val=True,
+                          validate_n_slices=True,
+                          validate_last_dims_match_outs_shape=True,
+                          validate_equal_shapes=True):
+    """Ensures `data` entires are shaped `(batches, *model.output_shape)`,
+    or `(batches, slices, *model.output_shape)` if using slices.
+        - Validate `batch_size`, and that it's common to every batch/slice.
+        - Validate `slices_per_batch`, and that it's common to every batch/slice,
+          `if validate_n_slices`.
+
+    Arguments:
+        data: dict[str: np.ndarray]
+            `{'labels_all': labels_all, 'preds_all': preds_all}'. Passed as
+            self-naming dict to improve code readability in exception handling.
+        val: bool
+            Only relevant with `validate_n_slices==True`; if True, gets
+            `slices_per_batch` from `val_datagen` - else, from `datagen`.
+        validate_n_slices: bool
+            (Default True) is set False when `slice_idx` is not None in
+            in `_get_weighted_sample_weight`, which occurs during
+            :meth:`.validate` when processing individual batch-slices.
+            `slice_idx` is None :meth:`._on_val_end`.
+        validate_last_dims_match_outs_shape: bool
+            See :meth:`._validate_class_data_shapes`.
+        validate_equal_shapes: bool
+            See :meth:`._validate_class_data_shapes`.
     """
     def _validate_batch_size(data, outs_shape):
         batch_size = outs_shape[0]
@@ -497,8 +543,9 @@ def _validate_data_shapes(self, data, validate_n_slices=True, val=True):
 
     def _validate_n_slices(data, slices_per_batch):
         if slices_per_batch is not None:
-            x = list(data.values())[0]
-            assert (slices_per_batch in x.shape), x.shape
+            for name, x in data.items():
+                assert (slices_per_batch in x.shape), (
+                    f"{name} -- {x.shape}, {slices_per_batch} slices_per_batch")
 
     for name in data:
         data[name] = np.asarray(data[name])
@@ -512,57 +559,27 @@ def _validate_data_shapes(self, data, validate_n_slices=True, val=True):
                                'slices_per_batch', None)
     data = _validate_iter_ndim(data, slices_per_batch, ndim)
 
-    _validate_last_dims_match_outs_shape(data, outs_shape, ndim)
-    _validate_equal_shapes(data)
+    if validate_last_dims_match_outs_shape:
+        _validate_last_dims_match_outs_shape(data, outs_shape, ndim)
+    if validate_equal_shapes:
+        _validate_equal_shapes(data)
     if validate_n_slices:
         _validate_n_slices(data, slices_per_batch)
 
     return data if len(data) > 1 else list(data.values())[0]
 
 
-def _validate_class_data_shapes(self, data, validate_n_slices=False, val=True):
-    """sample_weight and class_labels data"""
-    def _validate_batch_size(data, outs_shape):
-        batch_size = outs_shape[0]
-        if batch_size is None:
-            batch_size = self.batch_size or self._inferred_batch_size
-            assert batch_size is not None
-
-        for name, x in data.items():
-            assert (batch_size in x.shape), (
-                f"`{name}.shape` must include batch_size (={batch_size}) "
-                f"{x.shape}")
-        return batch_size
-
-    def _validate_iter_ndim(data, slices_per_batch, ndim):
-        if slices_per_batch is not None:
-            expected_iter_ndim = ndim + 2  # (batches, slices)+
-        else:
-            expected_iter_ndim = ndim + 1  # (batches,)+
-
-        for name in data:
-            while data[name].ndim < expected_iter_ndim:
-                data[name] = np.expand_dims(data[name], 0)
-        return data
-
-    def _validate_n_slices(data, slices_per_batch):
-        if slices_per_batch is not None:
-            for name, x in data.items():
-                assert (slices_per_batch in x), (f"{name} -- {x.shape}")
-
-    for k, v in data.items():
-        data[k] = np.asarray(v)
-
-    outs_shape = list(self.model.output_shape)
-    batch_size = _validate_batch_size(data, outs_shape)
-    outs_shape[0] = batch_size
-    outs_shape = tuple(outs_shape)
-    ndim = len(outs_shape)
-    slices_per_batch = getattr(self.val_datagen if val else self.datagen,
-                               'slices_per_batch', None)
-
-    data = _validate_iter_ndim(data, slices_per_batch, ndim)
-    if validate_n_slices:
-        _validate_n_slices(data, slices_per_batch)
-
-    return data if len(data) > 1 else list(data.values())[0]
+def _validate_class_data_shapes(self, data, val=True, validate_n_slices=False):
+    """Standardize `sample_weight` and `class_labels` data. Same as
+    :meth:`._validate_data_shapes`, except skips two validations:
+        - `_validate_last_dims_match_outs_shape`; for `class_labels`, model
+          output shapes can be same as input shapes as with autoencoders,
+          but inputs can still have class labels, subjecting to `sample_weight`.
+          `sample_weight` often won't share model output shape, as with e.g.
+          multiclass classification, where individual classes aren't weighted.
+        - `_equal_shapes`; per above, `data` entries may not have equal shapes.
+    """
+    return self._validate_data_shapes(data, val,
+                                      validate_n_slices,
+                                      validate_last_dims_match_outs_shape=False,
+                                      validate_equal_shapes=False)
