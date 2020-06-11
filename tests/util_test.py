@@ -41,8 +41,6 @@ def test_searching():
     metric_fn = metrics.f1_score
     searching.find_best_predict_threshold(labels, preds, metric_fn, verbosity=2)
 
-    assert True
-
 
 @notify(tests_done)
 def test_misc():

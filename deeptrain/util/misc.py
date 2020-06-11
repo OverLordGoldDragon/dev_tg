@@ -73,16 +73,16 @@ def get_module_methods(module):
 
 def capture_args(fn):
     """Capture bound method arguments without changing its input signature.
-       Method must have a **kwargs to append captured arguments to."""
+    Method must have a **kwargs to append captured arguments to.
+    """
     @wraps(fn)
     def wrap(self, *args, **kwargs):
         # convert to string to prevent storing objects
         # & trim in case long lists / arrays are passed
         def obj_to_str(x, key=None):
             def builtin_or_npscalar(x):
-                return (isinstance(x, np.generic) or
-                    type(x) in (*vars(builtins).values(), type(None), type(min)))
-
+                return isinstance(x, (np.generic, type(None), type(min))
+                                  ) or type(x) in vars(builtins).values()
             if builtin_or_npscalar(x):
                 return x
             qname = getattr(x, '__qualname__', None)

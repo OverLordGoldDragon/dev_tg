@@ -308,7 +308,7 @@ def test_util():
         pass_on_error(tg._update_temp_history,
                       metrics=[dict(a=1, b=2)], val=False)
 
-        tg._update_temp_history([[1]], val=False)
+        # tg._update_temp_history([[1]], val=False)  # tests `_handle_non_scalar`
 
         tg.temp_history = {'f1_score': []}
         tg.train_metrics = ['f1_score']

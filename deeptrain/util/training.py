@@ -381,14 +381,11 @@ def _unroll_into_samples(out_ndim, *arrs):
     so the minimal case is `(1, 1, *output_shape)`, which still correctly
     reshapes into `(1, *output_shape)`. Cases:
 
-    >>> x                 # (32, 1) [shape]
-    >>> x = x.reshape...  # (32, 1)
-    ...
-    >>> x                 # (1, 1, 32, 1)
-    >>> x = x.reshape...  # (32, 1)
-    ...
-    >>> x                 # (1, 32, 1)
-    >>> x = x.reshape...  # (32, 1)
+    >>> #       (32, 1) -> (32, 1)
+    ... #    (1, 32, 1) -> (32, 1)
+    ... # (1, 1, 32, 1) -> (32, 1)
+    ... # (1, 3, 32, 1) -> (66, 1)
+    ... # (2, 3, 32, 1) -> (122, 1)
     """
     ls = []
     for x in arrs:
@@ -404,14 +401,15 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
                          class_labels_all, return_as_dict=True,
                          unroll_into_samples=True):
     """Prepare data for feeding to metrics computing methods.
+
         - Stanardize labels and preds shapes to the expected
           `(batches, *model.output_shape)`, or
           `(batches, slices, *model.output_shape)` if slices are used.
-          See :meth:`._validate_data_shapes`.
+          See :func:`_validate_data_shapes`.
         - Standardize `sample_weight` and `class_labels` shapes.
-          See :meth:`._validate_class_data_shapes`.
+          See :func:`_validate_class_data_shapes`.
         - Unroll data into samples (merge batches, slices, and samples dims).
-          See :func:`_unroll_into_samples`
+          See :func:`_unroll_into_samples`.
     """
     def _transform_labels_and_preds(labels_all, preds_all, sample_weight_all,
                                     class_labels_all):
@@ -509,13 +507,14 @@ def _validate_data_shapes(self, data, val=True,
                           validate_equal_shapes=True):
     """Ensures `data` entires are shaped `(batches, *model.output_shape)`,
     or `(batches, slices, *model.output_shape)` if using slices.
+
         - Validate `batch_size`, and that it's common to every batch/slice.
         - Validate `slices_per_batch`, and that it's common to every batch/slice,
           `if validate_n_slices`.
 
     Arguments:
         data: dict[str: np.ndarray]
-            `{'labels_all': labels_all, 'preds_all': preds_all}'. Passed as
+            `{'labels_all': labels_all, 'preds_all': preds_all}`. Passed as
             self-naming dict to improve code readability in exception handling.
         val: bool
             Only relevant with `validate_n_slices==True`; if True, gets
@@ -526,9 +525,9 @@ def _validate_data_shapes(self, data, val=True,
             :meth:`.validate` when processing individual batch-slices.
             `slice_idx` is None :meth:`._on_val_end`.
         validate_last_dims_match_outs_shape: bool
-            See :meth:`._validate_class_data_shapes`.
+            See :func:`_validate_class_data_shapes`.
         validate_equal_shapes: bool
-            See :meth:`._validate_class_data_shapes`.
+            See :func:`_validate_class_data_shapes`.
     """
     def _validate_batch_size(data, outs_shape):
         batch_size = outs_shape[0]
@@ -598,7 +597,8 @@ def _validate_data_shapes(self, data, val=True,
 
 def _validate_class_data_shapes(self, data, val=True, validate_n_slices=False):
     """Standardize `sample_weight` and `class_labels` data. Same as
-    :meth:`._validate_data_shapes`, except skips two validations:
+    :func:`_validate_data_shapes`, except skips two validations:
+
         - `_validate_last_dims_match_outs_shape`; for `class_labels`, model
           output shapes can be same as input shapes as with autoencoders,
           but inputs can still have class labels, subjecting to `sample_weight`.

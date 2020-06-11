@@ -23,7 +23,6 @@ deeptrain.util.configs module
 -----------------------------
 
 .. automodule:: deeptrain.util.configs
-   :members:
    :undoc-members:
    :show-inheritance:
 

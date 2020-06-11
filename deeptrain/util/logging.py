@@ -272,11 +272,13 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
     `kwargs`, and __main__ via `source_lognames`.
 
     Arguments:
-        kwargs: kwargs passed to self's __init__.
-        source_lognames: str/list of str. Names of self methoda attributes
-            to get source code of.
-        savedir: str. Path to directory where to save logs. Saves a .json of
-               self dict, and .txt of source codes (if any).
+        kwargs: dict
+            kwargs passed to `self`'s `__init__`.
+        source_lognames: list[str] / str
+            Names of self methoda attributes to get source code of.
+        savedir: str.
+            Path to directory where to save logs. Saves a .json of `self`
+            dict, and .txt of source codes (if any).
     """
     def _save_logs(state, source, savedir, verbose):
         path = os.path.join(savedir, "init_state.h5")
