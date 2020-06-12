@@ -69,45 +69,44 @@ class TraingenCallback():
 
     def on_train_iter_end(self, stage=None):
         """Called by `_on_iter_end`,
-        within `TrainGenerator.`:meth:`._train_postiter_processing`
-        :meth:`TrainGenerator._train_postiter_processing`
+        within :meth:`TrainGenerator._train_postiter_processing`
         with `stage='train:iter'`."""
         raise NotImplementedError
 
     def on_train_batch_end(self, stage=None):
         """Called by `_on_batch_end`,
-        within `TrainGenerator.`:meth:`._train_postiter_processing`,
+        within :meth:`TrainGenerator._train_postiter_processing`,
         with `stage='train:batch'`.
         """
         raise NotImplementedError
 
     def on_train_epoch_end(self, stage=None):
         """Called by `_on_epoch_end`,
-        within `TrainGenerator`:meth:`._train_postiter_processing`,
+        within :meth:`TrainGenerator._train_postiter_processing`,
         with `stage='train:epoch'`."""
         raise NotImplementedError
 
     def on_val_iter_end(self, stage=None):
         """Called by `_on_iter_end`,
-        within `TrainGenerator.`:meth:`._val_postiter_processing`,
+        within :meth:`TrainGenerator._val_postiter_processing`,
         with `stage='val:iter'`.
         """
         raise NotImplementedError
 
     def on_val_batch_end(self, stage=None):
         """Called by `_on_batch_end`,
-        within `TrainGenerator.`:meth:`._val_postiter_processing`,
+        within :meth:`TrainGenerator._val_postiter_processing`,
         with `stage='val:batch'`."""
         raise NotImplementedError
 
     def on_val_epoch_end(self, stage=None):
         """Called by `_on_epoch_end`,
-        within `TrainGenerator.`:meth:`._val_postiter_processing`,
+        within :meth:`TrainGenerator._val_postiter_processing`,
         with `stage='val:epoch'`."""
         raise NotImplementedError
 
     def on_val_end(self, stage=None):
-        """Called by `TrainGenerator.`:meth:`._on_val_end`, with:
+        """Called by :meth:`TrainGenerator._on_val_end`, with:
 
             - `stage=('val_end', 'train:epoch')` if
               `TrainGenerator.datagen.all_data_exhausted`
@@ -116,12 +115,12 @@ class TraingenCallback():
         raise NotImplementedError
 
     def on_save(self, stage=None):
-        """Called by `TrainGenerator.save()` with `stage='save'`.
+        """Called by :meth:`TrainGenerator.save()` with `stage='save'`.
         """
         raise NotImplementedError
 
     def on_load(self, stage=None):
-        """Called by `TrainGenerator.load()` with `stage='load'`.
+        """Called by :meth:`TrainGenerator.load()` with `stage='load'`.
         """
         raise NotImplementedError
 
