@@ -72,12 +72,23 @@ def _save_best_model(self, del_previous_best=False):
 
 
 def checkpoint(self, forced=False, overwrite=None):
-    """Yes
+    """Save `TrainGenerator` state, report, history fig, and model (weights,
+    and if configured to, optimizer state and architecture).
 
     Arguments:
+        forced: bool
+            If True, will checkpoint whether or not temp / unique checkpoint
+            freq's were met.
         overwrite: bool / None
-            If None, set from `checkpoints_overwrite_duplicates`
-            (else, override it).
+            If None, set from `checkpoints_overwrite_duplicates`.
+
+    Saves according to `temp_checkpoint_freq` and `unique_checkpoint_freq`.
+    See :meth:`._should_do`. See :func:`save` on how model and
+    `TrainGenerator` state are save.
+
+    "Unique" checkpoint will generate save files with latest `best_key_metric`
+    and `_times_validated`, and with full `model_name` if
+    `logs_use_full_model_name`.
     """
     def _get_savename(do_temp, do_unique):
         if do_temp and not do_unique:  # give latter precedence
@@ -118,7 +129,7 @@ def checkpoint(self, forced=False, overwrite=None):
             overwrite = bool(self.checkpoints_overwrite_duplicates)
 
         save_fns = [(basepath + 'state.h5',   self.save),
-                    (basepath + 'hist.png',   self._save_history),
+                    (basepath + 'hist.png',   self._save_history_fig),
                     (basepath + 'report.png', self.generate_report)]
 
         _sf = self._make_model_save_fns(basepath)
@@ -160,7 +171,7 @@ def checkpoint(self, forced=False, overwrite=None):
     try:
         _clear_checkpoints_IF()
     except BaseException as e:
-        print(WARN,  "Checkpoint files could not be cleared; skipping")
+        print(WARN, "Checkpoint files could not be cleared; skipping")
         print("Errmsg:", e)
 
 
@@ -184,61 +195,48 @@ def _make_model_save_fns(self, basepath):
 
 
 def save(self, savepath=None):
-    def _get_optimizer_state(opt):
-        def _get_attrs_to_save(opt):
-            cfg = self.optimizer_save_configs
-            all_attrs = exclude_unpickleable(vars(opt))
-            all_attrs['weights'] = []
+    """Save `TrainGenerator` state and, if configured to, model weights
+    and optimizer state. Applies callbacks with `stage='save'`.
 
-            if cfg is None:
-                return all_attrs
+    Arguments:
+        savepath: str / None
+            File path to save to. If None, will set to
+            `logdir` + `_temp_model__state.h5`. Internally, `savepath` is
+            passed meaningfully by :func:`checkpoint` and
+            :func:`_save_best_model`.
 
-            if 'exclude' in cfg:
-                return [a for a in all_attrs if a not in cfg['exclude']]
+    **Saving TrainGenerator state**:
 
-            if 'include' in cfg:
-                attrs = []
-                for attr in cfg['include']:
-                    if attr in all_attrs:
-                        attrs.append(attr)
-                    elif attr in vars(opt):
-                        print(WARN, ("'{}' optimizer attribute cannot be "
-                                     "pickled; skipping"))
-                    else:
-                        print(WARN, ("'{}' attribute not found in optimizer; "
-                                     "skipping").format(attr))
-                return attrs
+    Configured with `saveskip_list`, and `DataGenerator.saveskip_list` for
+    `datagen` and `val_datagen`; any attribute *not* included in the lists will
+    be saved (except objects that cannot be pickled, which will raise
+    `PickleError`. Callables (e.g. functions) are excluded automatically).
 
-        state = {}
-        to_save = _get_attrs_to_save(opt)
-        for name in to_save:
-            if name == 'weights':
-                weights = opt.get_weights()
-                if weights != []:
-                    state['weights'] = weights
-                continue
+    **Saving optimizer state**:
 
-            value = getattr(opt, name, None)
-            if isinstance(value, tf.Variable):
-                state[name] = tensor_utils.eval_tensor(value, backend=K)
-            else:
-                state[name] = value
-        return state
+    Configured with `optimizer_save_configs`, in the below structure;
+    only one of `'include'`, `'exclude'` can be set.
 
+    >>> {'include':  # optimizer attributes to include
+    ...      ['weights', 'learning_rate']  # will ONLY save these
+    ... }
+    >>> {'exclude':  # optimizer attributes to exclude
+    ...      ['updates', 'epsilon']  # will save everything BUT these
+    ... }
+    """
     def _cache_datagen_attributes():
-        def _cache_then_del_attrs(parent_obj, child_obj_names, to_exclude):
-            if not isinstance(child_obj_names, (list, tuple)):
-                child_obj_names = [child_obj_names]
-
+        """Temporarily store away `DataGenerator` attributes so that
+        `datagen` and `val_datagen` can be saved directly according to
+        `DataGenerator.saveskip_list`, and then restore."""
+        def _cache_then_del_attrs(parent_obj, child_obj_name, to_exclude):
             cached_attrs = {}
-            for child_name in child_obj_names:
-                for attr_name in to_exclude:
-                    obj = getattr(parent_obj, child_name)
-                    attr_value = getattr(obj, attr_name)
+            obj = getattr(parent_obj, child_obj_name)
 
-                    cache_name = child_name + '.' + attr_name
-                    cached_attrs[cache_name] = attr_value
-                    delattr(obj, attr_name)
+            for attr_name in to_exclude:
+                cache_name = child_obj_name + '.' + attr_name
+                attr_value = getattr(obj, attr_name)
+                cached_attrs[cache_name] = attr_value
+                delattr(obj, attr_name)
             return cached_attrs
 
         cached_attrs = {}
@@ -247,6 +245,8 @@ def save(self, savepath=None):
             to_exclude = dg.saveskip_list.copy()
 
             for key, val in vars(dg).items():
+                # exclude callables (e.g. functions), which *might* be
+                # pickleable, but no need to
                 if isinstance(val, types.LambdaType):
                     to_exclude.append(key)
             cached_attrs.update(_cache_then_del_attrs(self, dg_name, to_exclude))
@@ -267,7 +267,7 @@ def save(self, savepath=None):
     skiplist = self.saveskip_list + ['model']  # do not pickle model
     savedict = {k: v for k, v in vars(self).items() if k not in skiplist}
     if 'optimizer_state' not in self.saveskip_list:
-        savedict['optimizer_state'] = _get_optimizer_state(self.model.optimizer)
+        savedict['optimizer_state'] = self._get_optimizer_state()
 
     try:
         with open(savepath, "wb") as savefile:
@@ -279,7 +279,97 @@ def save(self, savepath=None):
     _restore_cached_attributes(self, cached_attrs)
 
 
+def _get_optimizer_state(self):
+    """Get optimizer attributes to save, according to `optimizer_save_configs`;
+    helper method to :func:`save`.
+    """
+    def _get_attrs_to_save(opt):
+        cfg = self.optimizer_save_configs
+        all_attrs = exclude_unpickleable(vars(opt))
+        all_attrs['weights'] = []
+
+        if cfg is None:
+            return all_attrs
+
+        if 'exclude' in cfg:
+            return [a for a in all_attrs if a not in cfg['exclude']]
+
+        if 'include' in cfg:
+            attrs = []
+            for attr in cfg['include']:
+                if attr in all_attrs:
+                    attrs.append(attr)
+                elif attr in vars(opt):
+                    print(WARN, ("'{}' optimizer attribute cannot be "
+                                 "pickled; skipping"))
+                else:
+                    print(WARN, ("'{}' attribute not found in optimizer; "
+                                 "skipping").format(attr))
+            return attrs
+
+    state = {}
+    opt = self.model.optimizer
+    to_save = _get_attrs_to_save(opt)
+    for name in to_save:
+        if name == 'weights':
+            weights = opt.get_weights()
+            if weights != []:
+                state['weights'] = weights
+            continue
+
+        value = getattr(opt, name, None)
+        if isinstance(value, tf.Variable):
+            state[name] = tensor_utils.eval_tensor(value, backend=K)
+        else:
+            state[name] = value
+    return state
+
+
 def load(self, filepath=None, passed_args=None):
+    """Load `TrainGenerator` state and, if configured to, model optimizer
+    attributes and instantiate optimizer. Instantiate callbacks, and apply
+    them with `stage='load. Preload data from `datagen` and `val_datagen`.
+
+    Arguments:
+        filepath: str / None
+            File path to load from. If None:
+
+            - `logdir` is None, or is not a directory: raises `ValueError`
+            - `logdir` is a directory: sets `filepath` to *latest* file
+              with name ending with `'__state.h5'`; if there isn't such file,
+              raises `ValueError`.
+
+        passed_args: dict / None
+            Passed within `TrainGenerator.__init__()` as arguments given by user
+            (*not* defaults) to `__init__`. Along `loadskip_list`, mediates
+            which attributes are loaded (see below).
+
+    **Loading TrainGenerator state**:
+
+    Configured with `loadskip_list`, `DataGenerator.loadskip_list` and
+    `DataGenerator.preprocessor.loadskip_list` for `datagen` and `val_datagen`;
+    any attribute *not* included in the lists will be loaded. `'model'` is
+    always skipped from loading as part of pickled file, since it's
+    never saved via :func:`save`.
+
+    - If `loadskip_list == 'auto'` or falsy (e.g. None), will default it to
+      `passed_args`.
+    - If `passed_args` is falsy, defaults to `[]` (load all).
+    - If `'{auto}'` is in `loadskip_list`, then will append `passed_args`
+      to `loadskip_list`, and pop `'{auto}'`.
+
+    **Loading optimizer state**:
+
+    Configured with `optimizer_load_configs`, in the below structure;
+    only one of `'include'`, `'exclude'` can be set.
+
+    >>> {'include':  # optimizer attributes to include
+    ...      ['weights', 'learning_rate']  # will ONLY load these
+    ... }
+    >>> {'exclude':  # optimizer attributes to exclude
+    ...      ['updates', 'epsilon']  # will load everything BUT these
+    ... }
+    """
     def _get_loadskip_list(passed_args):
         if self.loadskip_list == 'auto' or not self.loadskip_list:
             return list(passed_args) if passed_args else []
@@ -359,7 +449,7 @@ def load(self, filepath=None, passed_args=None):
         loadfile_parsed = pickle.load(loadfile)
         # drop items in loadskip_list (e.g. to avoid overriding passed kwargs)
         loadskip_list = _get_loadskip_list(passed_args)
-        loadskip_list.append('model')  # cannot unpickle model
+        loadskip_list.append('model')  # model is never saved via .save()
         for name in loadskip_list:
             loadfile_parsed.pop(name, None)
 
@@ -391,6 +481,10 @@ def load(self, filepath=None, passed_args=None):
 
 
 def _load_optimizer_state(self):
+    """Sets optimizer attributes from `self.optimizer_state`, according to
+    `optimizer_load_configs`; helper method to :func:`load`. Is called internally
+    by :func:`load`. `optimizer_state` is set to None to free memory afterwards.
+    """
     def _get_attrs_to_load(opt):
         cfg = self.optimizer_load_configs
         all_attrs = [a for a in list(vars(opt)) if a != 'updates']
@@ -426,11 +520,24 @@ def _load_optimizer_state(self):
     print("Optimizer state loaded (& cleared from TrainGenerator)")
 
 
-def _save_history(self, savepath=None):
-    def _save_epoch_fig():
+def _save_history_fig(self, savepath=None):
+    """Saves `_history_fig`. Does nothing if `_history_fig` is falsy (e.g. None).
+
+    Arguments:
+        savepath: str / None
+            Path to save figure to. If None, will set to `logdir` +
+            `'_temp_model__hist.png'`. Also if None, and `final_fig_dir`
+            is set, will use full model name instead.
+
+    If `final_fig_dir` is set, will also save (at most one) figure there using
+    full model name; if there are existing savefiles (.png) with same `model_num`,
+    will delete them. Intended to document latest state of history.
+    """
+    def _save_final_fig():
         prev_figs = [os.path.join(self.final_fig_dir, name)
-            for name in os.listdir(self.final_fig_dir)
-            if str(self.model_num) in name]
+                     for name in os.listdir(self.final_fig_dir)
+                     if (name.startswith('M' + str(self.model_num)) and
+                         name.endswith('.png'))]
         if len(prev_figs) != 0:
             [os.remove(fig) for fig in prev_figs]
 
@@ -446,5 +553,5 @@ def _save_history(self, savepath=None):
                   "\nErrmsg:", e)
 
     if self.final_fig_dir:  # keep at most one per model_num
-        pass_on_error(_save_epoch_fig, errmsg=("Epoch fig could not be "
-                                                 "saved; skipping"))
+        pass_on_error(_save_final_fig, errmsg=("Epoch fig could not be "
+                                               "saved; skipping"))

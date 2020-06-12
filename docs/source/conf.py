@@ -152,6 +152,8 @@ reftarget_aliases = {
         'util.saving.load',
     'TrainGenerator.__init__':
         'train_generator.TrainGenerator.__init__',
+    'checkpoint':
+        'util.saving.checkpoint',
 }
 reftarget_aliases = {k: ('deeptrain.' + v, k + '()')
                      for k, v in reftarget_aliases.items()}

@@ -658,16 +658,21 @@ class TrainGenerator(TraingenUtils):
             self._has_trained = False
             self._val_has_postiter_processed = True
 
-    def _should_do(self, config, forced=False):
+    def _should_do(self, freq_config, forced=False):
         """Checks whether a counter meets a frequency as specified in
         `val_freq`, `plot_history_freq`, `unique_checkpoint_freq`,
         `temp_checkpoint_freq`.
+
+        "Counter" is one of `_fit_iters`, `_batches_fit`, `epoch`, and
+        `_times_validated`. Ex: with `unique_checkpoint_freq = {'batch': 5}`,
+        :meth:`checkpoint` will make a unique checkpoint on every 5th batch
+        fitted during :meth:`.train`.
         """
         if forced:
             return True
-        if config is None:
+        if freq_config is None:
             return False
-        freq_mode, freq_value = list(config.items())[0]
+        freq_mode, freq_value = list(freq_config.items())[0]
 
         if freq_mode == 'iter':
             return self._fit_iters % freq_value == 0

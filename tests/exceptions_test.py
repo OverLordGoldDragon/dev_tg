@@ -201,15 +201,15 @@ def test_util():
         pass_on_error(tg.checkpoint, overwrite="underwrite")
         tg.datagen.set_nums_to_process = [9001]
         tg.save()
-        tg._save_history()
-        tg._save_history()
+        tg._save_history_fig()
+        tg._save_history_fig()
         tg.optimizer_load_configs = {'exclude': ['weights']}
         tg.loadskip_list = ['optimizer_load_configs']
         tg.datagen.loadskip_list = ['stuff']
         tg.load()
 
         tg._history_fig = 1
-        tg._save_history()
+        tg._save_history_fig()
 
         tg.loadskip_list = 'auto'
         tg.load()

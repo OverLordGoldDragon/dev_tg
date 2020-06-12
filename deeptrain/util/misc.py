@@ -31,7 +31,8 @@ def try_except(try_fn, except_fn):
     try:
         try_fn()
     except:
-        except_fn()
+        if except_fn:  # else pass
+            except_fn()
 
 
 def argspec(obj):
