@@ -62,7 +62,7 @@ class TraingenCallback():
         pass
 
     def init_with_traingen(self, traingen=None):
-        """Called by `TrainGenerator.__init__`, passing in `self`
+        """Called by `TrainGenerator.__init__()`, passing in `self`
         (`TrainGenerator` instance).
         """
         raise NotImplementedError
