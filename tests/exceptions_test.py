@@ -171,11 +171,11 @@ def test_util():
         tg.train()
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
-            tg.key_metric_history.append(-1)  # ensure is new best
             tg._save_best_model(del_previous_best=True)
         with patch('deeptrain.train_generator.TrainGenerator.generate_report'
                    ) as mock_report:
             mock_report.side_effect = Exception()
+            tg.key_metric_history.append(-1)  # ensure is new best
             tg._save_best_model()
 
     def checkpoint(C):  # [util.saving]
