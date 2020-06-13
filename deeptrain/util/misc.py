@@ -358,16 +358,22 @@ def _validate_traingen_configs(self):
                                  "'predict' in `eval_fn_name`")
         if (self.pred_weighted_slices_range is not None or
             self.loss_weighted_slices_range is not None):
-            if not (hasattr(self.datagen, 'slices_per_batch') and
-                    hasattr(self.val_datagen, 'slices_per_batch')):
+            if not (self.datagen.slices_per_batch and
+                    self.val_datagen.slices_per_batch):
                 raise ValueError("to use `loss_weighted_slices_range`, and/or "
                                  "`pred_weighted_slices_range`, "
                                  "`datagen` and `val_datagen` must have "
-                                 "`slices_per_batch` attribute defined "
+                                 "`slices_per_batch` attribute set (not falsy) "
                                  "(via `preprocessor`).")
             for name in ('datagen', 'val_datagen'):
-                dg = getattr(self, name)
-                no_slices = dg.slices_per_batch in {1, None}
+                spb = getattr(self, name).slices_per_batch
+                if spb is not None:
+                    assert (isinstance(spb, int) and spb >= 1
+                            ), ("`slices_per_batch` must be None or int >= 1, "
+                                "got: %s for %s" % (spb, name))
+                    no_slices = (spb == 1)
+                else:
+                    no_slices = True
 
                 if no_slices:
                     print(WARN, "`%s` uses no (or one) slices; " % name

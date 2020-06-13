@@ -9,4 +9,5 @@ from . import labels_preloaders
 from . import experimental
 from . import preprocessors
 
+from .preprocessors import Preprocessor
 from .preprocessors import GenericPreprocessor, TimeseriesPreprocessor

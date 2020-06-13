@@ -128,26 +128,25 @@ def test_preprocessors():
     def _test_uninstantiated():
         C = deepcopy(DATAGEN_CFG)
         C['preprocessor'] = TimeseriesPreprocessor
-        C['preprocessor_configs'] = dict(window_size=5, batch_timesteps=10)
+        C['preprocessor_configs'] = dict(window_size=5)
         DataGenerator(**C)
 
     def _test_instantiated():
         C = deepcopy(DATAGEN_CFG)
-        C['preprocessor'] = TimeseriesPreprocessor(window_size=5,
-                                                   batch_timesteps=10)
+        C['preprocessor'] = TimeseriesPreprocessor(window_size=5)
 
-    def _test_incomplete():
-        class IncompletePreprocessor():
-            def __init__(self):
-                pass
+    # def _test_incomplete():  # TODO remove
+    #     class IncompletePreprocessor(Preprocessor):
+    #         def __init__(self):
+    #             pass
 
-        C = deepcopy(DATAGEN_CFG)
-        C['preprocessor'] = IncompletePreprocessor()
-        pass_on_error(DataGenerator, **C)
+    #     C = deepcopy(DATAGEN_CFG)
+    #     C['preprocessor'] = IncompletePreprocessor()
+    #     pass_on_error(DataGenerator, **C)
 
     _test_uninstantiated()
     _test_instantiated()
-    _test_incomplete()
+    # _test_incomplete()
 
 
 @notify(tests_done)

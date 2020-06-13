@@ -133,30 +133,55 @@ def skip(app, what, name, obj, would_skip, options):
         return False
     return would_skip
 
-###############################################################################
+#### Reference by alias configs ###############################################
 from sphinx.addnodes import pending_xref
 from docutils.nodes import Text
 
 # alias ref is mapped to a pair (real ref, text to render)
 # {alias: (ref, render)}
-reftarget_aliases = {
-    'TrainGenerator._train_postiter_processing':
-        'train_generator.TrainGenerator._train_postiter_processing',
-    'TrainGenerator._val_postiter_processing':
-        'train_generator.TrainGenerator._val_postiter_processing',
-    'TrainGenerator._on_val_end':
-        'train_generator.TrainGenerator._on_val_end',
-    'TrainGenerator.save':
-        'util.saving.save',
-    'TrainGenerator.load':
-        'util.saving.load',
-    'TrainGenerator.__init__':
-        'train_generator.TrainGenerator.__init__',
-    'checkpoint':
-        'util.saving.checkpoint',
-}
-reftarget_aliases = {k: ('deeptrain.' + v, k + '()')
-                     for k, v in reftarget_aliases.items()}
+# type reversed, nicer alignment: {refp: alias}, where `refp` will prepend self
+# to `alias `, unless `refp[-1] == '#'`
+#
+# Ex:
+# ('data_generator', 'DataGenerator') ->
+# {'DataGenerator': ('deeptrain.data_generator.DataGenerator', 'DataGenerator()')}
+#
+# ('data_generator*', 'DataGenerator') ->
+# {'DataGenerator': ('deeptrain.data_generator.DataGenerator', 'DataGenerator')}
+#
+# ('*', 'util.data_loaders') ->
+# {'util.data_loaders': ('deeptrain.util.data_loaders', 'util.data_loaders')}
+reftarget_aliases = [
+    ('train_generator',    'TrainGenerator._train_postiter_processing'),
+    ('train_generator',    'TrainGenerator._val_postiter_processing'),
+    ('train_generator',    'TrainGenerator._on_val_end'),
+    ('train_generator',    'TrainGenerator.__init__'),
+    ('train_generator',    'TrainGenerator.get_data'),
+    ('data_generator',     'DataGenerator'),
+    ('data_generator',     'DataGenerator.reset_state'),
+    ('data_generator',     'DataGenerator.get'),
+    ('data_generator',     'DataGenerator.on_epoch_end'),
+    ('data_generator',     'DataGenerator._set_preprocessor'),
+    ('data_generator',     'DataGenerator._get_next_batch'),
+    ('util.saving',        'TrainGenerator.save'),
+    ('util.saving',        'TrainGenerator.load'),
+    ('util.saving',        'checkpoint'),
+    ('util.preprocessors', 'GenericPreprocessor'),
+    ('util.preprocessors', 'TimeseriesPreprocessor'),
+    ('*', 'util.data_loaders'),
+    ('*', 'util.labels_preloaders'),
+]
+# make into dict, reverse
+reftarget_aliases = {v: k for k, v in reftarget_aliases}
+ra = {}
+for k, v in reftarget_aliases.items():
+    if v[-1] != '#':  # flag to not prepend `v` to `k`
+        v += '.' + k
+    if v[-1] == '*':  # flag to not append `()` to `k`
+        ra[k] = ('deeptrain.' + v[:-1], k)
+    else:
+        ra[k] = ('deeptrain.' + v, k + '()')
+reftarget_aliases = ra
 
 
 def resolve_internal_aliases(app, doctree):
@@ -174,6 +199,7 @@ def resolve_internal_aliases(app, doctree):
             # remove the old text node, add new text node with custom text
             text_node.parent.replace(text_node, Text(text_to_render, ''))
 
+###############################################################################
 
 def setup(app):
     app.add_stylesheet("style.css")

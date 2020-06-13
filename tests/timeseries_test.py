@@ -37,7 +37,7 @@ DATAGEN_CFG = dict(
     batch_size=batch_size,
     shuffle=True,
     preprocessor='timeseries',
-    preprocessor_configs=dict(batch_timesteps=20, window_size=4),
+    preprocessor_configs=dict(window_size=4),
 )
 VAL_DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'val'),
@@ -46,7 +46,7 @@ VAL_DATAGEN_CFG = dict(
     batch_size=batch_size,
     shuffle=False,
     preprocessor='timeseries',
-    preprocessor_configs=dict(batch_timesteps=20, window_size=4),
+    preprocessor_configs=dict(window_size=4),
 )
 TRAINGEN_CFG = dict(
     epochs=2,
