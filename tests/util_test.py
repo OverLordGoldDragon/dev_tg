@@ -89,10 +89,19 @@ def test_misc():
         assert args['*args'] == (4,)
         assert args['g'] == 6
 
-    _test_init_optimizer()
-    _test_make_plot_configs_from_metrics()
-    _test_get_module_methods()
-    _test_capture_args()
+    def _test_try_except():
+        misc.try_except(lambda: 1 / 0, lambda: 1)
+
+    def _test_extract_pickleable():
+        class Dummy():
+            def __init__(self):
+                self.a = 1
+                self.arr = np.random.randn(2, 2)
+        _ = misc.extract_pickleable(Dummy())
+
+    for name, fn in locals().items():
+        if name.startswith('_test_'):
+            fn()
 
 
 @notify(tests_done)

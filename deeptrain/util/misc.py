@@ -132,7 +132,7 @@ def exclude_unpickleable(obj):
 
 
 def _init_optimizer(model, class_weights=None, input_as_labels=False,
-                          alias_to_metric_name_fn=None):
+                    alias_to_metric_name_fn=None):
     """Instantiates optimizer (and maybe trainer), but does NOT train
        (update weights)"""
     loss = model.loss
@@ -367,16 +367,12 @@ def _validate_traingen_configs(self):
                                  "(via `preprocessor`).")
             for name in ('datagen', 'val_datagen'):
                 spb = getattr(self, name).slices_per_batch
-                if spb is not None:
-                    assert (isinstance(spb, int) and spb >= 1
-                            ), ("`slices_per_batch` must be None or int >= 1, "
-                                "got: %s for %s" % (spb, name))
-                    no_slices = (spb == 1)
-                else:
-                    no_slices = True
+                assert (isinstance(spb, int) and spb >= 1
+                        ), ("`slices_per_batch` must be None or int >= 1, "
+                            "got: %s for %s" % (spb, name))
 
-                if no_slices:
-                    print(WARN, "`%s` uses no (or one) slices; " % name
+                if (spb == 1):
+                    print(WARN, "`%s` uses one slice; " % name
                           + "setting `pred_weighted_slices_range=None`, "
                           "`loss_weighted_slices_range=None`")
                     self.pred_weighted_slices_range = None

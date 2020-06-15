@@ -75,6 +75,7 @@ def test_main():
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
         C['traingen']['epochs'] = 2
+        C['traingen']['final_fig_dir'] = C['traingen']['best_models_dir']
         _test_main(C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

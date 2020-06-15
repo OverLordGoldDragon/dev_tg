@@ -26,6 +26,7 @@ from deeptrain import introspection
 from deeptrain import DataGenerator
 from deeptrain.visuals import layer_hists
 from deeptrain.util.misc import pass_on_error
+from deeptrain.util import misc
 
 
 #### CONFIGURE TESTING #######################################################
@@ -295,6 +296,11 @@ def test_util():
     def compute_gradient_norm(C):  # [introspection]
         pass_on_error(introspection.compute_gradient_norm, 0, 0, 0, mode="leftput")
 
+    def _init_optimizer(C):  # [misc]
+        tg = _util_make_classifier(C)
+        tg.model.loss = 1
+        pass_on_error(misc._init_optimizer, tg.model)
+
     def _validate_weighted_slices_range(C):  # [util.misc]
         C['traingen']['pred_weighted_slices_range'] = (.5, 1.5)
         C['traingen']['eval_fn'] = 'evaluate'
@@ -319,6 +325,14 @@ def test_util():
         C = deepcopy(CONFIGS)
         C['datagen'].pop('slices_per_batch', None)
         pass_on_error(_util_make_classifier, C)
+
+        C = deepcopy(CONFIGS)
+        C['traingen']['eval_fn'] = 'predict'
+        tg = _util_make_classifier(C)
+        tg.pred_weighted_slices_range = (.1, 1.1)
+        tg.datagen.slices_per_batch = 1
+        tg.val_datagen.slices_per_batch = 1
+        tg._validate_traingen_configs()
 
     def _validate_metrics(C):  # [util.misc]
         C['traingen']['eval_fn'] = 'evaluate'
@@ -422,6 +436,7 @@ def test_util():
                   _get_best_subset_val_history,
                   _update_temp_history,
                   compute_gradient_norm,
+                  _init_optimizer,
                   _validate_weighted_slices_range,
                   _validate_metrics,
                   _validate_directories,
