@@ -97,7 +97,7 @@ def test_misc():
             def __init__(self):
                 self.a = 1
                 self.arr = np.random.randn(2, 2)
-        _ = misc.extract_pickleable(Dummy())
+        _ = misc.extract_pickleable(vars(Dummy()))
 
     for name, fn in locals().items():
         if name.startswith('_test_'):
