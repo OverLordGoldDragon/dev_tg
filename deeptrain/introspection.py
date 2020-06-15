@@ -325,10 +325,10 @@ def _make_gradients_fn(model, learning_phase, mode, return_names=False):
         def grads_fn(x, y, sw):
             if sw is None:
                 if isinstance(x, list):
-                    sample_weight = []
+                    sw = []
                     for data in x:
                         # extend to each input
-                        sample_weight.append(np.ones(len(data)))
+                        sw.append(np.ones(len(data)))
                 else:
                     sw = [np.ones(len(x))]
             ins = [x, y, sw]
