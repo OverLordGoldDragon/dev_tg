@@ -167,12 +167,6 @@ def test_preprocessors():
             fn(C)
 
 
-def test_v2(mocker):
-    mocker.patch('print', return_value="woot")
-    pp = TimeseriesPreprocessor(window_size=25, start_increments=[0, 5])
-    pp.start_increment = 4
-
-
 @notify(tests_done)
 def test_shuffle_group_batches():
     """Ensure reshape doesn't mix batch and spatial dimensions"""
