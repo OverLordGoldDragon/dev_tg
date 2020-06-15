@@ -119,6 +119,19 @@ def test_predict():
 
 
 @notify(tests_done)
+def test_start_increments():
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), tempdir(
+            C['traingen']['best_models_dir']):
+        C['datagen']['preprocessor_configs'] = dict(window_size=4,
+                                                    start_increments=[0, 2])
+        C['traingen']['epochs'] = 2
+        tg = init_session(C, model=model)
+        tg.train()
+        _test_load(tg, C)
+
+
+@notify(tests_done)
 def _test_load(tg, C):
     _do_test_load(tg, C, init_session)
 

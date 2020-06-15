@@ -81,14 +81,47 @@ class TimeseriesPreprocessor(Preprocessor):
     Arguments:
         window_size: int
             Length of each window (dim1), or number of timesteps per slice.
-        batch_timesteps: int
-
+        slide_size: int
+            Number of timesteps by which to slide the window.
+        start_increments: int
+            Number of timesteps by which to increment each window when fetching.
+        loadskip_list: dict / None
+            Attributes to skip on :meth:`TrainGenerator.load`. Defaults to
+            `['start_increments', 'window_size', 'slide_size']`.
 
     A "slice" here is a "window", and `slices_per_batch` is the number of such
-    windows per batch. `
+    windows per batch.
 
-    If `batch_shape == (32, 100, 4)`, and `window_size == 25`,
-    then `slices_per_batch == 4` (100 / 25), assuming `slide_size == window_size`.
+    **Examples**:
+
+    Each window in `windows` is from calling :meth:`._next_window`; changing
+    `start` & `end` requires calling :meth:`.update_state`.
+
+    >>> batch.shape == (32, 100, 4)
+    ...
+    >>> window_size, slide_size, start_increment = (25, 25, 0)
+    >>> slices_per_batch == 4
+    >>> windows == [batch[:, :25],     # slice_idx = 0 (window 1)
+    ...             batch[:, 25:50],   # slice_idx = 1 (window 2)
+    ...             batch[:, 50:75],   # slice_idx = 2 (window 3)
+    ...             batch[:, 75:100]]  # slice_idx = 3 (window 4)
+    ...
+    >>> window_size, slide_size, start_increment = (25, 25, 10)
+    >>> slices_per_batch == 3
+    >>> windows == [batch[:, 10:35],   # slice_idx = 0 (window 1)
+    ...             batch[:, 35:60],   # slice_idx = 1 (window 2)
+    ...             batch[:, 60:85]]   # slice_idx = 2 (window 3)
+    ...
+    >>> window_size, slide_size, start_increment = (25, 10, 0)
+    >>> slices_per_batch == 8
+    >>> windows == [batch[:, :25],     # slice_idx = 0 (window 1)
+    ...             batch[:, 10:35],   # slice_idx = 1 (...)
+    ...             batch[:, 20:45],   # slice_idx = 2
+    ...             batch[:, 30:55],   # slice_idx = 3
+    ...             batch[:, 40:65],   # slice_idx = 4
+    ...             batch[:, 50:75],   # slice_idx = 5
+    ...             batch[:, 60:85],   # slice_idx = 6
+    ...             batch[:, 70:95]]   # slice_idx = 7 (window 8)
     """
     def __init__(self, window_size,
                  slide_size=None,
@@ -110,6 +143,7 @@ class TimeseriesPreprocessor(Preprocessor):
         return self._next_window(batch), labels
 
     def _next_window(self, batch):
+        """Documented"""
         start = self.slice_idx * self.slide_size + self.start_increment
         end   = start + self.window_size
         return batch[:, start:end]
@@ -157,9 +191,10 @@ class TimeseriesPreprocessor(Preprocessor):
             assert isinstance(value, int), ("`start_increment` must be set to "
                                             "integer (got: %s)" % value)
             if value not in self.start_increments:
-                print(WARN, ("setting `start_increment` to {}, which is not in "
-                             "`start_increments` ({})").format(
-                                 value, ", ".join(self.start_increments)))
+                print(WARN,
+                      ("setting `start_increment` to {}, which is not in "
+                       "`start_increments` ({})").format(
+                           value, ", ".join(map(str, self.start_increments))))
 
         if self.start_increments is not None:
             _validate(value)

@@ -12,6 +12,7 @@ if sys.path[0] != filedir:
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
+import contextlib, io
 
 from copy import deepcopy
 
@@ -125,28 +126,51 @@ def test_labels_preloaders():
 
 @notify(tests_done)
 def test_preprocessors():
-    def _test_uninstantiated():
-        C = deepcopy(DATAGEN_CFG)
+    def _test_uninstantiated(C):
         C['preprocessor'] = TimeseriesPreprocessor
         C['preprocessor_configs'] = dict(window_size=5)
         DataGenerator(**C)
 
-    def _test_instantiated():
-        C = deepcopy(DATAGEN_CFG)
-        C['preprocessor'] = TimeseriesPreprocessor(window_size=5)
+    def _test_instantiated(C):
+        TimeseriesPreprocessor(window_size=5)
 
-    # def _test_incomplete():  # TODO remove
-    #     class IncompletePreprocessor(Preprocessor):
-    #         def __init__(self):
-    #             pass
+    def _test_start_increment(C):
+        pp = TimeseriesPreprocessor(window_size=25, start_increments=None)
+        try:
+            pp.start_increment = 5
+            # shouldn't be able to set with start_increments = None
+            assert False, ("shouldn't be able to set `start_increment`"
+                           "with `start_increments == None`")
+        except ValueError:
+            pass
 
-    #     C = deepcopy(DATAGEN_CFG)
-    #     C['preprocessor'] = IncompletePreprocessor()
-    #     pass_on_error(DataGenerator, **C)
+        pp = TimeseriesPreprocessor(window_size=25, start_increments=[0, 5])
+        pp.start_increment = 5  # should throw a warning
+        try:
+            pp.start_increment = 5.0
+            assert False, "shouldn't be able to set `start_increment` to a float"
+        except AssertionError:
+            pass
 
-    _test_uninstantiated()
-    _test_instantiated()
-    # _test_incomplete()
+    def _test_start_increment_warning(C):
+        pp = TimeseriesPreprocessor(window_size=25, start_increments=[0, 5])
+
+        str_io = io.StringIO()
+        with contextlib.redirect_stdout(str_io):
+            pp.start_increment = 4
+        output = str_io.getvalue()
+        assert "WARNING:" in output, "print(%s)" % output
+
+    for name, fn in locals().items():
+        if name.startswith('_test_') or name.startswith('test'):
+            C = deepcopy(DATAGEN_CFG)
+            fn(C)
+
+
+def test_v2(mocker):
+    mocker.patch('print', return_value="woot")
+    pp = TimeseriesPreprocessor(window_size=25, start_increments=[0, 5])
+    pp.start_increment = 4
 
 
 @notify(tests_done)

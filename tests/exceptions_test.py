@@ -22,6 +22,7 @@ from backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
 from deeptrain import metrics
 from deeptrain import preprocessing
+from deeptrain import introspection
 from deeptrain import DataGenerator
 from deeptrain.visuals import layer_hists
 from deeptrain.util.misc import pass_on_error
@@ -247,31 +248,6 @@ def test_util():
             'acc', 'sparse_categorical_crossentropy')
         util.training._get_api_metric_name('acc', 'binary_crossentropy')
 
-    def _validate_weighted_slices_range(C):  # [util.misc]
-        C['traingen']['pred_weighted_slices_range'] = (.5, 1.5)
-        C['traingen']['eval_fn'] = 'evaluate'
-        pass_on_error(_util_make_autoencoder, C)
-
-        C = deepcopy(CONFIGS)
-        tg = _util_make_autoencoder(C)
-        tg.pred_weighted_slices_range = (.5, 1.5)
-        tg._eval_fn_name = 'predict'
-        tg.datagen.slices_per_batch = None
-        tg.val_datagen.slices_per_batch = None
-        pass_on_error(tg._validate_traingen_configs)
-
-        C['traingen']['max_is_best'] = True
-        C['traingen']['eval_fn'] = 'evaluate'
-        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
-        pass_on_error(_util_make_classifier, C)
-
-        C['traingen']['eval_fn'] = 'predict'
-        pass_on_error(_util_make_classifier, C)
-
-        C = deepcopy(CONFIGS)
-        C['datagen'].pop('slices_per_batch', None)
-        pass_on_error(_util_make_classifier, C)
-
     def _get_best_subset_val_history(C):  # [util.training]
         C['traingen']['best_subset_size'] = 2
         tg = _util_make_classifier(C)
@@ -315,6 +291,34 @@ def test_util():
         tg.temp_history = {'f1_score': []}
         tg.train_metrics = ['f1_score']
         pass_on_error(tg._update_temp_history, metrics=[[1, 2]], val=False)
+
+    def compute_gradient_norm(C):  # [introspection]
+        pass_on_error(introspection.compute_gradient_norm, 0, 0, 0, mode="leftput")
+
+    def _validate_weighted_slices_range(C):  # [util.misc]
+        C['traingen']['pred_weighted_slices_range'] = (.5, 1.5)
+        C['traingen']['eval_fn'] = 'evaluate'
+        pass_on_error(_util_make_autoencoder, C)
+
+        C = deepcopy(CONFIGS)
+        tg = _util_make_autoencoder(C)
+        tg.pred_weighted_slices_range = (.5, 1.5)
+        tg._eval_fn_name = 'predict'
+        tg.datagen.slices_per_batch = None
+        tg.val_datagen.slices_per_batch = None
+        pass_on_error(tg._validate_traingen_configs)
+
+        C['traingen']['max_is_best'] = True
+        C['traingen']['eval_fn'] = 'evaluate'
+        C['traingen']['pred_weighted_slices_range'] = (.1, 1.1)
+        pass_on_error(_util_make_classifier, C)
+
+        C['traingen']['eval_fn'] = 'predict'
+        pass_on_error(_util_make_classifier, C)
+
+        C = deepcopy(CONFIGS)
+        C['datagen'].pop('slices_per_batch', None)
+        pass_on_error(_util_make_classifier, C)
 
     def _validate_metrics(C):  # [util.misc]
         C['traingen']['eval_fn'] = 'evaluate'
@@ -415,9 +419,10 @@ def test_util():
                   save,
                   get_sample_weight,
                   _get_api_metric_name,
-                  _validate_weighted_slices_range,
                   _get_best_subset_val_history,
                   _update_temp_history,
+                  compute_gradient_norm,
+                  _validate_weighted_slices_range,
                   _validate_metrics,
                   _validate_directories,
                   _validate_optimizer_saving_configs,

@@ -10,12 +10,14 @@ if sys.path[0] != filedir:
     sys.path.insert(0, filedir)
 
 import pytest
+import numpy as np
 
 from copy import deepcopy
 
 from backend import Adam
 from backend import BASEDIR, notify, make_autoencoder
 from backend import _init_session, _get_test_names
+from deeptrain import introspection
 
 
 #### CONFIGURE TESTING #######################################################
@@ -64,20 +66,21 @@ model = make_autoencoder(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
+
                          model=model, model_fn=make_autoencoder)
+
+_tg = init_session(CONFIGS)  # save time on redundant re-init's
+_tg.train()
 ###############################################################################
 
 @notify(tests_done)
 def test_gather_over_dataset():
-    C = deepcopy(CONFIGS)
-    tg = init_session(C, model=model)
-    tg.train()
+    _tg.gradient_norm_over_dataset(n_iters=None, prog_freq=3)
+    _tg.gradient_norm_over_dataset(n_iters=None, prog_freq=3, norm_fn=np.abs)
+    _tg.gradient_sum_over_dataset(n_iters=5, prog_freq=3)
 
-    tg.gradient_norm_over_dataset(n_iters=None, prog_freq=3)
-    tg.gradient_sum_over_dataset(n_iters=5, prog_freq=3)
-
-    x, y, sw = tg.get_data()
-    tg.compute_gradient_norm(x, y, sw)  # not gather, but test anyway
+    x, y, sw = _tg.get_data()
+    _tg.compute_gradient_norm(x, y, sw)  # not gather, but test anyway
 
 
 @notify(tests_done)
@@ -101,6 +104,20 @@ def test_print_dead_nan():
 
     _test_print_nan_weights()
     _test_print_dead_weights()
+
+
+@notify(tests_done)
+def test_compute_gradient_norm():
+    dg = _tg.datagen
+    _tg.compute_gradient_norm(dg.batch, dg.batch, scope='global', norm_fn=np.abs)
+
+
+@notify(tests_done)
+def test_grads_fn():
+    dg = _tg.datagen
+    grads_fn = introspection._make_gradients_fn(_tg.model, 0, mode="outputs")
+    _ = grads_fn(dg.batch, dg.batch, sw=None)
+    _ = grads_fn([dg.batch], [dg.batch], sw=None)
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})
