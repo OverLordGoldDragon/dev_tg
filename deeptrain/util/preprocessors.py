@@ -132,9 +132,8 @@ class TimeseriesPreprocessor(Preprocessor):
         self.start_increments=start_increments
 
         self._start_increment = 0
+        self._maybe_set_start_increment(epoch=0)
         self.reset_state()
-        if start_increments is not None:
-            self._set_start_increment(epoch=0)
 
         self.loadskip_list=loadskip_list or [
             'start_increments', 'window_size', 'slide_size']
@@ -155,7 +154,7 @@ class TimeseriesPreprocessor(Preprocessor):
         self.slice_idx = 0
 
     def on_epoch_end(self, epoch):
-        self._set_start_increment(epoch)
+        self._maybe_set_start_increment(epoch)
         self._set_slices_per_batch()
 
     def update_state(self):
@@ -177,9 +176,10 @@ class TimeseriesPreprocessor(Preprocessor):
             self.batch_timesteps - self.window_size - self.start_increment
             ) // self.slide_size
 
-    def _set_start_increment(self, epoch):
-        self.start_increment = self.start_increments[
-            epoch % len(self.start_increments)]
+    def _maybe_set_start_increment(self, epoch):
+        if self.start_increments is not None:
+            self.start_increment = self.start_increments[
+                epoch % len(self.start_increments)]
 
     @property
     def start_increment(self):
