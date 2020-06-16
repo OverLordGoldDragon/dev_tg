@@ -136,14 +136,6 @@ class DataGenerator():
             self.labels = []
 
         self._init_class_vars()
-
-        implemented = self.preprocessor.on_init_end(0, 0, probing=True)
-        if implemented:
-            set_num = self.set_nums_to_process[0]
-            self.preprocessor.on_init_end(
-                batch=self._get_next_batch(set_num, update_state=False,
-                                           warn=False),
-                labels=self.all_labels[set_num])
         print("DataGenerator initiated")
 
     ###### MAIN METHODS #######################################################
@@ -201,7 +193,6 @@ class DataGenerator():
         self.batch_exhausted = False
         self.all_data_exhausted = False
         self.slice_idx = None if self.slice_idx is None else 0
-        # self._synch_to_preprocessor(self._SYNCH_ATTRS)
 
     ###### MAIN METHOD HELPERS ################################################
     def load_data(self, set_num):

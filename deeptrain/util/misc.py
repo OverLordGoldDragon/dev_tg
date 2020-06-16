@@ -372,13 +372,6 @@ def _validate_traingen_configs(self):
                         ), ("`slices_per_batch` must be None or int >= 1, "
                             "got: %s for %s" % (spb, name))
 
-                if (spb == 1):
-                    print(WARN, "`%s` uses one slice; " % name
-                          + "setting `pred_weighted_slices_range=None`, "
-                          "`loss_weighted_slices_range=None`")
-                    self.pred_weighted_slices_range = None
-                    self.loss_weighted_slices_range = None
-
     def _validate_class_weights():
         for name in ('class_weights', 'val_class_weights'):
             cw = getattr(self, name)

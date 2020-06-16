@@ -51,21 +51,6 @@ class Preprocessor(metaclass=ABCMeta):
         """
         pass
 
-    def on_init_end(self, batch, labels, probing=False):
-        """Optional to implement. Can be used to set data-specific attributes
-        before training begins.
-        Is called at the end of `DataGenerator.__init__()`, where `batch`
-        and `labels` are fed without advancing any internal counters.
-
-        `DataGenerator` will first call this method with `probing=True` to see
-        if it's been implemented; by default, not implemented returns False.
-        Implementations must hence set `if probing: return True`. This is to
-        avoid redundantly calling :meth:`DataGenerator._get_next_batch`, which
-        is a potentially expensive operation.
-        """
-        if probing:
-            return False
-
     def _validate_configs(self):
         """Internal method to validate `slices_per_batch` in
         :meth:`DataGenerator._set_preprocessor`.
@@ -131,6 +116,10 @@ class TimeseriesPreprocessor(Preprocessor):
         self.slide_size=slide_size or window_size
         self.start_increments=start_increments
 
+        # can't know before `process`; set to truthy to identify self as
+        # sliced preprocessor (e.g. in misc._validate_traingen_configs)
+        self.slices_per_batch = 1
+
         self._start_increment = 0
         self._maybe_set_start_increment(epoch=0)
         self.reset_state()
@@ -139,6 +128,11 @@ class TimeseriesPreprocessor(Preprocessor):
             'start_increments', 'window_size', 'slide_size']
 
     def process(self, batch, labels):
+        """Return next `batch` window, and unchanged `labels`."""
+        if self.slice_idx == 0:
+            # ensure number of windows accurate for every new batch
+            self._batch_timesteps = batch.shape[1]
+            self._set_slices_per_batch()
         return self._next_window(batch), labels
 
     def _next_window(self, batch):
@@ -154,26 +148,20 @@ class TimeseriesPreprocessor(Preprocessor):
         self.slice_idx = 0
 
     def on_epoch_end(self, epoch):
+        """Update `slices_per_batch`, and `start_increment` if `start_increments`
+        is not None."""
         self._maybe_set_start_increment(epoch)
-        self._set_slices_per_batch()
 
     def update_state(self):
-        self._set_slices_per_batch()
         self.slice_idx += 1
         if self.slice_idx == self.slices_per_batch:
             self.batch_exhausted = True
             self.batch_loaded = False
 
-    def on_init_end(self, batch, labels, probing=False):
-        if probing:
-            return True  # signal DataGenerator that method is implemented
-        self.batch_timesteps = batch.shape[1]
-        self._set_slices_per_batch()
-
     #### Helper methods #######################################################
     def _set_slices_per_batch(self):
         self.slices_per_batch = 1 + (
-            self.batch_timesteps - self.window_size - self.start_increment
+            self._batch_timesteps - self.window_size - self.start_increment
             ) // self.slide_size
 
     def _maybe_set_start_increment(self, epoch):
