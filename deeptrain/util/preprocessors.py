@@ -143,24 +143,24 @@ class TimeseriesPreprocessor(Preprocessor):
         return self._next_window(batch), labels
 
     def _next_window(self, batch):
-        """Documented"""
+        """Fetches temporal slice according to `window_size`, `slide_size`,
+        `start_increment`, and `slice_idx`;
+        See :class:`TimeseriesPreprocessor` for examples."""
         start = self.slice_idx * self.slide_size + self.start_increment
         end   = start + self.window_size
         return batch[:, start:end]
 
     def reset_state(self):
+        """Set `slice_idx = 0.`"""
         self.slice_idx = 0
 
     def on_epoch_end(self, epoch):
-        if self.start_increments is not None:
-            self._set_start_increment(epoch)
+        self._set_start_increment(epoch)
         self._set_slices_per_batch()
 
     def update_state(self):
+        self._set_slices_per_batch()
         self.slice_idx += 1
-        if self.slices_per_batch is None:  # is the case before any data is fed
-            # enables determining timesteps automatically at runtime
-            self._set_slices_per_batch()
         if self.slice_idx == self.slices_per_batch:
             self.batch_exhausted = True
             self.batch_loaded = False

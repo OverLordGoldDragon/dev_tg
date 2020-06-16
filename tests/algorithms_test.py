@@ -18,8 +18,9 @@ from copy import deepcopy
 from time import time
 
 from backend import notify, _get_test_names
-from deeptrain.util.algorithms import deeplen, deepmap, deepcopy_v2
+from deeptrain.util.algorithms import deeplen, deepmap
 from deeptrain.util.algorithms import nCk, ordered_shuffle
+from deeptrain.util.experimental import deepcopy_v2
 
 
 tests_done = {}

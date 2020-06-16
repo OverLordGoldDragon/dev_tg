@@ -11,7 +11,8 @@ from copy import deepcopy
 from collections.abc import Mapping
 
 from deeptrain.backend import model_utils
-from .algorithms import deepmap, deepcopy_v2, deep_isinstance
+from .algorithms import deepmap, deep_isinstance
+from .experimental import deepcopy_v2
 from .algorithms import builtin_or_npscalar
 from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
 from ._backend import WARN, NOTE, TF_KERAS

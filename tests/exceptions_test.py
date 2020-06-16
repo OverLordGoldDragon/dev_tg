@@ -12,7 +12,7 @@ if sys.path[0] != filedir:
 import pytest
 import numpy as np
 
-from unittest.mock import patch
+from unittest import mock
 from time import time
 from copy import deepcopy
 
@@ -171,11 +171,11 @@ def test_util():
     def _save_best_model(C):  # [util.saving]
         tg = _util_make_autoencoder(C)
         tg.train()
-        with patch('os.remove') as mock_remove:
+        with mock.patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             tg.key_metric_history.append(-.5)  # ensure is new best
             tg._save_best_model(del_previous_best=True)
-        with patch('deeptrain.train_generator.TrainGenerator.generate_report'
+        with mock.patch('deeptrain.train_generator.TrainGenerator.generate_report'
                    ) as mock_report:
             mock_report.side_effect = Exception()
             tg.key_metric_history.append(-1)  # ensure is new best
@@ -185,7 +185,7 @@ def test_util():
         tg = _util_make_autoencoder(C)
         tg.train()
         tg.max_checkpoints = -1
-        with patch('os.remove') as mock_remove:
+        with mock.patch('os.remove') as mock_remove:
             mock_remove.side_effect = OSError('Permission Denied')
             tg.checkpoint(forced=True, overwrite=False)
 
@@ -221,13 +221,13 @@ def test_util():
         tg.optimizer_save_configs = {'include': []}
         tg.save()
 
-        with patch('backend.K.get_value') as mock_get_value:
+        with mock.patch('backend.K.get_value') as mock_get_value:
             mock_get_value.side_effect = Exception()
             tg.save()
 
         tg.optimizer_save_configs = {'include': ['leaking_rate']}
         tg.datagen.group_batch = []
-        with patch('pickle.dump') as mock_dump:
+        with mock.patch('pickle.dump') as mock_dump:
             mock_dump.side_effect = Exception()
             tg.save()
 
@@ -300,6 +300,14 @@ def test_util():
         tg = _util_make_classifier(C)
         tg.model.loss = 1
         pass_on_error(misc._init_optimizer, tg.model)
+
+    def metrics_getattr(C):  # [TrainGenerator]
+        def _raise(Except):
+            raise Except()
+        import_err = lambda: _raise(ImportError)
+
+        with mock.patch('builtins.__import__', side_effect=import_err):
+            pass_on_error(getattr, metrics, 'r2_score')
 
     def _validate_weighted_slices_range(C):  # [util.misc]
         C['traingen']['pred_weighted_slices_range'] = (.5, 1.5)
@@ -428,32 +436,13 @@ def test_util():
         C['traingen']['callbacks'] = {'.': {'save': 1}}
         pass_on_error(_util_make_autoencoder, C)
 
-    tests_all = [_save_best_model,
-                  checkpoint,
-                  save,
-                  get_sample_weight,
-                  _get_api_metric_name,
-                  _get_best_subset_val_history,
-                  _update_temp_history,
-                  compute_gradient_norm,
-                  _init_optimizer,
-                  _validate_weighted_slices_range,
-                  _validate_metrics,
-                  _validate_directories,
-                  _validate_optimizer_saving_configs,
-                  _validate_class_weights,
-                  _validate_best_subset_size,
-                  _validate_metric_printskip_configs,
-                  _validate_savelist_and_metrics,
-                  _validate_loadskip_list,
-                  _validate_callbacks,
-                  ]
-    for _test in tests_all:
-        with tempdir(CONFIGS['traingen']['logs_dir']), \
-            tempdir(CONFIGS['traingen']['best_models_dir']):
-            C = deepcopy(CONFIGS)  # reset dict
-            _test(C)
-            print("Passed", _test.__name__)
+    for fn in locals().values():
+        if hasattr(fn, '__code__') and misc.argspec(fn)[0] == 'C':
+            with tempdir(CONFIGS['traingen']['logs_dir']), \
+                tempdir(CONFIGS['traingen']['best_models_dir']):
+                C = deepcopy(CONFIGS)  # reset dict
+                fn(C)
+                print("Passed", fn.__name__)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

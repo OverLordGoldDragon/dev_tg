@@ -74,7 +74,7 @@ def init_session(C, weights_path=None, loadpath=None, model=None):
 ###############################################################################
 
 @notify(tests_done)
-def test_main():
+def test_main(monkeypatch):
     t0 = time()
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
@@ -96,6 +96,9 @@ def test_main():
             temp_checkpoint_freq={'val': 3},
             optimizer_save_configs={'exclude': ['iterations']},
             optimizer_load_configs={'include': ['momentum', 'momentam']},
+            eval_fn='predict',
+            key_metric='catco_custom',
+            custom_metrics={'catco_custom': metrics.categorical_crossentropy},
             ))
         tg = init_session(C, model=classifier)
         with tempdir() as savedir:
@@ -112,6 +115,9 @@ def test_main():
         pass_on_error(tg.get_history_fig)
         tg.clear_cache(reset_val_flags=True)
         tg._should_do({}, forced=True)
+
+        monkeypatch.setattr('builtins.input', lambda x: 'y')
+        tg.destroy(confirm=False)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 

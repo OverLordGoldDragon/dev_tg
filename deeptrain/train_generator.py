@@ -819,21 +819,19 @@ class TrainGenerator(TraingenUtils):
 
                >>> {'train:epoch': (fn1, fn2),
                ... 'val_batch': fn3,
-               ... ('on_val_end': "train:epoch"): fn4}
+               ... ('val_end': 'train:epoch'): fn4}
 
-               `stage` is controlled such that `(fn1, fn2)` will also be called
-               on `stage==('on_val_end', 'train:epoch')` - but `fn4` won't be,
-               on `stage=='train:epoch'`.
+               Callback will execute if a key is `in` the `stage` passed to
+               `_apply_callbacks`; e.g. `(fn1, fn2)` will execute on
+               `stage==('val_end', 'train:epoch')`, with key `'train:epoch'`,
+               but `fn4` won't execute, on `stage=='train:epoch'`.
         """
-        def _get_matching_stage(cb_keys, stage):
-            if stage in cb_keys:
-                return stage
-            elif stage == ('val_end', 'train:epoch'):
-                if 'val_end' in cb_keys:
-                    return 'val_end'
-                elif 'train:epoch' in cb_keys:
-                    return 'train:epoch'
-            return None
+        def _matched(cb_stage, stage):
+            if isinstance(cb_stage, tuple):
+                if isinstance(stage, tuple):
+                    return cb_stage == stage
+                return all(cs == stage for cs in cb_stage)
+            return cb_stage in stage
 
         if not hasattr(self, 'cb_alias'):
             self.cb_alias = {'train:iter':  'on_train_iter_end',
@@ -855,10 +853,10 @@ class TrainGenerator(TraingenUtils):
                 except NotImplementedError:
                     pass
             elif isinstance(cb, dict):
-                _stage = _get_matching_stage(list(cb), stage)
-                if _stage is not None:
-                    for fn in cb[_stage]:
-                        fn(self)
+                for cb_stage in cb:
+                    if _matched(cb_stage, stage):
+                        for fn in cb[cb_stage]:
+                            fn(self)
             else:
                 raise Exception("unsupported callback type: %s" % type(cb)
                                 + "; must be either dict, or subclass "

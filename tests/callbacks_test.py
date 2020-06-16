@@ -141,8 +141,7 @@ layer_hists_cbs = [
     {'train:epoch': [make_layer_hists_cb(mode='gradients:outputs'),
                      make_layer_hists_cb(mode='gradients:weights')]
      },
-    # need second dict so that `stage=('val_end', 'train:epoch')` in
-    # `_apply_callbacks` covers both (see `_get_matching_stage` case 1)
+    # two dicts can be used to organize code, but will execute same as one
     {('val_end', 'train:epoch'): make_layer_hists_cb(mode='weights'),
      'val_end': make_layer_hists_cb(mode='outputs',
                                     configs={'title': dict(fontsize=13),
@@ -175,7 +174,7 @@ def _test_load(tg, C):
 
 @notify(tests_done)
 def test_traingen_logger():
-    C = deepcopy(CONFIGS) # TODO star tuple with?
+    C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']), \
             tempdir(logger_savedir):
