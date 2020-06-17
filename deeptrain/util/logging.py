@@ -203,7 +203,7 @@ def generate_report(self):
                 txt_dict[attr] = cache[attr]  # restore cached
             return txt_dict
 
-        cfg = _validate_report_configs()
+        cfg = _validate_report_configs(self.report_configs)
 
         txt_dicts = dict(model={}, traingen={}, datagen={}, val_datagen={})
         obj_dicts = (self.model_configs,
