@@ -40,7 +40,7 @@ _DEFAULT_PLOT_CFG = {
 }
 
 
-# order-dependent
+#: order-dependent
 _DEFAULT_MODEL_NAME_CFG = dict(
     timesteps       = '',
     init_lr         = '',
@@ -49,7 +49,7 @@ _DEFAULT_MODEL_NAME_CFG = dict(
 )
 
 
-# * == wildcard (match as substring)
+#:
 _DEFAULT_REPORT_CFG = {
     'model':
         {},

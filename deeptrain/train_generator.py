@@ -6,7 +6,6 @@
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?
-   - support all fit & eval fns
    - examples/callbacks
    - examples/visuals
    - MetaTrainer

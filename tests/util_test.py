@@ -122,26 +122,26 @@ def test_logging():
         logging._log_init_state(tg, source_lognames='*', verbose=1)
         logging._log_init_state(tg, source_lognames=None)
 
-    def _test_get_report_text():
+    def _test_generate_report():
         tg = TraingenDummy()
         tg.report_configs = {'model': dict(stuff='staff'), 'saitama': None}
-        pass_on_error(logging.get_report_text, tg)
+        pass_on_error(logging.generate_report, tg)
 
         tg.report_configs = {'model': {'genos': [1]}}
-        pass_on_error(logging.get_report_text, tg)
+        pass_on_error(logging.generate_report, tg)
 
         tg.report_configs = {'model': {'include': [], 'exclude': []}}
-        pass_on_error(logging.get_report_text, tg)
+        pass_on_error(logging.generate_report, tg)
 
         tg.report_configs = {'model': {'exclude_types': ['etc']}}
         tg.model_configs = {'a': 1}
-        pass_on_error(logging.get_report_text, tg)
+        pass_on_error(logging.generate_report, tg)
 
-    def _test_generate_report():
+    def _test_save_report():
         tg = TraingenDummy()
         tg.report_configs = {'model': {'include': []}}
         tg.logdir = ''
-        pass_on_error(logging.generate_report, tg, '')
+        pass_on_error(logging.save_report, tg, '')
 
     logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
     best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_models')
@@ -149,8 +149,8 @@ def test_logging():
         _testget_unique_model_name()
 
     _test_log_init_state()
-    _test_get_report_text()
     _test_generate_report()
+    _test_save_report()
 
 
 @notify(tests_done)

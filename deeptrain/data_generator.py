@@ -22,9 +22,9 @@ from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
 ###############################################################################
 class DataGenerator():
-    """Central interface between a directory and `TrainGenerator`. Handles
-    data loading, preprocessing, shuffling, and batching. Requires only
-    `data_ir` and `batch_size` to run.
+    """Central interface between a directory and `TrainGenerator`. Handles data
+    loading, preprocessing, shuffling, and batching. Requires only
+    `data_dir` to run.
 
     Arguments:
         data_dir: str
@@ -85,7 +85,8 @@ class DataGenerator():
                             'hdf5', 'hdf5-dataset'}
     SUPPORTED_DATA_EXTENSIONS = {'.npy', '.h5'}
 
-    def __init__(self, data_dir, batch_size,
+    def __init__(self, data_dir,
+                 batch_size=32,
                  labels_path=None,
                  preprocessor=None,
                  preprocessor_configs=None,
@@ -389,7 +390,6 @@ class DataGenerator():
         def _set(preprocessor, preprocessor_configs):
             if preprocessor is None:
                 self.preprocessor = GenericPreprocessor(**preprocessor_configs)
-            # TODO below will need changing if preprocessors inherit an ABC
             elif isinstance(preprocessor, type):  # uninstantiated
                 assert issubclass(preprocessor, Preprocessor
                                   ), "`preprocessor` must subclass `Preprocessor`"
@@ -403,15 +403,6 @@ class DataGenerator():
 
         _set(preprocessor, preprocessor_configs)
         self.preprocessor._validate_configs()
-
-        # if isinstance(self.preprocessor, TimeseriesPreprocessor):
-        #     self._SLICE_ATTRS = ('slice_idx', 'slices_per_batch')
-        # else:
-        #     self._SLICE_ATTRS = ()
-        # self._BATCH_ATTRS = ('batch_exhausted', 'batch_loaded')
-        # self._SYNCH_ATTRS = (*self._BATCH_ATTRS, *self._SLICE_ATTRS)
-
-        # self._synch_from_preprocessor(self._SYNCH_ATTRS)
 
     @property
     def batch_exhausted(self):
@@ -444,12 +435,6 @@ class DataGenerator():
     @slice_idx.setter
     def slice_idx(self, value):
         self.preprocessor.slice_idx = value
-
-    # def _synch_from_preprocessor(self, attrs):
-    #     [setattr(self, x, getattr(self.preprocessor, x)) for x in attrs]
-
-    # def _synch_to_preprocessor(self, attrs):
-    #     [setattr(self.preprocessor, x, getattr(self, x)) for x in attrs]
 
     def _infer_data_info(self, data_dir, data_ext=None, data_loader=None,
                          base_name=None):

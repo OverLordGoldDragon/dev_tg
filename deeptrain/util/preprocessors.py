@@ -153,6 +153,9 @@ class TimeseriesPreprocessor(Preprocessor):
         self._maybe_set_start_increment(epoch)
 
     def update_state(self):
+        """Increment `slice_idx` by 1; if `slice_idx == slices_per_batch`,
+        set `batch_exhausted = True`, `batch_loaded = False`.
+        """
         self.slice_idx += 1
         if self.slice_idx == self.slices_per_batch:
             self.batch_exhausted = True
@@ -171,6 +174,7 @@ class TimeseriesPreprocessor(Preprocessor):
 
     @property
     def start_increment(self):
+        """Sliding window start increment; see `help(TimeseriesPreprocessor)`."""
         return self._start_increment
 
     @start_increment.setter
@@ -193,16 +197,22 @@ class TimeseriesPreprocessor(Preprocessor):
 
 
 class GenericPreprocessor(Preprocessor):
+    """Minimal Preprocessor; does nothing to `batch` or `labels`, but maintains
+    `batch_exhausted` and `batch_loaded` logic.
+    """
     def __init__(self, loadskip_list=None):
         self.loadskip_list=loadskip_list or []
         self.reset_state()
 
     def process(self, batch, labels):
+        """Return `batch` and `labels` as-is."""
         return batch, labels
 
     def reset_state(self):
+        """Set `batch_exhausted = True`, `batch_loaded = False`."""
         self.batch_exhausted = True
         self.batch_loaded = False
 
     def update_state(self):
+        """Call :meth:`.reset_state`."""
         self.reset_state()

@@ -175,7 +175,7 @@ def test_util():
             mock_remove.side_effect = OSError('Permission Denied')
             tg.key_metric_history.append(-.5)  # ensure is new best
             tg._save_best_model(del_previous_best=True)
-        with mock.patch('deeptrain.train_generator.TrainGenerator.generate_report'
+        with mock.patch('deeptrain.train_generator.TrainGenerator.save_report'
                    ) as mock_report:
             mock_report.side_effect = Exception()
             tg.key_metric_history.append(-1)  # ensure is new best

@@ -12,7 +12,7 @@ from .misc import _dict_filter_keys
 from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
 
 
-def generate_report(self, savepath):
+def save_report(self, savepath):
     def _write_text_image(text, savepath, fontpath, fontsize=15,
                           width=1, height=1):
         img = Image.new('RGB', color='white',
@@ -24,7 +24,7 @@ def generate_report(self, savepath):
 
         img.save(savepath)
 
-    text = get_report_text(self)
+    text = generate_report(self)
     longest_line = max(map(len, text.split('\n')))
     num_newlines = len(text.split('\n'))
 
@@ -35,12 +35,49 @@ def generate_report(self, savepath):
                           height=num_newlines / 16)
         print("Model report generated and saved")
     except BaseException as e:
-        print(WARN,  "Report could not be generated; skipping")
+        print(WARN, "Report could not be generated; skipping")
         print("Errmsg:", e)
 
 
-def get_report_text(self):
-    def list_to_str_side_by_side_by_side(_list, space_between_cols=0):
+def generate_report(self):
+    """Generates `model`, :class:`TrainGenerator`, `datagen`, and `val_datagen`
+    reports according to `report_configs`.
+
+    Writes attributes and values in three columns of text, converted to and saved
+    as an image. Extracts information from `model_configs` and `vars()` of
+    `TrainGenerator`, `datagen`, and `val_datagen`. Useful for snapshotting
+    key model, training, and data attributes for quick reference.
+
+    `report_configs` is structured as follows:
+
+    >>> {target_0:
+    ...     {filter_spec_0:
+    ...          [attr0, attr1, ...],
+    ...     },
+    ...     {filter_spec_1:
+    ...          [attr0, attr1, ...],
+    ...     },
+    ... }
+
+    - `target` is one of: `'model', 'traingen', 'datagen', 'val_datagen'`;
+      it may be a tuple of, in which case `filter_spec` applies to those included.
+    - `filter_spec` is one of: `'include', 'exclude', 'exclude_types'`, but cannot
+      include `'include'` and `'exclude'` at once.
+
+      - `'include'`: names of attributes to include in report; no other attribute
+        will be included. Supports wildcards with `'*'` as leading character;
+        e.g. `'*_has_'` will include all names starting with _has_.
+      - `'exclude'`: names of attributes to exclude from report; all other
+        attributes will be included. Also supports wildcards.
+      - `'exclude_types'`: attribute types to exclude from report. Elements
+        of this list cannot be string, unless prepended with `'#'`, which
+        specifies an exception. E.g. if `attr` is dict, and `dict` is in the list,
+        then it can be kept in report by including `'#attr'` in the list.
+
+    See :data:`~deeptrain.util._default_configs._DEFAULT_REPORT_CFG` for the
+    default `report_configs`, containing every possible config case.
+    """
+    def _list_to_str_side_by_side_by_side(_list, space_between_cols=0):
         def _split_in_three(_list):
             def _pad_column_bottom(_list):
                 l = len(_list) // 3
@@ -77,16 +114,7 @@ def get_report_text(self):
             _str += left + mid + right + '\n'
         return _str
 
-    def _dict_lists_to_tuples(_dict):
-        return {key:tuple(val) for key,val in _dict.items()
-                if isinstance(val, list)}
-
-    def _dict_filter_value_types(dc, types):
-        if not isinstance(types, tuple):
-            types = tuple(types) if isinstance(types, list) else (types,)
-        return {key:val for key,val in dc.items() if not isinstance(val, types)}
-
-    def _process_attributes_to_text_dicts(report_configs):
+    def _process_attributes_to_text_dicts():
         def _validate_report_configs(cfg):
             def _validate_keys(keys):
                 supported = ('model', 'traingen', 'datagen', 'val_datagen')
@@ -116,6 +144,8 @@ def get_report_text(self):
                 return cfg
 
             def _unpack_tuple_keys(_dict):
+                # e.g. ('datagen', 'val_datagen'): [*] ->
+                #       'datagen': [*], 'val_datagen': [*]
                 newdict = {}
                 for key, val in _dict.items():
                     if isinstance(key, tuple):
@@ -130,7 +160,7 @@ def get_report_text(self):
                 keys.extend([key] if isinstance(key, str) else key)
             keys = _validate_keys(keys)
 
-            cfg = _unpack_tuple_keys(report_configs)
+            cfg = _unpack_tuple_keys(self.report_configs)
             cfg = {k: v for k, v in cfg.items() if k in keys}
             cfg = _validate_subkeys(cfg)
 
@@ -150,6 +180,12 @@ def get_report_text(self):
             return txt_dict
 
         def _exclude_types(txt_dict, name, exclude_types):
+            def _dict_filter_value_types(dc, types):
+                if not isinstance(types, tuple):
+                    types = tuple(types) if isinstance(types, list) else (types,)
+                return {key: val for key, val in dc.items()
+                        if not isinstance(val, types)}
+
             cache, types = {}, []
             for _type in exclude_types:
                 if not isinstance(_type, str):
@@ -157,17 +193,17 @@ def get_report_text(self):
                 elif _type[0] == '#':
                     cache[_type[1:]] = txt_dict[_type[1:]]
                 else:
-                    print(WARN,  "str type in report_configs "
-                          "is unsupported (unless as an exception specifier "
-                          "w/ '#' prepended), and will be skipped "
-                          "(recieved '%s')" % _type)
+                    print(WARN,  "str type in 'exclude_types' of `report_configs`"
+                          " is unsupported (unless as an exception specifier"
+                          " w/ '#' prepended), and will be skipped"
+                          " (recieved '%s')" % _type)
 
             txt_dict = _dict_filter_value_types(txt_dict, types)
             for attr in cache:
                 txt_dict[attr] = cache[attr]  # restore cached
             return txt_dict
 
-        cfg = _validate_report_configs(report_configs)
+        cfg = _validate_report_configs()
 
         txt_dicts = dict(model={}, traingen={}, datagen={}, val_datagen={})
         obj_dicts = (self.model_configs,
@@ -190,28 +226,32 @@ def get_report_text(self):
                             txt_dicts[name], name, obj_cfg)
         return txt_dicts
 
-    def _wrap_if_long(dicts_list, len_th=80):
-        for i, entry in enumerate(dicts_list):
-            if len(entry) == 2 and len(str(entry[1])) > len_th:
-                dicts_list[i] = [entry[0], []]
-                wrapped = textwrap.wrap(str(entry[1]), width=len_th)
-                for line in reversed(wrapped):
-                    dicts_list.insert(i + 1, [line])
-        return dicts_list
-
     def _postprocess_text_dicts(txt_dicts):
+        def _wrap_if_long(dicts_list, len_th=80):
+            for i, entry in enumerate(dicts_list):
+                if len(entry) == 2 and len(str(entry[1])) > len_th:
+                    dicts_list[i] = [entry[0], []]
+                    wrapped = textwrap.wrap(str(entry[1]), width=len_th)
+                    for line in reversed(wrapped):
+                        dicts_list.insert(i + 1, [line])
+            return dicts_list
+
         all_txt = txt_dicts.pop('model')
         for _dict in txt_dicts.values():
             all_txt += [''] + _dict
 
         _all_txt = _wrap_if_long(all_txt, len_th=80)
-        _all_txt = list_to_str_side_by_side_by_side(_all_txt,
-                                                    space_between_cols=0)
+        _all_txt = _list_to_str_side_by_side_by_side(_all_txt,
+                                                     space_between_cols=0)
         _all_txt = _all_txt.replace("',", "' =" ).replace("0, ", "0," ).replace(
                                     "000,", "k,").replace("000)", "k)")
         return _all_txt
 
-    txt_dicts = _process_attributes_to_text_dicts(self.report_configs)
+    def _dict_lists_to_tuples(_dict):
+        return {key: tuple(val) for key,val in _dict.items()
+                if isinstance(val, list)}
+
+    txt_dicts = _process_attributes_to_text_dicts()
 
     titles = (">>HYPERPARAMETERS", ">>TRAINGEN STATE", ">>TRAIN DATAGEN STATE",
               ">>VAL DATAGEN STATE")
@@ -267,7 +307,7 @@ def get_unique_model_name(self):
 
 def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     to_exclude=[], verbose=0):
-    """Extract `self` __dict__ key-value pairs as string, ignoring funcs/methods
+    """Extract `self.__dict__` key-value pairs as string, ignoring funcs/methods
     or getting their source codes. May include kwargs passed to __init__ via
     `kwargs`, and __main__ via `source_lognames`.
 

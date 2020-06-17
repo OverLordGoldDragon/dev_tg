@@ -64,7 +64,7 @@ def _save_best_model(self, del_previous_best=False):
 
     if self._imports.get('PIL', False):
         try:
-            self.generate_report(basepath + '__report.png')
+            self.save_report(basepath + '__report.png')
         except BaseException as e:
             print(WARN,  "Best model report could not be saved; skipping")
             print("Errmsg", e)
@@ -130,7 +130,7 @@ def checkpoint(self, forced=False, overwrite=None):
 
         save_fns = [(basepath + 'state.h5',   self.save),
                     (basepath + 'hist.png',   self._save_history_fig),
-                    (basepath + 'report.png', self.generate_report)]
+                    (basepath + 'report.png', self.save_report)]
 
         _sf = self._make_model_save_fns(basepath)
         save_fns.extend(_sf)
