@@ -1,46 +1,49 @@
 # -*- coding: utf-8 -*-
+"""Custom configurations for :class:`TrainGenerator` / :class:`DataGenerator`
+go here. These will be defaulted to when pertinent configs aren't passed
+explicitly to `__init__` (e.g. `_PLOT_CFG` for `TrainGenerator.plot_configs`).
+"""
 import numpy as np
 from .fonts import fontsdir
+from .algorithms import builtin_or_npscalar
 
 
-#:
-_PLOT_CFG = {
-'1': {
-    'metrics': None,
-    'x_ticks': None,
-    'vhlines'   :
-        {'v': '_hist_vlines',
-         'h': 1},
-    'mark_best_cfg': None,
-    'ylims'        : (0, 2),
-    'legend_kw'    : {'fontsize': 13},
+_PLOT_CFG = [
+{
+ 'metrics': None,
+ 'x_ticks': None,
+ 'vhlines'   :
+     {'v': '_hist_vlines',
+      'h': 1},
+ 'mark_best_cfg': None,
+ 'ylims'        : (0, 2),
+ 'legend_kw'    : {'fontsize': 13},
 
-    'linewidth': [1.5, 1.5],
-    'linestyle': ['-', '-'],
-    'color'    : None,
+ 'linewidth': [1.5, 1.5],
+ 'linestyle': ['-', '-'],
+ 'color'    : None,
 },
-'2': {
-    'metrics': None,
-    'x_ticks': None,
-    'vhlines':
-        {'v': '_val_hist_vlines',
-         'h': .5},
-    'mark_best_cfg': None,
-    'ylims'        : (0, 1),
-    'legend_kw'    : {'fontsize': 13},
+{
+ 'metrics': None,
+ 'x_ticks': None,
+ 'vhlines':
+     {'v': '_val_hist_vlines',
+      'h': .5},
+ 'mark_best_cfg': None,
+ 'ylims'        : (0, 1),
+ 'legend_kw'    : {'fontsize': 13},
 
-    'linewidth': [1.5],
-    'linestyle': ['-'],
-    'color': None,
+ 'linewidth': [1.5],
+ 'linestyle': ['-'],
+ 'color': None,
 }
-}
+]
 
 
 # order-dependent
 _MODEL_NAME_CFG = dict(
-    timesteps       = '',
-    init_lr         = '',
     optimizer       = '',
+    lr              = '',
     best_key_metric = '_max',
 )
 
@@ -153,7 +156,7 @@ _ALIAS_TO_METRIC = {
     'f1-score':'f1_score',
 }
 
-def _NAME_PROCESS_KEY_FN(key, alias, configs):
+def _NAME_PROCESS_KEY_FN(key, alias, attrs):
     def _format_float(val, small_th=1e-2):
         def _format_small_float(val):
             def _decimal_len(val):
@@ -203,18 +206,28 @@ def _NAME_PROCESS_KEY_FN(key, alias, configs):
             val = ("%.3f" % val).lstrip('0')
         return val
 
-    val = configs[key]
-    val = _process_special_keys(key, val)
+    val = attrs[key]
+    if not builtin_or_npscalar(val):
+        assert hasattr(val, '__name__') or hasattr(type(val), '__name__'), (
+            f"cannot encode {val} for model name; `model_configs` values must be "
+            "either Python literals (str, int, etc), or objects (or their "
+            "classes) with  '__name__' attribute. Alternatively, set custom "
+            "`name_process_key_fn`")
+        val = val.__name__ if hasattr(val, '__name__') else type(val).__name__
+        val = val.split('.')[-1]  # drop packages/modules
+    else:
+        val = _process_special_keys(key, val)
 
-    if isinstance(val, (list, tuple)):
-        val = list(val)  # in case tuple
-        val = _squash_list(val)
-    if isinstance(val, float):
-        val = _format_float(val)
+        if isinstance(val, (list, tuple)):
+            val = list(val)  # in case tuple
+            val = _squash_list(val)
+        if isinstance(val, float):
+            val = _format_float(val)
 
-    return "_{}{}".format(alias, val)
+    name = alias if alias is not None else key
+    return "-{}{}".format(name, val)
 
-#:
+
 _TRAINGEN_CFG = dict(
     dynamic_predict_threshold_min_max = None,
     checkpoints_overwrite_duplicates  = True,

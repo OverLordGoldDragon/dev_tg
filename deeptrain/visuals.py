@@ -293,21 +293,66 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     Arguments:
         plot_configs: dict / None
-            See :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`.
-            If None, defaults to `TrainGenerator.plot_configs` (which itself
-            defaults to :data:`~deeptrain.util.configs.PLOT_CFG`).
+            See :data:`_DEFAULT_PLOT_CFG`. If None, defaults to
+            `TrainGenerator.plot_configs` (which itself defaults to `_PLOT_CFG`
+            in `configs.py`).
         w, h: float
             Scale figure width & height, respectively.
+
+    `plot_configs` is structured as follows:
+
+    >>> [{reserved_name: value,
+    ...   plt_kw: value},
+    ...  {reserved_name: value,
+    ...   plt_kw: value},
+    ...  ...]
+
+    - `reserved_name`: str, one of `('metrics', 'x_ticks', 'vhlines',
+      'mark_best_cfg', 'ylims', 'legend_kw')`. Used to configure supported custom
+      plot behavior (see "Builtin plot customs" below).
+    - `plt_kw`: str, name of kwarg to pass directly to `plt.plot()`.
+    - `value`: depends on key; see default `plot_configs` in
+      :data:`_DEFAULT_PLOT_CFG` and :func:`misc._make_plot_configs_from_metrics`.
+
+    Only `'metrics'` and `'x_ticks'` keys are required for each dict - others
+    have default values.
+
+    **Builtin plot customs**: (`reserved_name`)
+
+    - `'metrics'` (required): names of metrics to plot from histories, as
+      `{'train': train_metrics, 'val': val_metrics}` (at least one metric name
+      required, for only one of train/val - need to have "something" to plot).
+    - `x_ticks'` (required): x-coordinates of respective metrics, of same `len()`.
+    - `'vhlines'`: dict['v' / 'h': float]. vertical/horizontal lines; e.g.
+      `{'v': 10}` will draw a vertical line at x = 10, and `{'h': .5}` at y = .5.
+    - `'mark_best_cfg'`: `{'train': metric_name}` or `{'val': metric_name}` and
+      (optional) `{'max_is_best: bool}` pairs. Will mark plot to indicate
+      a metric optimum (max (if `'max_is_best'`, the default) or min).
+    - `'ylims'`: y-limits of plot panes.
+    - `'legend_kw'`: passed to `plt.legend()`; if None, no legend is drawn.
+
+
+    **Further info**:
+
+    - Every key's iterable value (list, etc) must be of same len as number of
+      metrics in `'metrics'`; this is ensured within `cfg_fn`.
+    - Metrics are plotted in order of insertion (at both dict and list level),
+      so later metrics will carry over to additional plot panes if number of
+      metrics exceeds `plot_first_pane_max_vals`; see `cfg_fn`.
+    - A convenient option is to change `_PLOT_CFG` in `configs.py` and pass
+      `plot_configs=None` to `TrainGenerator.__init__`; will internally call
+      `cfg_fn`, which validates some configs and tries to fill what's missing.
+    - Above, `cfg_fn` == :func:`misc._make_plot_configs_from_metrics`
     """
     def _unpack_plot_kw(config):
         reserved_keys = ('metrics', 'x_ticks', 'vhlines',
                          'mark_best_cfg', 'ylims', 'legend_kw')
-        metric_keys = list(config['metrics'].keys())  # 'train', 'val'
+        metric_keys = list(config['metrics'])  # 'train', 'val'
         values_per_key = sum(len(config['metrics'][x]) for x in metric_keys)
 
         plot_kw = []
         for i in range(values_per_key):
-            plot_kw.append({key:config[key][i] for key in config
+            plot_kw.append({key: config[key][i] for key in config
                             if key not in reserved_keys})
         return plot_kw
 
@@ -329,7 +374,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
                 metrics_cfg['val'][idx]   = self._alias_to_metric_name(name)
 
     def _unpack_vhlines(config):
-        vhlines = {'v':[], 'h':[]}
+        vhlines = {'v': [], 'h': []}
         for vh in vhlines:
             vhline = config['vhlines'][vh]
             if isinstance(vhline, (float, int, list, tuple, np.ndarray)):
@@ -350,7 +395,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
             if not val and expects_val:
                 return
-            elif val and expects_val and name == expected_name:
+            elif val and expects_val         and name == expected_name:
                 return len(metrics) - 1
             elif not val and not expects_val and name == expected_name:
                 return len(metrics) - 1
@@ -377,11 +422,13 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     if plot_configs is None:
         plot_configs = self.plot_configs
+    assert all(('metrics' in cfg and 'x_ticks' in cfg) for cfg in plot_configs
+               ), "all dicts in `plot_configs` must include 'metrics', 'x_ticks'"
 
     fig, axes = plt.subplots(len(plot_configs), 1)
     axes = np.atleast_1d(axes)
 
-    for config, axis in zip(plot_configs.values(), axes):
+    for config, axis in zip(plot_configs, axes):
         _equalize_metric_names(config)
         x_ticks, metrics, mark_best_idx = _unpack_ticks_and_metrics(config)
         x_ticks = _equalize_ticks_range(x_ticks, metrics)
@@ -389,10 +436,13 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
         plot_kw = _unpack_plot_kw(config)
         if config.get('vhlines', None) is not None:
             vhlines  = _unpack_vhlines(config)
+        else:
+            vhlines = None
         ylims = config.get('ylims', (0, 2))
         legend_kw = config.get('legend_kw', None)
 
-        _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx,
+        max_is_best = config.get('mark_best_cfg', {}).get('max_is_best', True)
+        _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx, max_is_best,
                       axis=axis, vhlines=vhlines, ylims=ylims,
                       legend_kw=legend_kw, key_metric=self.key_metric)
 
@@ -402,9 +452,9 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
     return fig
 
 
-def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None, axis=None,
-                  vhlines={'v':None, 'h':None}, ylims=(0, 2), legend_kw=None,
-                  key_metric='loss'):
+def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
+                  max_is_best=True, axis=None, vhlines={'v': None, 'h': None},
+                  ylims=(0, 2), legend_kw=None, key_metric='loss'):
     if axis is not None:
         ax = axis
     else:
@@ -427,7 +477,7 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None, axis=None,
     def _mark_best_metric(x_ticks, metrics, mark_best_idx, ax):
         metric = list(metrics.values())[mark_best_idx]
 
-        best_fn = np.min if key_metric=='loss' else np.max
+        best_fn = np.max if max_is_best else np.min
         x_best_idx = np.where(metric == best_fn(metric))[0][0]
         x_best = x_ticks[mark_best_idx][x_best_idx]
 

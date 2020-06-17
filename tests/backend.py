@@ -257,6 +257,7 @@ class TraingenDummy():
         self._eval_fn_name = 'predict'
         self.key_metric = 'f1_score'
         self.key_metric_fn = metrics.f1_score
+        self.max_is_best = True
         self.class_weights = None
         self.val_class_weights = None
         self.batch_size = 8

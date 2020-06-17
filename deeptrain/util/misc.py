@@ -62,11 +62,7 @@ def get_module_methods(module):
              and isinstance(obj, LambdaType)) # is a function
             and module.__name__ == getattr(obj, '__module__', '')  # same module
             and name in str(getattr(obj, '__code__', ''))  # not a duplicate
-            and not (  # not a magic method
-                obj_name.startswith('__')
-                and obj_name.endswith('__')
-                and len(obj_name) >= 5
-            )
+            and "__%s__" % obj_name.strip('__') != obj_name  # not a magic method
             and '<lambda>' not in str(getattr(obj, '__code__', ''))  # not lambda
         ):
             output[name] = obj
@@ -155,6 +151,24 @@ def _init_optimizer(model, class_weights=None, input_as_labels=False,
 
 
 def _make_plot_configs_from_metrics(self):
+    """Makes default `plot_configs`, building on `configs._PLOT_CFG`; see
+    :func:`~deeptrain.visuals.get_history_fig`. Validates some configs
+    and tries to fill others.
+
+    - Ensures every iterable config is of same `len()` as number of metrics in
+      `'metrics'`, by extending *last* value of iterable to match the len. Ex:
+
+      >>> {'metrics': {'val': ['loss', 'accuracy', 'f1']},
+      ...  'linestyle': ['--', '-'],  # -> ['--', '-', '-']
+      ... }
+
+    - Assigns colors to metrics based on a default cycling coloring scheme,
+      with some predefined customs (look for `_customs_map` in source code).
+    - Configures up to two plot panes, mediated by `plot_first_pane_max_vals`;
+      if number of metrics in `'metrics'` exceeds it, then a second pane is used.
+      Can be used to configure how many metrics to draw in first pane; useful
+      for managing clutter.
+    """
     def _make_colors():
         train_defaults = plt.rcParams['axes.prop_cycle'].by_key()['color']
         train_defaults.pop(1)  # reserve 'orange' for {'val': 'loss'}
@@ -189,7 +203,7 @@ def _make_plot_configs_from_metrics(self):
             cfg.extend([cfg[-1]] * (n - len(cfg)))
         return cfg
 
-    plot_configs = {}
+    plot_configs = []
     n_train = len(self.train_metrics)
     n_val = len(self.val_metrics)
 
@@ -198,14 +212,12 @@ def _make_plot_configs_from_metrics(self):
     n_total_p1 = n_train + n_val_p1
 
     colors = _make_colors()
-    if self.key_metric == 'loss':
-        mark_best_cfg = {'val': 'loss'}
-    else:
-        mark_best_cfg = None
+    mark_best_cfg = {'val': self.key_metric,
+                     'max_is_best': self.max_is_best}
 
     PLOT_CFG = deepcopy(_PLOT_CFG)  # ensure module dict remains unchanged
-    CFG = PLOT_CFG['1']
-    plot_configs['1'] = {
+    CFG = PLOT_CFG[0]
+    plot_configs.append({
         'metrics':
             CFG['metrics'] or {'train': self.train_metrics,
                                'val'  : val_metrics_p1},
@@ -220,19 +232,15 @@ def _make_plot_configs_from_metrics(self):
         'linewidth': _get_extend(CFG['linewidth'], n_total_p1),
         'linestyle': _get_extend(CFG['linestyle'], n_total_p1),
         'color'    : _get_extend(CFG['color'] or colors, n_total_p1),
-        }
+    })
     if len(self.val_metrics) <= self.plot_first_pane_max_vals:
         return plot_configs
 
-    # dedicate separate pane to remainder val_metrics
-    if self.key_metric != 'loss':
-        mark_best_cfg = {'val': self.key_metric}
-    else:
-        mark_best_cfg = None
+    #### dedicate separate pane to remainder val_metrics ######################
     n_val_p2 = n_val - n_val_p1
 
-    CFG = PLOT_CFG['2']
-    plot_configs['2'] = {
+    CFG = PLOT_CFG[1]
+    plot_configs.append({
         'metrics':
             CFG['metrics'] or {'val': self.val_metrics[n_val_p1:]},
         'x_ticks':
@@ -245,7 +253,7 @@ def _make_plot_configs_from_metrics(self):
         'linewidth': _get_extend(CFG['linewidth'], n_val_p2),
         'linestyle': _get_extend(CFG['linestyle'], n_val_p2),
         'color'    : _get_extend(CFG['color'] or colors, n_total_p1, tail=True),
-    }
+    })
     return plot_configs
 
 
@@ -412,14 +420,16 @@ def _validate_traingen_configs(self):
     def _validate_or_make_plot_configs():
         if self.plot_configs is not None:
             cfg = self.plot_configs
-            assert ('1' in cfg), ("`plot_configs` must number plot panes "
-                                  "via strings; see util\configs.py")
             required = ('metrics', 'x_ticks')
-            for pane_cfg in cfg.values():
+            for pane_cfg in cfg:
                 assert all([name in pane_cfg for name in required]), (
                     "plot pane configs must contain %s" % ', '.join(required))
         else:
             self.plot_configs = _make_plot_configs_from_metrics(self)
+        assert all(('metrics' in cfg and 'x_ticks' in cfg)
+                   for cfg in self.plot_configs
+                   ), ("all dicts in `plot_configs` must include "
+                       "'metrics', 'x_ticks'")
 
     def _validate_metric_printskip_configs():
         for name, cfg in self.metric_printskip_configs.items():

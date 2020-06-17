@@ -19,6 +19,7 @@ from types import LambdaType
 
 from backend import BASEDIR, tempdir, notify, ModelDummy, TraingenDummy
 from backend import _get_test_names
+from backend import Adam
 from deeptrain.util import searching
 from deeptrain.util import misc
 from deeptrain.util import logging
@@ -193,15 +194,19 @@ def test_configs():
                    eta_t=(.9, 1.1, 2),
                    timesteps=13500,
                    name='leaf',
+                   optimizer=Adam,
+                   opt=Adam(),  # instantiated may lack __name__, must still pass
                    a=.5,
                    best_key_metric=0.91,
                    )
-        assert name_fn('a', 'a', cfg) == '_a.5'
-        assert name_fn('init_lr',   'lr',   cfg) == '_lr2e-4x3_1e-4'
-        assert name_fn('eta_t',     'et',   cfg) == '_et.9_1.1_2'
-        assert name_fn('timesteps', '',     cfg) == '_13.5k'
-        assert name_fn('name',      'name', cfg) == '_name'
-        assert name_fn('best_key_metric', 'max', cfg) == '_max.910'
+        assert name_fn('a', 'a', cfg) == '-a.5'
+        assert name_fn('init_lr',   'lr',   cfg) == '-lr2e-4x3_1e-4'
+        assert name_fn('eta_t',     'et',   cfg) == '-et.9_1.1_2'
+        assert name_fn('timesteps', '',     cfg) == '-13.5k'
+        assert name_fn('name',      'name', cfg) == '-name'
+        assert name_fn('optimizer', '',     cfg) == '-Adam'
+        assert name_fn('opt',       '',     cfg) == '-Adam'
+        assert name_fn('best_key_metric', 'max', cfg) == '-max.910'
 
     names = ['PLOT_CFG', 'MODEL_NAME_CFG', 'REPORT_CFG',
              'TRAINGEN_SAVESKIP_LIST', 'TRAINGEN_LOADSKIP_LIST',

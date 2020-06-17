@@ -152,33 +152,47 @@ from docutils.nodes import Text
 # ('*', 'util.data_loaders') ->
 # {'util.data_loaders': ('deeptrain.util.data_loaders', 'util.data_loaders')}
 reftarget_aliases = [
-    ('train_generator',    'TrainGenerator._train_postiter_processing'),
-    ('train_generator',    'TrainGenerator._val_postiter_processing'),
-    ('train_generator',    'TrainGenerator._on_val_end'),
-    ('train_generator',    'TrainGenerator.__init__'),
-    ('train_generator',    'TrainGenerator.get_data'),
-    ('data_generator',     'DataGenerator'),
-    ('data_generator',     'DataGenerator.reset_state'),
-    ('data_generator',     'DataGenerator.get'),
-    ('data_generator',     'DataGenerator.on_epoch_end'),
-    ('data_generator',     'DataGenerator._set_preprocessor'),
-    ('data_generator',     'DataGenerator._get_next_batch'),
-    ('util.saving',        'TrainGenerator.save'),
-    ('util.saving',        'TrainGenerator.load'),
-    ('util.saving',        'checkpoint'),
-    ('util.preprocessors', 'GenericPreprocessor'),
-    ('util.preprocessors', 'TimeseriesPreprocessor'),
+    ('train_generator', 'TrainGenerator._train_postiter_processing'),
+    ('train_generator', 'TrainGenerator._val_postiter_processing'),
+    ('train_generator', 'TrainGenerator._on_val_end'),
+    ('train_generator', 'TrainGenerator.__init__'),
+    ('train_generator', 'TrainGenerator.get_data'),
+    ('data_generator',  'DataGenerator'),
+    ('data_generator',  'DataGenerator.reset_state'),
+    ('data_generator',  'DataGenerator.get'),
+    ('data_generator',  'DataGenerator.on_epoch_end'),
+    ('data_generator',  'DataGenerator._set_preprocessor'),
+    ('data_generator',  'DataGenerator._get_next_batch'),
+    ('util.saving',     'TrainGenerator.save'),
+    ('util.saving',     'TrainGenerator.load'),
+    ('util.saving',     'checkpoint'),
+    ('util',            'misc._make_plot_configs_from_metrics'),
     ('*', 'util.data_loaders'),
     ('*', 'util.labels_preloaders'),
+    ('util.preprocessors',     'GenericPreprocessor'),
+    ('util.preprocessors',     'TimeseriesPreprocessor'),
+    ('util._default_configs*', '_DEFAULT_PLOT_CFG'),
+    ('util.configs*',          '_PLOT_CFG'),
 ]
 # make into dict, reverse
 reftarget_aliases = {v: k for k, v in reftarget_aliases}
 ra = {}
 for k, v in reftarget_aliases.items():
-    if v[-1] != '#':  # flag to not prepend `v` to `k`
-        v += '.' + k
-    if v[-1] == '*':  # flag to not append `()` to `k`
-        ra[k] = ('deeptrain.' + v[:-1], k)
+    pre_v  = bool('#' not in v[-2:])  # flag to not prepend `v` to `k`
+    no_par = bool('*' in v[-2:])      # flag to not append `()` to `k`
+    if no_par and not pre_v:
+        v = v[:-2]  # drop '#' and '*'
+    elif no_par or not pre_v:
+        v = v[:-1]  # drop '#' or  '*'
+
+    if pre_v:
+        if v == '':  # i.e. v == '*' originally; avoid e.g. "deeptrain..util"
+            v = k
+        else:
+            v += '.' + k
+
+    if no_par:
+        ra[k] = ('deeptrain.' + v, k)
     else:
         ra[k] = ('deeptrain.' + v, k + '()')
 reftarget_aliases = ra
