@@ -17,7 +17,7 @@ from copy import deepcopy
 from time import time
 
 from backend import notify, _get_test_names
-from deeptrain.util.algorithms import deeplen, deepmap, builtin_or_npscalar
+from deeptrain.util.algorithms import deeplen, deepmap, obj_to_str
 from deeptrain.util.algorithms import nCk, ordered_shuffle
 from deeptrain.util.experimental import deepcopy_v2
 
@@ -131,22 +131,29 @@ def test_deepmap():
 
     # deepmap-fn2 takes too long
 
+
 @notify(tests_done)
 def test_deepcopy_v2():
-    def obj_to_str(x, key=None):
-        if builtin_or_npscalar(x, include_type_type=False):
-            return x
-        return str(x)[:200]
+    def _obj_to_str(x):
+        return obj_to_str(x, drop_absname=True
+                          ) if not isinstance(x, np.ndarray) else str(x)
+
+    class Dummy():
+        pass
 
     np.random.seed(4)
     arr = np.random.randint(0, 9, (2, 2))
-    obj = (1, {'a': 3, 'b': 4, 'c': ('5', 6., (7, 8)), 'd': 9}, {}, arr, ())
+    obj = (1, {'a': 3, 'b': 4, 'c': ('5', 6., (7, 8)), 'd': 9}, {}, arr, (),
+           Dummy, Dummy())
     obj_orig = deepcopy(obj)
 
-    copied = deepcopy_v2(obj, obj_to_str)
+    copied = deepcopy_v2(obj, _obj_to_str)
     assert str(copied) == ("(1, {'a': 3, 'b': 4, 'c': ('5', 6.0, (7, 8)), "
-                           "'d': 9}, {}, '[[7 5]\\n [1 8]]', ())")
-    assert str(obj) == str(obj_orig)  # deepcopy_v2 should not mutate original obj
+                           "'d': 9}, {}, '[[7 5]\\n [1 8]]', (), "
+                           "'Dummy', 'Dummy')")
+    # deepcopy_v2 should not mutate original obj, but class instances will differ
+    # by address
+    assert str(obj[:-1]) == str(obj_orig[:-1])
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

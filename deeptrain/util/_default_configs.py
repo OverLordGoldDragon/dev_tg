@@ -208,23 +208,26 @@ def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, attrs):
             val = ("%.3f" % val).lstrip('0')
         return val
 
-    val = attrs[key]
-    if not builtin_or_npscalar(val, include_type_type=False):
-        assert hasattr(val, '__name__') or hasattr(type(val), '__name__'), (
-            f"cannot encode {val} for model name; `model_configs` values must be "
-            "either Python literals (str, int, etc), or objects (or their "
-            "classes) with  '__name__' attribute. Alternatively, set custom "
-            "`name_process_key_fn`")
-        val = val.__name__ if hasattr(val, '__name__') else type(val).__name__
-        val = val.split('.')[-1]  # drop packages/modules
-    else:
-        val = _process_special_keys(key, val)
+    def _process_val(key, val):
+        if not builtin_or_npscalar(val, include_type_type=False):
+            assert hasattr(val, '__name__') or hasattr(type(val), '__name__'), (
+                f"cannot encode {val} for model name; `model_configs` values must"
+                " be either Python literals (str, int, etc), or objects (or their"
+                " classes) with  '__name__' attribute. Alternatively, set custom"
+                " `name_process_key_fn`")
+            val = val.__name__ if hasattr(val, '__name__') else type(val).__name__
+            val = val.split('.')[-1]  # drop packages/modules
+        else:
+            val = _process_special_keys(key, val)
 
-        if isinstance(val, (list, tuple)):
-            val = list(val)  # in case tuple
-            val = _squash_list(val)
-        if isinstance(val, float):
-            val = _format_float(val)
+            if isinstance(val, (list, tuple)):
+                val = list(val)  # in case tuple
+                val = _squash_list(val)
+            if isinstance(val, float):
+                val = _format_float(val)
+
+    val = attrs[key]
+    val = _process_val(key, val)
 
     name = alias if alias is not None else key
     return "-{}{}".format(name, val)

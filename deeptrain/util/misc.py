@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from deeptrain.backend import model_utils
 from .algorithms import deepmap, deep_isinstance
 from .experimental import deepcopy_v2
-from .algorithms import builtin_or_npscalar
+from .algorithms import builtin_or_npscalar, obj_to_str
 from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
 from ._backend import WARN, NOTE, TF_KERAS
 
@@ -74,21 +74,6 @@ def capture_args(fn):
     """
     @wraps(fn)
     def wrap(self, *args, **kwargs):
-        # convert to string to prevent storing objects
-        # & trim in case long lists / arrays are passed
-        def obj_to_str(x, key=None):
-            if builtin_or_npscalar(x, include_type_type=False):
-                return x
-            if hasattr(x, '__qualname__') or hasattr(x, '__name__'):
-                qname = getattr(x, '__qualname__', None)
-                name  = getattr(x, '__name__', None)
-            else:
-                # fallback to class if object has no name
-                qname = getattr(type(x), '__qualname__', None)
-                name  = getattr(type(x), '__name__', None)
-            # fallback to str if still no name
-            return qname or name or str(x)[:200]
-
         #### Positional arguments ########
         posarg_names = [arg for arg in argspec(fn)[1:] if arg not in kwargs]
         posargs = {}

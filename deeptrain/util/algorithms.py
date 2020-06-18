@@ -30,6 +30,34 @@ def builtin_or_npscalar(x, include_type_type=False):
     return value if include_type_type else (value and not isinstance(x, type))
 
 
+def obj_to_str(x, key=None, len_lim=200, drop_absname=False):
+    """Converts `x` to a string representation if it isn't a builtin or numpy
+    scalar.
+
+    Trims string representation to `len_lim` if `x` or `type(x)` have no
+    `__qualname__` or `__name__` attributes. To drop packages and modules in
+    an object's name (package.subpackage.obj), pass `drop_absname=True`.
+    """
+    if builtin_or_npscalar(x, include_type_type=False):
+        return x
+    if hasattr(x, '__qualname__') or hasattr(x, '__name__'):
+        qname = getattr(x, '__qualname__', None)
+        name  = getattr(x, '__name__', None)
+    else:
+        # fallback to class if object has no name
+        qname = getattr(type(x), '__qualname__', None)
+        name  = getattr(type(x), '__name__', None)
+
+    out = qname or name
+    if not out:
+        # fallback to str or repr if still no name
+        out = str(x) if hasattr(x, '__str__') else repr(x)
+        out = out[:len_lim]
+    elif drop_absname:
+        out = out.split('.')[-1]
+    return out
+
+
 def deeplen(item):
     """Return total number of items in an arbitrarily nested iterable - excluding
     the iterables themselves."""
