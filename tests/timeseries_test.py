@@ -52,7 +52,6 @@ TRAINGEN_CFG = dict(
     epochs=2,
     reset_statefuls=True,
     max_is_best=False,
-    dynamic_predict_threshold_min_max=(.35, .9),
     logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,
@@ -109,6 +108,7 @@ def test_predict():
                                   val_metrics=('loss', 'tnr', 'tpr'),
                                   plot_first_pane_max_vals=1,
                                   metric_printskip_configs={'val': 'f1_score'},
+                                  dynamic_predict_threshold_min_max=(.35, .95),
                                   class_weights={0: 1, 1: 5},
                                   iter_verbosity=2,
                                   ))

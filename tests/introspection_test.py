@@ -15,58 +15,21 @@ import numpy as np
 from copy import deepcopy
 
 from backend import Adam
-from backend import BASEDIR, notify, make_autoencoder
+from backend import AE_CONFIGS, notify, make_autoencoder
 from backend import _init_session, _get_test_names
 from deeptrain import introspection
 
 
 #### CONFIGURE TESTING #######################################################
-batch_size = 128
-width, height = 28, 28
-channels = 1
-datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
-
-MODEL_CFG = dict(
-    batch_shape=(batch_size, width, height, channels),
-    loss='mse',
-    metrics=None,
-    optimizer='adam',
-    num_classes=10,
-    activation=['relu'] * 4 + ['sigmoid'],
-    filters=[2, 2, 1, 2, 1],
-    kernel_size=[(3, 3)] * 5,
-    strides=[(2, 2), (2, 2), 1, 1, 1],
-    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
-)
-DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
-    superbatch_dir=os.path.join(datadir, 'train'),
-    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
-    batch_size=batch_size,
-    shuffle=True,
-)
-VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
-    superbatch_dir=os.path.join(datadir, 'val'),
-    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
-    batch_size=batch_size,
-    shuffle=False,
-)
-TRAINGEN_CFG = dict(
-    epochs=1,
-    val_freq={'epoch': 1},
-    input_as_labels=True,
-    model_configs=MODEL_CFG,
-)
-
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
-           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {}
+CONFIGS = deepcopy(AE_CONFIGS)
+del CONFIGS['traingen']['logs_dir']         # unused
+del CONFIGS['traingen']['best_models_dir']  # unused
+
 model = make_autoencoder(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
-
                          model=model, model_fn=make_autoencoder)
 
 _tg = init_session(CONFIGS)  # save time on redundant re-init's

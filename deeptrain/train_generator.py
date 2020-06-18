@@ -186,6 +186,21 @@ class TrainGenerator(TraingenUtils):
             `kwargs` and all other arguments are subject to validation and
             correction by
             :meth:`~deeptrain.util.misc._validate_traingen_configs`.
+
+    `__init__`:
+
+    Instantiation. (* == if certain conditions are met)
+
+        - Pulls methods from
+          :class:`~deeptrain.util._traingen_utils.TraingenUtils`
+        - Validates args & kwargs, and tries to correct with a "NOTE" or
+          "WARNING" message where possible
+        - *Instantiates logging directory
+        - *Loads `TrainGenerator`, `datagen`, and `val_datagen` states
+        - *Loads model and optimizer weights (but not model architecture)
+        - *Applies initial callbacks
+        - Logs initial state (:func:`~deeptrain.util.logging._log_init_state`)
+        - Captures and saves all arguments passed to `__init__`
     """
     @capture_args
     def __init__(self, model, datagen, val_datagen,
@@ -220,20 +235,6 @@ class TrainGenerator(TraingenUtils):
                  plot_configs=None,
                  model_configs=None,
                  **kwargs):
-        """Instantiates `TrainGenerator`; "*" below means "maybe", i.e. if
-        certain conditions are met.
-
-            - Pulls methods from
-              :class:`~deeptrain.util._traingen_utils.TraingenUtils`
-            - Validates args & kwargs, and tries to correct with a "NOTE" or
-              "WARNING" message where possible
-            - *Instantiates logging directory
-            - *Loads `TrainGenerator`, `datagen`, and `val_datagen` states
-            - *Loads model and optimizer weights (but not model architecture)
-            - *Applies initial callbacks
-            - Logs initial state (:func:`~deeptrain.util.logging._log_init_state`)
-            - Captures and save all arguments passed to `__init__`
-        """
         super().__init__()
 
         self.model=model

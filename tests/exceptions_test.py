@@ -16,7 +16,7 @@ from unittest import mock
 from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify
+from backend import AE_CONFIGS, tempdir, notify
 from backend import _init_session, _get_test_names
 from backend import make_timeseries_classifier, make_autoencoder
 from deeptrain import util
@@ -30,59 +30,22 @@ from deeptrain.util import misc
 
 
 #### CONFIGURE TESTING #######################################################
-batch_size = 128
-width, height = 28, 28
-channels = 1
-datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
+tests_done = {}
+CONFIGS = deepcopy(AE_CONFIGS)
+batch_size, width, height, channels = CONFIGS['model']['batch_shape']
 
-AE_CFG = dict(
-    batch_shape=(batch_size, width, height, channels),
-    loss='mse',
-    metrics=None,
-    optimizer='adam',
-    num_classes=10,
-    activation=['relu'] * 4 + ['sigmoid'],
-    filters=[2, 2, 1, 2, 1],
-    kernel_size=[(3, 3)]*5,
-    strides=[(2, 2), (2, 2), 1, 1, 1],
-    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
-)
 CL_CFG = dict(
     batch_shape=(batch_size, 25, 16),
     units=16,
     optimizer='adam',
     loss='binary_crossentropy'
 )
-DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
-    superbatch_dir=os.path.join(datadir, 'train'),
-    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
-    batch_size=batch_size,
-    shuffle=True,
-)
-VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
-    superbatch_dir=os.path.join(datadir, 'val'),
-    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
-    batch_size=batch_size,
-    shuffle=False,
-)
-TRAINGEN_CFG = dict(
-    epochs=1,
-    val_freq={'epoch': 1},
-    input_as_labels=True,
-    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
-    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    model_configs=AE_CFG,
-)
+AE_CFG = AE_CONFIGS['model']
 
-CONFIGS = {'model': AE_CFG, 'datagen': DATAGEN_CFG,
-           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {}
 classifier  = make_timeseries_classifier(**CL_CFG)
 autoencoder = make_autoencoder(**AE_CFG)
-
 init_session = _init_session
+
 ###############################################################################
 
 @notify(tests_done)

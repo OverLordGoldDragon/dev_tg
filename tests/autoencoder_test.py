@@ -14,7 +14,7 @@ import pytest
 from time import time
 from copy import deepcopy
 
-from backend import BASEDIR, tempdir, notify, make_autoencoder
+from backend import AE_CONFIGS, BASEDIR, tempdir, notify, make_autoencoder
 from backend import _init_session, _do_test_load, _get_test_names
 
 
@@ -25,18 +25,6 @@ channels = 1
 batch_shape = (batch_size, width, height, channels)
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'image_lz4f')
 
-MODEL_CFG = dict(
-    batch_shape=batch_shape,
-    loss='mse',
-    metrics=None,
-    optimizer='adam',
-    num_classes=10,
-    activation=['relu'] * 4 + ['sigmoid'],
-    filters=[2, 2, 1, 2, 1],
-    kernel_size=[(3, 3)] * 5,
-    strides=[(2, 2), (2, 2), 1, 1, 1],
-    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
-)
 DATAGEN_CFG = dict(
     data_dir=os.path.join(datadir, 'train'),
     data_loader='numpy-lz4f',
@@ -57,18 +45,13 @@ VAL_DATAGEN_CFG = dict(
     full_batch_shape=batch_shape,
     shuffle=False,
 )
-TRAINGEN_CFG = dict(
-    epochs=2,
-    val_freq={'epoch': 1},
-    input_as_labels=True,
-    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
-    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    model_configs=MODEL_CFG,
-)
 
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
-           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
-tests_done = {name: None for name in ('main', 'load', 'predict')}
+tests_done = {}
+CONFIGS = deepcopy(AE_CONFIGS)
+CONFIGS['datagen'] = DATAGEN_CFG
+CONFIGS['val_datagen'] = VAL_DATAGEN_CFG
+CONFIGS['traingen']['epochs'] = 2
+
 autoencoder = make_autoencoder(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
@@ -82,17 +65,10 @@ def test_main():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
-        _test_main(C)
-    print("\nTime elapsed: {:.3f}".format(time() - t0))
-
-
-def _test_main(C, new_model=False):
-    if new_model:
-        tg = init_session(C)
-    else:
         tg = init_session(C, model=autoencoder)
-    tg.train()
-    _test_load(tg, C)
+        tg.train()
+        _test_load(tg, C)
+    print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 
 @notify(tests_done)
@@ -107,7 +83,9 @@ def test_predict():
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
         C['traingen']['eval_fn'] = 'predict'
-        _test_main(C)
+        tg = init_session(C, model=autoencoder)
+        tg.train()
+        _test_load(tg, C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 

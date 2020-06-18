@@ -13,7 +13,7 @@ from termcolor import cprint
 #### Environment configs ######################################################
 # for testing locally
 os.environ['TF_KERAS'] = os.environ.get("TF_KERAS", '1')
-os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '0')
+os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '1')
 
 BASEDIR = str(Path(__file__).parents[1])
 TF_KERAS = bool(os.environ['TF_KERAS'] == '1')
@@ -145,6 +145,70 @@ def notify(tests_done):
     return wrap
 
 
+#### Default TrainGenerator, DataGenerator, model configs #####################
+batch_size = 128
+width, height = 28, 28
+channels = 1
+datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
+
+AE_MODEL_CFG = dict(  # autoencoder
+    batch_shape=(batch_size, width, height, channels),
+    loss='mse',
+    metrics=None,
+    optimizer='adam',
+    num_classes=10,
+    activation=['relu'] * 4 + ['sigmoid'],
+    filters=[2, 2, 1, 2, 1],
+    kernel_size=[(3, 3)] * 5,
+    strides=[(2, 2), (2, 2), 1, 1, 1],
+    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
+)
+CL_MODEL_CFG = dict(  # classifier
+    batch_shape=(batch_size, width, height, channels),
+    loss='categorical_crossentropy',
+    metrics=['accuracy'],
+    optimizer='adam',
+    num_classes=10,
+    filters=[8, 16],
+    kernel_size=[(3, 3), (3, 3)],
+    dropout=[.25, .5],
+    dense_units=32,
+)
+IMG_DATAGEN_CFG = dict(
+    data_dir=os.path.join(datadir, 'train'),
+    superbatch_dir=os.path.join(datadir, 'train'),
+    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
+    batch_size=batch_size,
+    shuffle=True,
+)
+IMG_VAL_DATAGEN_CFG = dict(
+    data_dir=os.path.join(datadir, 'val'),
+    superbatch_set_nums='all',
+    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
+    batch_size=batch_size,
+    shuffle=False,
+)
+TRAINGEN_CFG = dict(
+    epochs=1,
+    val_freq={'epoch': 1},
+    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
+    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
+)
+AE_TRAINGEN_CFG = TRAINGEN_CFG.copy()
+CL_TRAINGEN_CFG = TRAINGEN_CFG.copy()
+AE_TRAINGEN_CFG.update({'model_configs': AE_MODEL_CFG, 'input_as_labels': True})
+CL_TRAINGEN_CFG.update({'model_configs': CL_MODEL_CFG})
+
+data_cfgs = {'datagen':      IMG_DATAGEN_CFG,
+             'val_datagen':  IMG_VAL_DATAGEN_CFG}
+AE_CONFIGS = {'model':       AE_MODEL_CFG,
+              'traingen':    AE_TRAINGEN_CFG}
+CL_CONFIGS = {'model':       CL_MODEL_CFG,
+              'traingen':    CL_TRAINGEN_CFG}
+AE_CONFIGS.update(data_cfgs)
+CL_CONFIGS.update(data_cfgs)
+
+#### Model makers #############################################################
 def make_classifier(weights_path=None, **kw):
     def _unpack_configs(kw):
         expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
@@ -228,6 +292,7 @@ def make_timeseries_classifier(weights_path=None, **kw):
     return model
 
 
+#### Dummy objects ############################################################
 class ModelDummy():
     """Proxy model for testing (e.g. methods via `self`)"""
     def __init__(self):

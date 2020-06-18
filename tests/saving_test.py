@@ -15,53 +15,14 @@ import numpy as np
 from copy import deepcopy
 from pathlib import Path
 
-from backend import K, BASEDIR, tempdir, notify, make_classifier, load_model
-from backend import _init_session, _get_test_names
+from backend import CL_CONFIGS, tempdir, notify, make_classifier
+from backend import K, load_model, _init_session, _get_test_names
 
 
 #### CONFIGURE TESTING #######################################################
-batch_size = 128
-width, height = 28, 28
-channels = 1
-datadir = os.path.join(BASEDIR, 'tests', 'data', 'image')
-
-MODEL_CFG = dict(
-    batch_shape=(batch_size, width, height, channels),
-    loss='categorical_crossentropy',
-    metrics=['accuracy'],
-    optimizer='adam',
-    num_classes=10,
-    filters=[8, 16],
-    kernel_size=[(3, 3), (3, 3)],
-    dropout=[.25, .5],
-    dense_units=32,
-)
-DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
-    superbatch_dir=os.path.join(datadir, 'train'),
-    labels_path=os.path.join(datadir, 'train', 'labels.h5'),
-    batch_size=batch_size,
-    shuffle=True,
-)
-VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
-    superbatch_set_nums='all',
-    labels_path=os.path.join(datadir, 'val', 'labels.h5'),
-    batch_size=batch_size,
-    shuffle=False,
-)
-TRAINGEN_CFG = dict(
-    epochs=1,
-    val_freq={'epoch': 1},
-    dynamic_predict_threshold_min_max=(.35, .95),
-    logs_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_logs'),
-    best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
-    model_configs=MODEL_CFG,
-)
-
-CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
-           'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {}
+CONFIGS = deepcopy(CL_CONFIGS)
+
 classifier = make_classifier(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):

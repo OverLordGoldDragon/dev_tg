@@ -392,17 +392,16 @@ def _validate_traingen_configs(self):
                                  "samples` with `best_subset_size`")
 
     def _validate_dynamic_predict_threshold_min_max():
-        if self.dynamic_predict_threshold_min_max is not None:
-            if self.key_metric_fn is None:
-                print(WARN, "`key_metric_fn=None` (likely per `eval_fn_name !="
-                      " 'predict'`); setting "
-                      "`dynamic_predict_threshold_min_max=None`")
-                self.dynamic_predict_threshold_min_max = None
-            elif 'pred_threshold' not in argspec(self.key_metric_fn):
-                print(WARN, "`pred_threshold` parameter missing from "
-                      "`key_metric_fn`; setting "
-                      "`dynamic_predict_threshold_min_max=None`")
-                self.dynamic_predict_threshold_min_max = None
+        if self.dynamic_predict_threshold_min_max is None:
+            return
+        if self.key_metric_fn is None:
+            raise ValueError("`key_metric_fn=None` (possibly per 'predict' "
+                             "not in `eval_fn_name`); cannot use "
+                             "`dynamic_predict_threshold_min_max`")
+        elif 'pred_threshold' not in argspec(self.key_metric_fn):
+            raise ValueError("`pred_threshold` parameter missing from "
+                             "`key_metric_fn`; cannot use "
+                             "`dynamic_predict_threshold_min_max`")
 
     def _validate_or_make_plot_configs():
         if self.plot_configs is not None:
