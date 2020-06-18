@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import builtins
 import numpy as np
 import matplotlib.pyplot as plt
 import deeptrain.metrics
@@ -78,16 +77,19 @@ def capture_args(fn):
         # convert to string to prevent storing objects
         # & trim in case long lists / arrays are passed
         def obj_to_str(x, key=None):
-            def builtin_or_npscalar(x):
-                return isinstance(x, (np.generic, type(None), type(min))
-                                  ) or type(x) in vars(builtins).values()
-            if builtin_or_npscalar(x):
+            if builtin_or_npscalar(x, include_type_type=False):
                 return x
-            qname = getattr(x, '__qualname__', None)
-            name  = getattr(x, '__name__', None)
+            if hasattr(x, '__qualname__') or hasattr(x, '__name__'):
+                qname = getattr(x, '__qualname__', None)
+                name  = getattr(x, '__name__', None)
+            else:
+                # fallback to class if object has no name
+                qname = getattr(type(x), '__qualname__', None)
+                name  = getattr(type(x), '__name__', None)
+            # fallback to str if still no name
             return qname or name or str(x)[:200]
 
-        #### Positional arguments ##
+        #### Positional arguments ########
         posarg_names = [arg for arg in argspec(fn)[1:] if arg not in kwargs]
         posargs = {}
         for name, value in zip(posarg_names, args):
@@ -96,7 +98,7 @@ def capture_args(fn):
             varargs = getfullargspec(fn).varargs
             posargs[f'*{varargs}'] = deepmap(args[len(posargs):], obj_to_str)
 
-        #### Keyword arguments ##
+        #### Keyword arguments ########
         kwargs['_passed_args'] = {}
         if len(kwargs) != 0:
             kwargs['_passed_args'].update(deepcopy_v2(kwargs, obj_to_str))
@@ -109,7 +111,7 @@ def capture_args(fn):
 
 def extract_pickleable(obj, skip_flag=42069):
     def item_fn(item):
-        if builtin_or_npscalar(item):
+        if builtin_or_npscalar(item, include_type_type=True):
             return item
         return skip_flag
     return deepcopy_v2(obj, item_fn, skip_flag)
@@ -119,7 +121,7 @@ def exclude_unpickleable(obj):
     if not isinstance(obj, Mapping):
         raise ValueError(f"input must be a Mapping (dict, etc) - got: {obj}")
 
-    can_pickle = builtin_or_npscalar
+    can_pickle = lambda x: builtin_or_npscalar(x, include_type_type=True)
     pickleable = {}
     for k, v in obj.items():
         bools = deep_isinstance(v, cond=can_pickle)

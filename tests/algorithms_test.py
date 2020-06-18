@@ -10,7 +10,6 @@ if sys.path[0] != filedir:
     sys.path.insert(0, filedir)
 
 import pytest
-import builtins
 import numpy as np
 
 from collections.abc import Iterable
@@ -18,7 +17,7 @@ from copy import deepcopy
 from time import time
 
 from backend import notify, _get_test_names
-from deeptrain.util.algorithms import deeplen, deepmap
+from deeptrain.util.algorithms import deeplen, deepmap, builtin_or_npscalar
 from deeptrain.util.algorithms import nCk, ordered_shuffle
 from deeptrain.util.experimental import deepcopy_v2
 
@@ -135,11 +134,7 @@ def test_deepmap():
 @notify(tests_done)
 def test_deepcopy_v2():
     def obj_to_str(x, key=None):
-        def builtin_or_npscalar(x):
-            return (isinstance(x, np.generic) or
-                type(x) in (*vars(builtins).values(), type(None), type(min)))
-
-        if builtin_or_npscalar(x):
+        if builtin_or_npscalar(x, include_type_type=False):
             return x
         return str(x)[:200]
 

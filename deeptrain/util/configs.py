@@ -207,7 +207,7 @@ def _NAME_PROCESS_KEY_FN(key, alias, attrs):
         return val
 
     val = attrs[key]
-    if not builtin_or_npscalar(val):
+    if not builtin_or_npscalar(val, include_type_type=False):
         assert hasattr(val, '__name__') or hasattr(type(val), '__name__'), (
             f"cannot encode {val} for model name; `model_configs` values must be "
             "either Python literals (str, int, etc), or objects (or their "

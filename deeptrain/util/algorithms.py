@@ -20,12 +20,19 @@ def nCk(n, k):  # n-Choose-k
     return numer / denom
 
 
-def builtin_or_npscalar(x):
-    return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
-            isinstance(x, np.generic))
+def builtin_or_npscalar(x, include_type_type=False):
+    """Returns True if x is a builtin or a numpy scalar. Since `type` is
+    a builtin, but is a class rather than a literal, it's omitted by default;
+    set `include_type_type=True` to include it.
+    """
+    value = isinstance(x, (np.generic, type(None), type(min))
+                       ) or type(x) in vars(builtins).values()
+    return value if include_type_type else (value and not isinstance(x, type))
 
 
 def deeplen(item):
+    """Return total number of items in an arbitrarily nested iterable - excluding
+    the iterables themselves."""
     if isinstance(item, np.ndarray):
         return item.size
     try:
@@ -40,6 +47,10 @@ def deeplen(item):
 
 
 def deepget(obj, key=None, drop_keys=0):
+    """Get an item from an arbitarily nested iterable. `key` is a list/tuple of
+    indices of access specifiers (indices or mapping (e.g. dict) keys); if a
+    mapping is unordered (e.g. dict for Python <=3.5), retrieval isn't consistent.
+    """
     if not key or not obj:
         return obj
     if drop_keys != 0:
@@ -52,6 +63,9 @@ def deepget(obj, key=None, drop_keys=0):
 
 
 def deepmap(obj, fn):
+    """Map `fn` to items of an arbitrarily nested iterable, *including* iterables.
+    See https://codereview.stackexchange.com/q/242369/210581 for an explanation.
+    """
     def dkey(x, k):
         return list(x)[k] if isinstance(x, Mapping) else k
 

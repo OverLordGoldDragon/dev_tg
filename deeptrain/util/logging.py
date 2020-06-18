@@ -8,7 +8,7 @@ import builtins
 
 from inspect import getsource
 from pathlib import Path
-from .algorithms import deeplen
+from .algorithms import deeplen, builtin_or_npscalar
 from .misc import _dict_filter_keys
 from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
 
@@ -395,10 +395,6 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
             if verbose:
                 print(str(self), "source codes saved to", path)
 
-    def builtin_or_npscalar(x):
-        return (type(x) in (*vars(builtins).values(), type(None), type(min)) or
-                isinstance(x, np.generic))
-
     def _name(x):
         if hasattr(x, '__name__'):
             return x.__name__
@@ -446,9 +442,9 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     continue
                 v = state_full[k]
                 if (not builtin_or_npscalar(v) and
-                    not isinstance(v, np.ndarray)):
-                    if not_func(v):
-                        v = v.__class__
+                    not isinstance(v, np.ndarray) and
+                    not_func(v)):
+                    v = v.__class__
                 try:
                     source[_name(v)] = getsource(v)
                 except Exception as e:
