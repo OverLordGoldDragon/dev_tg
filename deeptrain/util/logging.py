@@ -369,17 +369,24 @@ def get_unique_model_name(self):
 def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     to_exclude=[], verbose=0):
     """Extract `self.__dict__` key-value pairs as string, ignoring funcs/methods
-    or getting their source codes. May include kwargs passed to __init__ via
-    `kwargs`, and __main__ via `source_lognames`.
+    or getting their source codes. May include kwargs passed to `__init__` via
+    `kwargs`, and execution script's source code via `'__main__'` in
+    `source_lognames`.
 
     Arguments:
         kwargs: dict
-            kwargs passed to `self`'s `__init__`.
+            kwargs passed to `self`'s `__init__`, in case they weren't set to
+            `self` or were changed later.
         source_lognames: list[str] / str
-            Names of self methoda attributes to get source code of.
+            Names of self method attributes to get source code of. If includes
+            '__main__', will get source code of execution script.
         savedir: str.
             Path to directory where to save logs. Saves a .json of `self`
             dict, and .txt of source codes (if any).
+        to_exclude: list[str] / str
+            Names of attributes to exclude from logging.
+        verbose: bool / int[bool]
+            Print save messages if successful.
     """
     def _save_logs(state, source, savedir, verbose):
         path = os.path.join(savedir, "init_state.h5")

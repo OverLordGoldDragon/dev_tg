@@ -225,6 +225,7 @@ def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, attrs):
                 val = _squash_list(val)
             if isinstance(val, float):
                 val = _format_float(val)
+        return val
 
     val = attrs[key]
     val = _process_val(key, val)

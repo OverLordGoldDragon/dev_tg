@@ -357,10 +357,10 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
         return plot_kw
 
     def _equalize_ticks_range(x_ticks, metrics):
-        max_value = max([np.max(ticks) for ticks in x_ticks if len(ticks) > 0])
+        max_value = max(np.max(ticks) for ticks in x_ticks if len(ticks) > 0)
 
-        assert all([ticks[-1] == max_value for ticks in x_ticks])
-        assert all([len(t) == len(m) for t, m in zip(x_ticks, metrics.values())])
+        assert all(ticks[-1] == max_value for ticks in x_ticks)
+        assert all(len(t) == len(m) for t, m in zip(x_ticks, metrics.values()))
         return x_ticks
 
     def _equalize_metric_names(config):
@@ -455,11 +455,6 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
                   max_is_best=True, axis=None, vhlines={'v': None, 'h': None},
                   ylims=(0, 2), legend_kw=None, key_metric='loss'):
-    if axis is not None:
-        ax = axis
-    else:
-        _, ax = plt.subplots()
-
     def _plot_vhlines(vhlines, ax):
         def non_iterable(x):
             return not isinstance(x, (list, tuple, np.ndarray))
@@ -498,7 +493,9 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
                 kws['label'] = _make_legend_label(name, bold)
             ax.plot(ticks, metrics[name], **kws)
 
+    ax = axis if axis else plt.subplots()[1]
     _plot_main(x_ticks, metrics, plot_kw, legend_kw, ax)
+
     if legend_kw is not None:
         legend_kw = legend_kw.copy()  # ensure external dict unaffected
         legend_kw.pop('weight', None)  # invalid kwarg
@@ -509,7 +506,7 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
     if mark_best_idx is not None:
         _mark_best_metric(x_ticks, metrics, mark_best_idx, ax)
 
-    xmin = min([np.min(ticks) for ticks in x_ticks])
-    xmax = max([np.max(ticks) for ticks in x_ticks])
+    xmin = min(np.min(ticks) for ticks in x_ticks)
+    xmax = max(np.max(ticks) for ticks in x_ticks)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(*ylims)

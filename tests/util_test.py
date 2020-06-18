@@ -217,7 +217,6 @@ def test_configs():
         for name in names:
             name = [x for x in vars(config) if name in x][0]
             _ = getattr(config, name)
-            assert True
 
 
 @notify(tests_done)
