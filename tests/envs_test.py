@@ -12,7 +12,7 @@ if sys.path[0] != filedir:
 import pytest
 
 from copy import deepcopy
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from importlib import reload
 
 from backend import CL_CONFIGS, tempdir, notify, make_classifier
@@ -20,6 +20,28 @@ from backend import _init_session, _get_test_names
 from backend import TF_EAGER, TF_KERAS
 from deeptrain import introspection
 
+
+#### HELPER METHODS ##########################################################
+class ImportRaiser():
+    def __init__(self, module_names):
+        if not isinstance(module_names, (list, tuple)):
+            module_names = [module_names]
+        self.module_names = module_names
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.module_names:
+            raise ImportError()
+
+
+def _fail_import(fail_module, reload_module):
+    module = sys.modules.pop(fail_module, None)
+    sys.meta_path.insert(0, ImportRaiser(fail_module))
+
+    reload(reload_module)
+
+    if module is not None:
+        sys.modules[fail_module] = module
+    sys.meta_path.pop(0)
 
 #### CONFIGURE TESTING #######################################################
 tests_done = {}
@@ -48,7 +70,8 @@ def test_tf_graph(MockClass1, MockClass2):
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=classifier)
-        introspection._make_gradients_fn(tg.model, 0, 'outputs')
+        grads_fn = introspection._make_gradients_fn(tg.model, 0, 'outputs')
+        grads_fn(0, 0, 0)
 
 
 @patch.dict('sys.modules', dict(PIL=os))
@@ -58,6 +81,10 @@ def test_imports():
 
     from deeptrain.util import _backend
     reload(_backend)
+    _backend.Unbuffered(sys.stdout).writelines("woot")
+
+    _fail_import('lz4framed', _backend)
+    assert _backend.lz4f is None
 
     os.environ['TF_KERAS'] = tf_k
 
