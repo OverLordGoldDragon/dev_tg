@@ -78,7 +78,7 @@ def capture_args(fn):
         posarg_names = [arg for arg in argspec(fn)[1:] if arg not in kwargs]
         posargs = {}
         for name, value in zip(posarg_names, args):
-            posargs[name] = obj_to_str(value, '')
+            posargs[name] = obj_to_str(value)
         if len(posargs) < len(args):
             varargs = getfullargspec(fn).varargs
             posargs[f'*{varargs}'] = deepmap(args[len(posargs):], obj_to_str)

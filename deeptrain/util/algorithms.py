@@ -30,7 +30,7 @@ def builtin_or_npscalar(x, include_type_type=False):
     return value if include_type_type else (value and not isinstance(x, type))
 
 
-def obj_to_str(x, key=None, len_lim=200, drop_absname=False):
+def obj_to_str(x, len_lim=200, drop_absname=False):
     """Converts `x` to a string representation if it isn't a builtin or numpy
     scalar.
 
