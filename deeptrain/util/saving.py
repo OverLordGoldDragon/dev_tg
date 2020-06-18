@@ -7,7 +7,8 @@ import tensorflow as tf
 from pathlib import Path
 from ._backend import K, WARN
 from ..visuals import get_history_fig
-from .misc import pass_on_error, _init_optimizer, exclude_unpickleable
+from .misc import pass_on_error, _init_optimizer
+from .experimental import exclude_unpickleable
 from ..backend import tensor_utils
 
 

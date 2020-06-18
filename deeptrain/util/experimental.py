@@ -1,6 +1,7 @@
 from pprint import pprint
 from collections.abc import Mapping
-from .algorithms import deepget, deepmap
+from .algorithms import deepget, deepmap, deep_isinstance
+from .algorithms import builtin_or_npscalar
 
 
 def deepcopy_v2(obj, item_fn=None, skip_flag=42069, debug_verbose=False):
@@ -136,3 +137,37 @@ def deepcopy_v2(obj, item_fn=None, skip_flag=42069, debug_verbose=False):
     deepmap(obj, reconstruct)
     copied = _revert_tuples(copied, obj, revert_tuple_keys)
     return copied
+
+
+def extract_pickleable(obj, skip_flag=42069):
+    """Given an arbitrarily nested dict / mapping, make its copy containing only
+    objects that can be pickled. Excludes functions and class instances, even
+    though most such can be pickled (# TODO).
+    Utilizes :func:`deepcopy_v2`.
+    """
+    if not isinstance(obj, Mapping):
+        raise ValueError(f"input must be a Mapping (dict, etc) - got: {obj}")
+
+    def item_fn(item):
+        if builtin_or_npscalar(item, include_type_type=True):
+            return item
+        return skip_flag
+    return deepcopy_v2(obj, item_fn, skip_flag)
+
+
+def exclude_unpickleable(obj):
+    """Given an arbitrarily nested dict / mapping, make its copy containing only
+    objects that can be pickled. Excludes functions and class instances, even
+    though most such can be pickled (# TODO).
+    Utilizes :func:`~deeptrain.util.algorithms.deep_isinstance`.
+    """
+    if not isinstance(obj, Mapping):
+        raise ValueError(f"input must be a Mapping (dict, etc) - got: {obj}")
+
+    can_pickle = lambda x: builtin_or_npscalar(x, include_type_type=True)
+    pickleable = {}
+    for k, v in obj.items():
+        bools = deep_isinstance(v, cond=can_pickle)
+        if bools and all(bools):
+            pickleable[k] = v
+    return pickleable

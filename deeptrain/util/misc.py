@@ -48,7 +48,7 @@ def _dict_filter_keys(dc, keys, exclude=True, filter_substr=False):
         return (not value) if exclude else value
 
     keys = keys if isinstance(keys, (list, tuple)) else [keys]
-    return {k:v for k,v in dc.items()
+    return {k: v for k, v in dc.items()
             if condition(k, keys, exclude, filter_substr)}
 
 
@@ -71,6 +71,9 @@ def get_module_methods(module):
 def capture_args(fn):
     """Capture bound method arguments without changing its input signature.
     Method must have a **kwargs to append captured arguments to.
+
+    Non-literal types and objects will be converted to their string representation
+    (or `__qualname__` or `__name__` if they possess it).
     """
     @wraps(fn)
     def wrap(self, *args, **kwargs):
@@ -92,27 +95,6 @@ def capture_args(fn):
         del kwargs['_passed_args']['_passed_args']
         fn(self, *args, **kwargs)
     return wrap
-
-
-def extract_pickleable(obj, skip_flag=42069):
-    def item_fn(item):
-        if builtin_or_npscalar(item, include_type_type=True):
-            return item
-        return skip_flag
-    return deepcopy_v2(obj, item_fn, skip_flag)
-
-
-def exclude_unpickleable(obj):
-    if not isinstance(obj, Mapping):
-        raise ValueError(f"input must be a Mapping (dict, etc) - got: {obj}")
-
-    can_pickle = lambda x: builtin_or_npscalar(x, include_type_type=True)
-    pickleable = {}
-    for k, v in obj.items():
-        bools = deep_isinstance(v, cond=can_pickle)
-        if bools and all(bools):
-            pickleable[k] = v
-    return pickleable
 
 
 def _init_optimizer(model, class_weights=None, input_as_labels=False,

@@ -127,8 +127,9 @@ def skip(app, what, name, obj, would_skip, options):
     # do not pull sklearn metrics docs in deeptrain.metrics
     if getattr(obj, '__module__', '').startswith('sklearn.metrics'):
         return True
-    # include private methods if they have documentation
-    if name.startswith('_') and getattr(obj, '__doc__', ''):
+    # include private methods (but not magic) if they have documentation
+    if name.startswith('_') and getattr(obj, '__doc__', '') and (
+            '__%s__' % name.strip('__') != name):
         return False
     return would_skip
 
@@ -170,6 +171,7 @@ reftarget_aliases = [
     ('*', 'util.labels_preloaders'),
     ('util.preprocessors',     'GenericPreprocessor'),
     ('util.preprocessors',     'TimeseriesPreprocessor'),
+    ('util.experimental',      'deepcopy_v2'),
     ('util._default_configs*', '_DEFAULT_PLOT_CFG'),
     ('util.configs*',          '_PLOT_CFG'),
 ]

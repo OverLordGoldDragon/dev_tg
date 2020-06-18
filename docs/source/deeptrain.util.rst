@@ -116,9 +116,10 @@ deeptrain.util.training module
    :show-inheritance:
 
 deeptrain.util.\_traingen\_utils module
------------------------------
+---------------------------------------
 
 .. automodule:: deeptrain.util._traingen_utils
+   :members:
    :undoc-members:
    :show-inheritance:
 

@@ -78,12 +78,22 @@ class DataGenerator():
           as it's bound to fail if using shuffling, or if total number of
           samples isn't divisible by `batch_size`. Other problems may also arise.
 
+    `__init__`:
 
+    Instantiation. (* == always; otherwise, if certain conditions are met)
+
+        - Infers missing configs based on args
+        - *Validates args & kwargs, and tries to correct, printing a"NOTE" or
+          "WARNING" message where appropriate
+        - Preloads all labels into `all_labels`
+        - *Instantiates misc internal parameters to predefiend values (may be
+          overridden by `TrainGenerator` loading).
     """
-    BUILTIN_PREPROCESSORS = (GenericPreprocessor, TimeseriesPreprocessor)
-    BUILTIN_DATA_LOADERS = {'numpy', 'numpy-memmap', 'numpy-lz4f',
-                            'hdf5', 'hdf5-dataset'}
-    SUPPORTED_DATA_EXTENSIONS = {'.npy', '.h5'}
+    _BUILTIN = {'preprocessors': (GenericPreprocessor, TimeseriesPreprocessor),
+                'data_loaders': {'numpy', 'numpy-memmap', 'numpy-lz4f',
+                                 'hdf5', 'hdf5-dataset'},
+                'data_extensions': {'.npy', '.h5'},
+                'labels_extensions': {'.csv', '.h5'}}
 
     def __init__(self, data_dir,
                  batch_size=32,
@@ -380,7 +390,7 @@ class DataGenerator():
         elif data_loader == 'hdf5-dataset':
             self.data_loader = data_loaders.hdf5_dataset_loader
         else:
-            supported = DataGenerator.BUILTIN_DATA_LOADERS
+            supported = DataGenerator._BUILTIN['data_loaders']
             raise ValueError(("unsupported data_loader '{}'; must be a custom "
                               "function, or one of {}").format(
                                   data_loader, ', '.join(supported)))
@@ -438,7 +448,16 @@ class DataGenerator():
 
     def _infer_data_info(self, data_dir, data_ext=None, data_loader=None,
                          base_name=None):
-        """Documented"""
+        """Infers unspecified essential attributes from directory and contained
+        files info:  (#TODO)
+
+            - Checks that the data directory (`self.data_dir`)isn't empty
+              (has files whose names don't start with `'.'`)
+            - Retrieves data filenames and gets data extension (to most frequent
+              ext in dir, excl. `labels_path` from count if in same dir)
+            - Gets `base_name` as longest common substring among files with
+              `data_ext` ext
+        """
         def _validate_directory(data_dir):
             # not guaranteed to catch hidden files
             nonhidden_files_names = [x for x in os.listdir(data_dir)
@@ -466,7 +485,6 @@ class DataGenerator():
 
             filenames = [x.rstrip(extension) for x in filenames]
             base_name = _longest_common_substr(filenames)
-
             return base_name
 
         def _get_filepaths(data_dir, filenames):
@@ -487,6 +505,7 @@ class DataGenerator():
                     raise Exception("No files found with supported extensions: "
                                     + ', '.join(supported_extensions)
                                     + " in `data_dir` ", data_dir)
+                # pick most frequent extension
                 data_ext = max(set(extensions), key=extensions.count)
 
                 if len(set(extensions)) > 1:
@@ -495,7 +514,7 @@ class DataGenerator():
                           "(specify `data_ext` if this is false)")
                 return data_ext
 
-            supported_extensions = DataGenerator.SUPPORTED_DATA_EXTENSIONS
+            supported_extensions = DataGenerator._BUILTIN['data_extensions']
             if data_ext is None:
                 data_ext = _infer_extension(data_dir, supported_extensions)
 
@@ -507,7 +526,7 @@ class DataGenerator():
         _validate_directory(data_dir)
         filenames, data_ext = _get_filenames_and_data_ext(data_dir, data_ext)
 
-        supported = DataGenerator.BUILTIN_DATA_LOADERS
+        supported = DataGenerator._BUILTIN['data_loaders']
         if data_loader is None:
             data_loader = _infer_data_loader(data_ext, filenames)
         elif data_loader not in supported and not isinstance(

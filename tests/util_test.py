@@ -93,12 +93,12 @@ def test_misc():
     def _test_try_except():
         misc.try_except(lambda: 1 / 0, lambda: 1)
 
-    def _test_extract_pickleable():
-        class Dummy():
-            def __init__(self):
-                self.a = 1
-                self.arr = np.random.randn(2, 2)
-        _ = misc.extract_pickleable(vars(Dummy()))
+    # def _test_extract_pickleable():  # moved to experimental
+    #     class Dummy():               # keep for future reference
+    #         def __init__(self):
+    #             self.a = 1
+    #             self.arr = np.random.randn(2, 2)
+    #     _ = misc.extract_pickleable(vars(Dummy()))
 
     for name, fn in locals().items():
         if name.startswith('_test_'):

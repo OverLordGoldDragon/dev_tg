@@ -316,6 +316,10 @@ def _gather_over_dataset(self, gather_fn, val=False, n_iters=None, prog_freq=10)
 
 
 def _make_gradients_fn(model, learning_phase, mode, return_names=False):
+    """Makes reusable gradient-getter function, separately for TF Eager & Graph
+    execution. Eager variant is pseudo-reusable; gradient tensors are still
+    fetched all over - graph should be significantly faster.
+    """
     def _fn_graph(model, learning_phase, mode, params):
         # make grads_fn only once instead of repeatedly calling
         # `get_gradients` for potentially massive speedup due to
