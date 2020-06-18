@@ -127,9 +127,8 @@ def skip(app, what, name, obj, would_skip, options):
     # do not pull sklearn metrics docs in deeptrain.metrics
     if getattr(obj, '__module__', '').startswith('sklearn.metrics'):
         return True
-    # include private methods (but not magic) if they have documentation
-    if name.startswith('_') and getattr(obj, '__doc__', '') and not (
-            name.startswith('__') and name.endswith('__') and len(name) > 4):
+    # include private methods if they have documentation
+    if name.startswith('_') and getattr(obj, '__doc__', ''):
         return False
     return would_skip
 

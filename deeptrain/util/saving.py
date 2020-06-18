@@ -326,9 +326,10 @@ def _get_optimizer_state(self):
 
 
 def load(self, filepath=None, passed_args=None):
-    """Load `TrainGenerator` state and, if configured to, model optimizer
-    attributes and instantiate optimizer. Instantiate callbacks, and apply
-    them with `stage='load. Preload data from `datagen` and `val_datagen`.
+    """Loads `TrainGenerator` state and, if configured to, model optimizer
+    attributes and instantiates optimizer (but not model architecture).
+    Instantiates callbacks, and applies them with `stage='load.
+    Preloads data from `datagen` and `val_datagen`.
 
     Arguments:
         filepath: str / None

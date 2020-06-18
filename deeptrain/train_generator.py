@@ -56,7 +56,7 @@ class TrainGenerator(TraingenUtils):
 
     Arguments:
         model: models.Model / models.Sequential [keras / tf.keras]
-            The model to train.
+            Compiled model to train.
         datagen: :class:`~deeptrain.data_generator.DataGenerator`
             Train data generator; fetches inputs and labels, handles
             preprocessing, shuffling, stateful formats, and informing
@@ -220,6 +220,20 @@ class TrainGenerator(TraingenUtils):
                  plot_configs=None,
                  model_configs=None,
                  **kwargs):
+        """Instantiates `TrainGenerator`; "*" below means "maybe", i.e. if
+        certain conditions are met.
+
+            - Pulls methods from
+              :class:`~deeptrain.util._traingen_utils.TraingenUtils`
+            - Validates args & kwargs, and tries to correct with a "NOTE" or
+              "WARNING" message where possible
+            - *Instantiates logging directory
+            - *Loads `TrainGenerator`, `datagen`, and `val_datagen` states
+            - *Loads model and optimizer weights (but not model architecture)
+            - *Applies initial callbacks
+            - Logs initial state (:func:`~deeptrain.util.logging._log_init_state`)
+            - Captures and save all arguments passed to `__init__`
+        """
         super().__init__()
 
         self.model=model

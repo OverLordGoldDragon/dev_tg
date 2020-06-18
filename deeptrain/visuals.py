@@ -455,6 +455,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
                   max_is_best=True, axis=None, vhlines={'v': None, 'h': None},
                   ylims=(0, 2), legend_kw=None, key_metric='loss'):
+    """Plots metrics according to inputs passed by :func:`get_history_fig`."""
     def _plot_vhlines(vhlines, ax):
         def non_iterable(x):
             return not isinstance(x, (list, tuple, np.ndarray))
