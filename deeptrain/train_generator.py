@@ -189,21 +189,21 @@ class TrainGenerator(TraingenUtils):
 
     `__init__`:
 
-    Instantiation. (* == always; otherwise, if certain conditions are met)
+    Instantiation. ("+" == if certain conditions are met)
 
-        - *Pulls methods from
+        - Pulls methods from
           :class:`~deeptrain.util._traingen_utils.TraingenUtils`
-        - *Validates args & kwargs, and tries to correct, printing a"NOTE" or
+        - Validates args & kwargs, and tries to correct, printing a"NOTE" or
           "WARNING" message where appropriate
-        - Instantiates logging directory
-        - Loads `TrainGenerator`, `datagen`, and `val_datagen` states
-        - Loads model and optimizer weights (but not model architecture)
-        - Preloads train & validation data (before a call to :meth:`train`
+        - +Instantiates logging directory
+        - +Loads `TrainGenerator`, `datagen`, and `val_datagen` states
+        - +Loads model and optimizer weights (but not model architecture)
+        - +Preloads train & validation data (before a call to :meth:`train`
           is made).
-        - Applies initial callbacks
-        - Logs initial state (:func:`~deeptrain.util.logging._log_init_state`)
-        - *Captures and saves all arguments passed to `__init__`
-        - *Instantiates misc internal parameters to predefiend values (may be
+        - +Applies initial callbacks
+        - +Logs initial state (:func:`~deeptrain.util.logging._log_init_state`)
+        - Captures and saves all arguments passed to `__init__`
+        - Instantiates misc internal parameters to predefiend values (may be
           overridden by loading).
     """
     @capture_args

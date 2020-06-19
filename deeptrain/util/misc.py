@@ -7,12 +7,10 @@ from types import LambdaType
 from functools import wraps
 from inspect import getfullargspec
 from copy import deepcopy
-from collections.abc import Mapping
 
 from deeptrain.backend import model_utils
-from .algorithms import deepmap, deep_isinstance
+from .algorithms import deepmap, obj_to_str
 from .experimental import deepcopy_v2
-from .algorithms import builtin_or_npscalar, obj_to_str
 from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
 from ._backend import WARN, NOTE, TF_KERAS
 

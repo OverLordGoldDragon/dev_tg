@@ -12,6 +12,11 @@ from .. import metrics as metric_fns
 def _update_temp_history(self, metrics, val=False):
     """Updates temporary history given `metrics`. If using batch-slices, ensures
     entries are grouped appropriately.
+
+        - Gets train (`val=False`) or val (`=True`) metrics, and validates that
+          `len(metrics)` of returned list matches len of `train_metrics` or
+          `val_metrics`.
+        - Validates that each element of `metrics` is a numeric (e.g. float)
     """
     def _get_metric_names(metrics, val):
         metric_names = self.val_metrics if val else self.train_metrics
@@ -22,6 +27,14 @@ def _update_temp_history(self, metrics, val=False):
         return metric_names
 
     def _get_temp_history(val):
+        def _validate_temp_history(temp_history):
+            for name, value in temp_history.items():
+                if not isinstance(temp_history[name], list):
+                    print(NOTE, "`temp_history` is non-list; attempting casting")
+                    temp_history[name] = list(temp_history[name])
+                    assert isinstance(temp_history[name], list)
+            return temp_history
+
         temp_history = self.val_temp_history if val else self.temp_history
         temp_history = _validate_temp_history(temp_history)
         return temp_history
@@ -33,18 +46,12 @@ def _update_temp_history(self, metrics, val=False):
         slices_per_batch = getattr(datagen, 'slices_per_batch', None)
         return no_slices, slice_idx, slices_per_batch
 
-    def _validate_temp_history(temp_history):
-        for name, value in temp_history.items():
-            if not isinstance(temp_history[name], list):
-                print(NOTE, "`temp_history` is non-list; attempting casting")
-                temp_history[name] = list(temp_history[name])
-                assert isinstance(temp_history[name], list)
-        return temp_history
-
     def _try_append_with_fix(temp_history):
         try:
             temp_history[name][-1].append(value)
         except:
+            # fallback in case TrainGenerator was saved/loaded from an incremented
+            # slice_idx and temp_history was empty, which will fail the `try`
             print(WARN, "unable to append to `temp_history`; OK if right "
                   "after load() -- attempting fix via append()...")
             temp_history[name].append(value)
@@ -57,7 +64,7 @@ def _update_temp_history(self, metrics, val=False):
 
     for name, value in zip(metric_names, metrics):
         assert not (np.ndim(value) != 0 or isinstance(value, dict)
-                    ), f"got non-scalar value ({type(value)}) for metric {name}; "
+                    ), f"got non-scalar value ({type(value)}) for metric {name}"
 
         if no_slices or slice_idx == 0:
             temp_history[name].append([])
@@ -126,6 +133,16 @@ def _get_weighted_sample_weight(self, class_labels_all, val=False,
                                 weight_range=(0.5, 1.5), slice_idx=None):
     """Gets `slices_per_batch` number of `sample_weight`, scaled linearly
     from min to max of `weight_range`, over `slices_per_batch` number of steps.
+
+    >>> weight_range == (0.5, 1.5)
+    >>> class_weights == {0: 1, 1: 5}  # val = False
+    >>> slices_per_batch == 3
+    >>> slice_idx == None  # get all
+    >>> class_labels_all == [[0, 0, 1], [0, 0, 1], [0, 1, 1]]
+    ...
+    >>> [[0.5, 0.5, 2.5],
+    ...  [1.0, 1.0, 5.0],
+    ...  [1.5, 7.5, 7.5]]
     """
     def _sliced_sample_weight(class_labels_all, slice_idx, val):
         sw_all = []
