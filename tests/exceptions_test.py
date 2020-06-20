@@ -74,10 +74,10 @@ def test_datagen():
         dg._validate_batch()
 
         dg.set_nums_to_process = dg.set_nums_original.copy()
-        pass_on_error(dg._set_class_params, ['99', '100'], ['100', '101'])
-        pass_on_error(dg._set_class_params, ['1', '2'], ['100', '101'])
+        pass_on_error(dg._set_set_nums, ['99', '100'], ['100', '101'])
+        pass_on_error(dg._set_set_nums, ['1', '2'], ['100', '101'])
         dg.superbatch_dir = None
-        pass_on_error(dg._set_class_params, ['1', '2'], ['1', '2'])
+        pass_on_error(dg._set_set_nums, ['1', '2'], ['1', '2'])
 
         dg._set_preprocessor(None, {})
         pass_on_error(dg._set_preprocessor, "x", {})

@@ -95,6 +95,8 @@ _TRAINGEN_SAVESKIP_LIST = [
     'name_process_key_fn',
     'fit_fn',
     'eval_fn',
+    '_fit_fn',
+    '_eval_fn',
 
     '_labels',
     '_preds',

@@ -9,6 +9,7 @@
    - examples/callbacks
    - examples/visuals
    - replace `assert` with `if`
+   - configurable error / warn levels (e.g. save fail)
    - MetaTrainer
 """
 
