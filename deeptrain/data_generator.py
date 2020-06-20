@@ -468,7 +468,8 @@ class DataGenerator():
 
             nums_to_process = _get_set_nums_to_process()
 
-            if superbatch_set_nums == 'all':
+            if (superbatch_set_nums == 'all' or
+                (superbatch_set_nums is None and self.superbatch_dir)):
                 self.superbatch_set_nums = nums_to_process.copy()
             else:
                 if any(num not in nums_to_process for num in superbatch_set_nums):

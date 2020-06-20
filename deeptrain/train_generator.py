@@ -8,6 +8,7 @@
    - Safe to interrupt flags print option?
    - examples/callbacks
    - examples/visuals
+   - replace `assert` with `if`
    - MetaTrainer
 """
 
@@ -34,6 +35,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from copy import deepcopy
+from types import LambdaType, MethodType
 
 from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.configs  import _TRAINGEN_CFG
@@ -283,6 +285,7 @@ class TrainGenerator(TraingenUtils):
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
 
         #### fit & eval fn ####################################################
+        # TODO make into properties
         self.fit_fn=fit_fn if not isinstance(fit_fn, str
                                              ) else getattr(model, fit_fn)
         self.eval_fn=eval_fn if not isinstance(eval_fn, str
@@ -342,14 +345,11 @@ class TrainGenerator(TraingenUtils):
               recording progress.
         """
         def _get_inputs(x, y, sw):
-            ins = {'x': x, 'y': y, 'sample_weight': sw}
-
-            # ~1.8x faster to append conditionally than to make full dict then del
-            if 'batch_size' in self._fit_fn_args:
-                ins['batch_size'] = len(x)
-            if 'verbose' in self._fit_fn_args:
-                ins['verbose'] = 0
-            return ins
+            if 'train' in self._fit_fn_name:
+                return {'x': x, 'y': y, 'sample_weight': sw}
+            else:
+                return {'x': x, 'y': y, 'sample_weight': sw,
+                        'batch_size': len(x), 'verbose': 0}
 
         while self.epoch < self.epochs:
             if not self._has_trained:
@@ -394,18 +394,11 @@ class TrainGenerator(TraingenUtils):
               `_print_iter_progress` executes
         """
         def _get_inputs(x, y, sw):
-            ins = {'x': x}
-
-            # ~1.8x faster to append conditionally than to make full dict then del
-            if 'y' in self._eval_fn_args:
-                ins['y'] = y
-            if 'sample_weight' in self._eval_fn_args:
-                ins['sample_weight'] = sw
-            if 'batch_size' in self._eval_fn_args:
-                ins['batch_size'] = len(x)
-            if 'verbose' in self._eval_fn_args:
-                ins['verbose'] = 0
-            return ins
+            if 'evaluate' in self._eval_fn_name:
+                return {'x': x, 'y': y, 'sample_weight': sw,
+                        'batch_size': len(x), 'verbose': 0}
+            else:
+                return {'x': x, 'batch_size': len(x)}
 
         print("\n\nValidating..." if not self._has_validated else
               "\n\nFinishing post-val processing...")
@@ -952,6 +945,38 @@ class TrainGenerator(TraingenUtils):
                          "but not destroyed. Proceed? [y/n]")
         if response == 'y':
             _destroy()
+
+    ###### PROPERTIES #########################################################
+    @property
+    def fit_fn(self):
+        return self._fit_fn
+
+    @fit_fn.setter
+    def fit_fn(self, fn):
+        self._attr_fn_setter(fn, 'fit_fn',
+                             supported_fn_names=('fit', 'train'))
+
+    @property
+    def eval_fn(self):
+        return self._eval_fn
+
+    @eval_fn.setter
+    def eval_fn(self, fn):
+        self._attr_fn_setter(fn, 'eval_fn',
+                             supported_fn_names=('evaluate', 'predict'))
+
+    def _attr_fn_setter(self, fn, attr_name, supported_fn_names):
+        assert isinstance(fn, (LambdaType, MethodType)), (
+            f"'{attr_name}' must be set to a function/method (got: {fn})")
+
+        name = getattr(fn, '__qualname__', '') or fn.__name__
+        name = name.split('.')[-1]  # drop packages / modules / classes
+        assert any(s in name for s in supported_fn_names), (
+            f"set `{attr_name}` with unsupported name; must contain one of: "
+            ", ".join(supported_fn_names))
+
+        setattr(self, f'_{attr_name}', fn)
+        setattr(self, f'_{attr_name}_name', name)
 
     ###### INIT METHODS #######################################################
     def _prepare_initial_data(self, from_load=False):

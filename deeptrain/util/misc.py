@@ -341,22 +341,17 @@ def _validate_traingen_configs(self):
                                  "`datagen` and `val_datagen` must have "
                                  "`slices_per_batch` attribute set (not falsy) "
                                  "(via `preprocessor`).")
-            for name in ('datagen', 'val_datagen'):
-                spb = getattr(self, name).slices_per_batch
-                assert (isinstance(spb, int) and spb >= 1
-                        ), ("`slices_per_batch` must be None or int >= 1, "
-                            "got: %s for %s" % (spb, name))
 
     def _validate_class_weights():
         for name in ('class_weights', 'val_class_weights'):
             cw = getattr(self, name)
             if cw is not None:
-                assert all([isinstance(x, int) for x in cw.keys()]), (
-                    "`{}` classes must be of type int (got {})"
-                    ).format(name, cw)
-                assert ((0 in cw and 1 in cw) or sum(cw.values()) > 1), (
-                    "`{}` must contain classes 1 and 0, or greater "
-                    "(got {})").format(name, cw)
+                if not all(isinstance(x, int) for x in cw.keys()):
+                    raise ValueError(("`{}` classes must be of type int (got {})"
+                                      ).format(name, cw))
+                if not ((0 in cw and 1 in cw) or sum(cw.values()) > 1):
+                    raise ValueError(("`{}` must contain classes 1 and 0, or "
+                                     "greater (got {})").format(name, cw))
 
                 if self.model.loss in ('categorical_crossentropy',
                                        'sparse_categorical_crossentropy'):
@@ -388,14 +383,15 @@ def _validate_traingen_configs(self):
             cfg = self.plot_configs
             required = ('metrics', 'x_ticks')
             for pane_cfg in cfg:
-                assert all([name in pane_cfg for name in required]), (
-                    "plot pane configs must contain %s" % ', '.join(required))
+                if not all(name in pane_cfg for name in required):
+                    raise ValueError(("plot pane configs must contain {}"
+                                      ).format(', '.join(required)))
         else:
             self.plot_configs = _make_plot_configs_from_metrics(self)
-        assert all(('metrics' in cfg and 'x_ticks' in cfg)
-                   for cfg in self.plot_configs
-                   ), ("all dicts in `plot_configs` must include "
-                       "'metrics', 'x_ticks'")
+        if not all(('metrics' in cfg and 'x_ticks' in cfg)
+                   for cfg in self.plot_configs):
+            raise ValueError("all dicts in `plot_configs` must include "
+                             "'metrics', 'x_ticks'")
 
     def _validate_metric_printskip_configs():
         for name, cfg in self.metric_printskip_configs.items():
@@ -417,18 +413,18 @@ def _validate_traingen_configs(self):
         supported = ('save', 'load', 'val_end',
                      'train:iter', 'train:batch', 'train:epoch',
                      'val:iter', 'val:batch', 'val:epoch')
-        assert isinstance(self.callbacks, (list, tuple, dict)), (
-            "`callbacks` must be list, tuple, or dict "
-            "- got %s" % type(self.callbacks))
+        if not isinstance(self.callbacks, (list, tuple, dict)):
+            raise ValueError("`callbacks` must be list, tuple, or dict "
+                             "- got %s" % type(self.callbacks))
         if isinstance(self.callbacks, dict):
             self.callbacks = [self.callbacks]
 
         from ..callbacks import TraingenCallback
 
         for cb in self.callbacks:
-            assert isinstance(cb, (dict, TraingenCallback)), (
-                "`callbacks` items must be dict or subclass TraingenCallback, "
-                "got %s" % type(cb))
+            if not isinstance(cb, (dict, TraingenCallback)):
+                raise TypeError("`callbacks` items must be dict or subclass "
+                                "TraingenCallback, got %s" % type(cb))
             if isinstance(cb, TraingenCallback):
                 continue
             for stage in cb:
@@ -457,11 +453,11 @@ def _validate_traingen_configs(self):
         for name in ('val_freq', 'plot_history_freq', 'unique_checkpoint_freq',
                      'temp_checkpoint_freq'):
             attr = getattr(self, name)
-            assert isinstance(attr, (dict, type(None))
-                              ), f"{name} must be dict or None (got: {attr})"
-            if isinstance(attr, dict):
-                assert len(attr) <= 1, (
-                    f"{name} supports up to one key-value pair (got: {attr})")
+            if not isinstance(attr, (dict, type(None))):
+                raise TypeError(f"{name} must be dict or None (got: {attr})")
+            if isinstance(attr, dict) and len(attr) > 1:
+                raise ValueError(f"{name} supports up to one key-value pair "
+                                 "(got: {attr})")
 
     for name, fn in locals().items():
         if name.startswith('_validate_'):
