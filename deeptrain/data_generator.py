@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""TODO:
-    - require preprocessors to inherit an abstract base class?
-    - make preprocessor attributes mutable to avoi synch_to and synch_from
-"""
 import os
 import h5py
 import random
@@ -20,7 +16,6 @@ from .util._backend import WARN, IMPORTS
 from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
 
-###############################################################################
 class DataGenerator():
     """Central interface between a directory and `TrainGenerator`. Handles data
     loading, preprocessing, shuffling, and batching. Requires only
@@ -388,8 +383,9 @@ class DataGenerator():
                            "abcdefghijklmnopqrstuvwxyz"[:int(n_batches)]]
         gb = np.asarray(self.batch)
         lb = np.asarray(self.labels)
-        assert len(gb) == len(lb), ("len(batch) != len(labels) ({} != {})"
-                                    ).format(len(gb), len(lb))
+        if len(gb) != len(lb):
+            raise Exception(("len(batch) != len(labels) ({} != {})"
+                            ).format(len(gb), len(lb)))
 
         self.batch, self.labels = [], []  # free memory
         gb, lb = _maybe_shuffle(gb, lb)
@@ -526,15 +522,13 @@ class DataGenerator():
             if preprocessor is None:
                 self.preprocessor = GenericPreprocessor(**preprocessor_configs)
             elif isinstance(preprocessor, type):  # uninstantiated
-                assert issubclass(preprocessor, Preprocessor
-                                  ), "`preprocessor` must subclass `Preprocessor`"
                 self.preprocessor = preprocessor(**preprocessor_configs)
             elif preprocessor == 'timeseries':
                 self.preprocessor = TimeseriesPreprocessor(**preprocessor_configs)
             else:
                 self.preprocessor = preprocessor
-            assert isinstance(self.preprocessor, Preprocessor
-                              ), "`preprocessor` must subclass `Preprocessor`"
+            if not isinstance(self.preprocessor, Preprocessor):
+                raise TypeError("`preprocessor` must subclass `Preprocessor`")
 
         _set(preprocessor, preprocessor_configs)
         self.preprocessor._validate_configs()

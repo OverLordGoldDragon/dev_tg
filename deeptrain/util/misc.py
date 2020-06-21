@@ -34,6 +34,7 @@ def try_except(try_fn, except_fn):
 
 
 def argspec(obj):
+    """Unreliable with wrapped functions."""
     return getfullargspec(obj).args
 
 
@@ -98,7 +99,7 @@ def capture_args(fn):
 def _init_optimizer(model, class_weights=None, input_as_labels=False,
                     alias_to_metric_name_fn=None):
     """Instantiates optimizer (and maybe trainer), but does NOT train
-       (update weights)"""
+    (update weights)."""
     loss = model.loss
     if not isinstance(loss, str):
         if not hasattr(loss, '__name__'):

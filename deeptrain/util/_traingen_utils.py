@@ -8,7 +8,7 @@ class TraingenUtils():
         pass
 
 modules = (logging, saving, searching, training, misc, introspection, visuals)
-to_exclude = ['_log_init_state']
+to_exclude = ['_log_init_state', '_update_best_key_metric_in_model_name']
 
 for module in modules:
     mm = misc.get_module_methods(module)

@@ -37,10 +37,6 @@ def _save_best_model(self, del_previous_best=False):
         if len(prev_files) != 0:
             [os.remove(f) for f in prev_files]
 
-    def _update_best_key_metric_in_model_name(keyword='__max'):
-        self.model_name = self.model_name.split(keyword)[0] + keyword + (
-            '%.3f' % self.best_key_metric).replace('0.', '.')
-
     if del_previous_best:
         try:
             _del_previous_best()
@@ -51,7 +47,7 @@ def _save_best_model(self, del_previous_best=False):
 
     _validate_is_best()
     self.best_key_metric = round(self.key_metric_history[-1], 6)
-    _update_best_key_metric_in_model_name()
+    _update_best_key_metric_in_model_name(self)
 
     basepath = os.path.join(self.best_models_dir, self.model_name)
     save_fns = self._make_model_save_fns(basepath + '__')
@@ -81,7 +77,10 @@ def checkpoint(self, forced=False, overwrite=None):
             If True, will checkpoint whether or not temp / unique checkpoint
             freq's were met.
         overwrite: bool / None
-            If None, set from `checkpoints_overwrite_duplicates`.
+            If None, set from `checkpoints_overwrite_duplicates`. If True,
+            will overwrite existing checkpoint files if having same name
+            as one generated with current checkpoint - else, will make unique
+            names by incrementing '_v2', '_v3', etc.
 
     Saves according to `temp_checkpoint_freq` and `unique_checkpoint_freq`.
     See :meth:`._should_do`. See :func:`save` on how model and
@@ -164,6 +163,9 @@ def checkpoint(self, forced=False, overwrite=None):
     do_unique = self._should_do(self.unique_checkpoint_freq)
     if not (do_temp or do_unique) and not forced:
         return
+
+    # to keep savename accurate in `logs_use_full_model_name` case
+    _update_best_key_metric_in_model_name(self)
 
     savename = _get_savename(do_temp, do_unique)
     basepath = os.path.join(self.logdir, savename)
@@ -557,3 +559,8 @@ def _save_history_fig(self, savepath=None):
     if self.final_fig_dir:  # keep at most one per model_num
         pass_on_error(_save_final_fig, errmsg=("Final fig could not be "
                                                "saved; skipping"))
+
+
+def _update_best_key_metric_in_model_name(self, keyword='__max'):
+    self.model_name = self.model_name.split(keyword)[0] + keyword + (
+        '%.3f' % self.best_key_metric).replace('0.', '.')

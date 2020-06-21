@@ -5,6 +5,11 @@ from collections.abc import Mapping
 
 
 def ordered_shuffle(*args):
+    """Shuffles each of the iterables the same way. Ex:
+
+    >>> ([1, 2, 3, 4], {'a': 5, 'b': 6, 'c': 7, 'd': 8})
+    >>> ([3, 4, 1, 2], {'c': 7, 'd': 8, 'a': 5, 'b': 6})
+    """
     zipped_args = list(zip(*(a.items() if isinstance(a, dict)
                              else a for a in args)))
     np.random.shuffle(zipped_args)
@@ -12,7 +17,8 @@ def ordered_shuffle(*args):
             for _type, data in zip(map(type, args), zip(*zipped_args))]
 
 
-def nCk(n, k):  # n-Choose-k
+def nCk(n, k):
+    """n-Choose-k"""
     mul = lambda a, b: a * b
     r = min(k, n - k)
     numer = reduce(mul, range(n, n - r, -1), 1)
@@ -167,6 +173,10 @@ def deepmap(obj, fn):
 
 
 def deep_isinstance(obj, cond):
+    """Checks that items within an arbitrarily nested iterable meet `cond`.
+    Returns a list of bools; to assert that *all* elements meet `cond`, run
+    `all(deep_isinstance())`.
+    """
     bools = []
     def fn(item, key=None):
         if isinstance(item, str):

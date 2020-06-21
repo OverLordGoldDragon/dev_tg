@@ -315,7 +315,7 @@ def get_unique_model_name(self):
 
     Note that if `model_num_continue_from_max` is True, then will set to +1
     the max number after `"M"` for directory names in `logs_dir`; e.g. if
-    such a directory is `"M15__Classifier"`, will set to `"M16"`, and set
+    such a directory is `"M15__Classifier"`, will use `"M16"`, and set
     `model_num = 16`.
 
     If an object is passed to `model_configs`, its `.__name__` will be used
