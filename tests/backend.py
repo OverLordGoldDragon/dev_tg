@@ -346,7 +346,7 @@ class TraingenDummy():
         self.model_name_configs = None
         self.model_num_continue_from_max = False
         self.model_base_name = 'M'
-        self.name_process_key_fn = util.configs._NAME_PROCESS_KEY_FN
+        self.name_process_key_fn = util.configs.NAME_PROCESS_KEY_FN
 
     def set_shapes(self, batch_size, label_dim):
         self.batch_size = batch_size

@@ -188,7 +188,7 @@ def test_training():
 
 @notify(tests_done)
 def test_configs():
-    for name_fn in (configs._NAME_PROCESS_KEY_FN,
+    for name_fn in (configs.NAME_PROCESS_KEY_FN,
                     _default_configs._DEFAULT_NAME_PROCESS_KEY_FN):
         cfg = dict(init_lr=[2e-4, 2e-4, 2e-4, 1e-4],
                    eta_t=(.9, 1.1, 2),

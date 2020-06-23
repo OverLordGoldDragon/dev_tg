@@ -11,7 +11,7 @@ from copy import deepcopy
 from deeptrain.backend import model_utils
 from .algorithms import deepmap, obj_to_str
 from .experimental import deepcopy_v2
-from .configs import _PLOT_CFG, _ALIAS_TO_METRIC
+from .configs import PLOT_CFG, ALIAS_TO_METRIC
 from ._backend import WARN, NOTE, TF_KERAS
 
 
@@ -110,7 +110,7 @@ def _init_optimizer(model, class_weights=None, input_as_labels=False,
     if alias_to_metric_name_fn is not None:
         loss = alias_to_metric_name_fn(model.loss)
     else:
-        loss = _ALIAS_TO_METRIC.get(model.loss, model.loss)
+        loss = ALIAS_TO_METRIC.get(model.loss, model.loss)
 
     if hasattr(model, '_make_train_function'):
         model._make_train_function()
@@ -183,8 +183,8 @@ def _make_plot_configs_from_metrics(self):
     mark_best_cfg = {'val': self.key_metric,
                      'max_is_best': self.max_is_best}
 
-    PLOT_CFG = deepcopy(_PLOT_CFG)  # ensure module dict remains unchanged
-    CFG = PLOT_CFG[0]
+    _PLOT_CFG = deepcopy(PLOT_CFG)  # ensure module dict remains unchanged
+    CFG = _PLOT_CFG[0]
     plot_configs.append({
         'metrics':
             CFG['metrics'] or {'train': self.train_metrics,
@@ -207,7 +207,7 @@ def _make_plot_configs_from_metrics(self):
     #### dedicate separate pane to remainder val_metrics ######################
     n_val_p2 = n_val - n_val_p1
 
-    CFG = PLOT_CFG[1]
+    CFG = _PLOT_CFG[1]
     plot_configs.append({
         'metrics':
             CFG['metrics'] or {'val': self.val_metrics[n_val_p1:]},
@@ -362,10 +362,18 @@ def _validate_traingen_configs(self):
                             getattr(self, name)[name][class_label] = 1
 
     def _validate_best_subset_size():
-        if self.best_subset_size is not None:
-            if self.val_datagen.shuffle_group_samples:
-                raise ValueError("`val_datagen` cannot use `shuffle_group_"
-                                 "samples` with `best_subset_size`")
+        if self.best_subset_size is None:
+            return
+        elif not isinstance(self.best_subset_size, int):
+            raise TypeError("`best_subset_size` must be an int, got %s"
+                            % self.best_subset_size)
+        elif self.best_subset_size < 1:
+            raise ValueError("`best_subset_size` must be >=1 or None, got %s"
+                             % self.best_subset_size)
+
+        if self.val_datagen.shuffle_group_samples:
+            raise ValueError("`val_datagen` cannot use `shuffle_group_"
+                             "samples` with `best_subset_size`")  # TODO why?
 
     def _validate_dynamic_predict_threshold_min_max():
         if self.dynamic_predict_threshold_min_max is None:

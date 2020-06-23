@@ -155,6 +155,8 @@ reftarget_aliases = [
     ('train_generator', 'TrainGenerator._train_postiter_processing'),
     ('train_generator', 'TrainGenerator._val_postiter_processing'),
     ('train_generator', 'TrainGenerator._init_and_validate_kwargs'),
+    ('train_generator', 'TrainGenerator._print_iter_progress'),
+    ('train_generator', 'TrainGenerator.check_health'),
     ('train_generator', 'TrainGenerator._on_val_end'),
     ('train_generator', 'TrainGenerator.__init__'),
     ('train_generator', 'TrainGenerator.get_data'),

@@ -37,8 +37,9 @@ def test_model_save():
         tempdir(C['traingen']['best_models_dir']):
         tg = init_session(C, model=classifier)
 
-        if 'model:weights' in tg.saveskip_list:
-            tg.saveskip_list.pop(tg.saveskip_list.index('model:weights'))
+        for name in ('model:weights', 'optimizer_state'):
+            if name in tg.saveskip_list:
+                tg.saveskip_list.pop(tg.saveskip_list.index(name))
         if 'model' not in tg.saveskip_list:
             tg.saveskip_list.append('model')
 
@@ -55,8 +56,9 @@ def test_model_save_weights():
 
         if 'model' in tg.saveskip_list:
             tg.saveskip_list.pop(tg.saveskip_list.index('model'))
-        if 'model:weights' not in tg.saveskip_list:
-            tg.saveskip_list.append('model:weights')
+        for name in ('model:weights', 'optimizer_state'):
+            if name not in tg.saveskip_list:
+                tg.saveskip_list.append(name)
 
         tg.train()
         _validate_save_load(tg, C)

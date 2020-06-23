@@ -224,7 +224,8 @@ def _get_val_history(self, for_current_iter=False):
     (labels_all_norm, preds_all_norm, sample_weight_all, class_labels_all
      ) = _unpack_and_transform_data(for_current_iter)
 
-    if self.dynamic_predict_threshold_min_max is not None:
+    if (self.dynamic_predict_threshold_min_max is not None and
+        self.dynamic_predict_threshold is not None):
         _find_and_set_predict_threshold()
 
     return self._compute_metrics(labels_all_norm, preds_all_norm,
@@ -259,7 +260,8 @@ def _get_best_subset_val_history(self):
 
         if 'pred_threshold' not in argspec(self.key_metric_fn):
             search_min_max = None
-        elif self.dynamic_predict_threshold_min_max is None:
+        elif (self.dynamic_predict_threshold_min_max is None or
+              self.dynamic_predict_threshold is None):
             search_min_max = (self.predict_threshold, self.predict_threshold)
         else:
             search_min_max = self.dynamic_predict_threshold_min_max
@@ -303,7 +305,8 @@ def _get_best_subset_val_history(self):
     elif 'predict' in self._eval_fn_name:
         d = _unpack_and_transform_data()
         best_subset_idxs, pred_threshold = _find_best_subset_from_preds(d)
-        if self.dynamic_predict_threshold_min_max is not None:
+        if (self.dynamic_predict_threshold_min_max is not None and
+            self.dynamic_predict_threshold is not None):
             self._set_predict_threshold(pred_threshold)
     else:
         raise ValueError("unknown `eval_fn_name`: %s" % self._eval_fn_name)

@@ -86,15 +86,14 @@ _DEFAULT_REPORT_CFG = {
 # TODO note which items are "mandatory"
 _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
     'model',
+    'optimizer_state',
     'callbacks',
     'key_metric_fn',
     'custom_metrics',
-    'use_passed_dirs_over_loaded',
-    'check_model_health',
     'metric_to_alias',
     'alias_to_metric',
     'name_process_key_fn',
-    'fit_fn',
+    'fit_fn',  # TODO excl. since class properties can't be removed from instance?
     'eval_fn',
     '_fit_fn',
     '_eval_fn',
@@ -109,29 +108,31 @@ _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
 
     '_imports',
     '_history_fig',
-    '_fit_iters',
-    '_val_iters',
     '_val_max_set_name_chars',
     '_max_set_name_chars',
     '_inferred_batch_size',
     '_class_labels_cache',
     '_train_val_x_ticks',
-    '_val_train_x_ticks',
+    '_val_train_x_ticks',  # ???
     '_temp_history_empty',
     '_val_temp_history_empty',
     '_val_sw',
     '_set_num',
     '_val_set_num',
+    # TODO include unlisted as comments: 'model:weights',
 ]
 
 _DEFAULT_TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
-                                   'model_num']
+                                   'model_num', 'use_passed_dirs_over_loaded']
 
 _DEFAULT_DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                                   '_group_batch', '_group_labels']
 _DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
                                   'data_loader', 'set_nums_original',
                                   'set_nums_to_process', 'superbatch_set_nums']
+
+_DEFAULT_MODEL_SAVE_KW = {'save_format': 'h5', 'include_optimizer': True}
+_DEFAULT_MODEL_SAVE_WEIGHTS_KW = {'save_format': 'h5'}
 
 _DEFAULT_METRIC_PRINTSKIP_CFG = {
     'train': [],
@@ -248,9 +249,9 @@ _DEFAULT_TRAINGEN_CFG = dict(
     _val_max_set_name_chars     = 2,
     _max_set_name_chars  = 3,
     predict_threshold    = 0.5,
-    best_subset_size     = 0,
+    best_subset_size     = None,
     check_model_health   = True,
-    max_one_best_save    = None,
+    max_one_best_save    = True,
     max_checkpoints = 5,
     report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",
@@ -258,8 +259,8 @@ _DEFAULT_TRAINGEN_CFG = dict(
 
     loadskip_list = _DEFAULT_TRAINGEN_LOADSKIP_LIST,
     saveskip_list = _DEFAULT_TRAINGEN_SAVESKIP_LIST,
-    model_save_kw = None,
-    model_save_weights_kw = None,
+    model_save_kw = _DEFAULT_MODEL_SAVE_KW,
+    model_save_weights_kw = _DEFAULT_MODEL_SAVE_WEIGHTS_KW,
     metric_to_alias     = _DEFAULT_METRIC_TO_ALIAS,
     alias_to_metric     = _DEFAULT_ALIAS_TO_METRIC,
     report_configs      = _DEFAULT_REPORT_CFG,
@@ -275,9 +276,9 @@ internally and will raise an exception).
 Parameters:
     dynamic_predict_threshold_min_max: tuple[float, float]
         Range of permitted values for `dynamic_predict_threshold` when setting it.
-        Useful for constraining "best subset" search to discourage high classifier
-        performance with extreme best thresholds (e.g. 0.99), which might do
-        *worse* on larger validation sets.
+        Useful for constraining "best subset" search to discourage high binary
+        classifier performance with extreme best thresholds (e.g. 0.99), which
+        might do *worse* on larger validation sets.
     checkpoints_overwrite_duplicates: bool
         Default value of `overwrite` in :func:`~deeptrain.util.saving.checkpoint`.
         Controls whether checkpoint will overwrite files if they have same name
@@ -301,14 +302,76 @@ Parameters:
         If True, will set `model_num` to +1 the max number after `"M"` for
         directory names in `logs_dir`; e.g. if such a directory is
         `"M15__Classifier"`, will use `"M16"`, and set `model_num = 16`.
-    dynamic_predict_threshold: float
+    dynamic_predict_threshold: float / None
         `predict_threshold` that is optimized during training to yield best
         `key_metric`. See
-        :func:`~deeptrain.util.training._set_predict_threshold`, which is called by
+        :func:`~deeptrain.util.training._set_predict_threshold`, which's called by
         :func:`~deeptrain.util.training._get_val_history`, and
-        :func:`~deeptrain.util.training._get_best_subset_val_history`.
+        :func:`~deeptrain.util.training._get_best_subset_val_history`. If None,
+        will only use `predict_threshold`.
     plot_first_pane_max_vals: int
-        Stuff
+        Maximum number of validation metrics to plot, as set by
+        :func:`~deeptrain.util.misc._make_plot_configs_from_metrics`, for
+        :func:`~deeptrain.visuals.get_history_fig`. This is a setting for the
+        default config maker (first method), which plots all train metrics
+        in first pane.
+    _val_max_set_name_chars: int
+        Padding to use in :meth:`TrainGenerator._print_iter_progress` to justify
+        `val_set_name` when printing "Validating set val_set_name"; should be
+        set to expected longest set name for vertical alignment. E.g. if
+        `'123'`, should set to 3, if `'99'`, to 2.
+    _max_set_name_chars: int
+        Same as `_val_max_set_name_chars`, but for train `_set_name`.
+    predict_threshold: float
+        Binary classifier prediction threshold, above which to classify as `'1'`,
+        used in :func:`~deeptrain.util.training._compute_metrics`.
+        If `dynamic_predict_threshold` and `dynamic_predict_threshold_min_max`
+        are not None, it will be set equal to former within bounds of latter.
+    best_subset_size: int >= 1 / None
+        If not None, will search for `best_subset_size` number of batches yielding
+        best validation performance, out of all validation batches (e.g. 5 of 10).
+        Useful for model ensembling in specializing member models on different
+        parts of data.
+        see :func:`~deeptrain.util.training._get_best_subset_val_history`.
+    check_model_health: bool
+        Whether to call :meth:`TrainGenerator.check_health` at the end of
+        validation in :meth:`TrainGenerator._on_val_end`, which checks whether
+        any `model` layers have zero/NaN weights. Very fast / inexpensive.
+    max_one_best_save: bool
+        Whether to keep only one set of save files (model weights,
+        `TrainGenerator` state, etc.) in `best_models_dir` when saving best model
+        via :func:`~deeptrain.util.saving._save_best_model`.
+    max_checkpoints: int
+        Maximum sets of checkpoint files (model weights, `TrainGenerator` state,
+        etc.) to keep in `logdir`, when checkpointing via
+        :func:`~deeptrain.util.saving.checkpoint`.
+    report_fontpath: str
+        Path to font file for font to use in saving report
+        (:func:`~deeptrain.util.logging.save_report); defaults to consola,
+        which yields nice vertical & horizontal alignment.
+    model_base_name: str
+        Name between `"M{model_num}"` and autogenerated string from
+        `model_configs`, as `"M{model_num}_{model_base_name}_*"`; see
+        :func:`~deeptrain.util.saving.get_unique_model_name`.
+    final_fig_dir: str / None
+        Path to directory where to save latest metric history using full
+        `model_name`, at most one per `model_num`. If None, won't save such a
+        figure (but will still save history for best model & checkpoint).
+    loadskip_list: list[str]
+        List of `TrainGenerator` attribute names to skip from loading. Mainly
+        for attributes that should change between different train sessions,
+        e.g. `model_num`, or shouldn't have `**kwargs` values overridden by load.
+    saveskip_list: list[str]
+        List of `TrainGenerator` attribute names to skip from saving. Used to
+        exclude e.g. objects that cannot be pickled (e.g. `model`), are large
+        and should be loaded separately (e.g. `batch`), or should be
+        reinstantiated (e.g. `_imports`).
+    model_save_kw: dict / None
+        Passed as kwargs to `model.save()`; commonly includes `save_format`
+        and `include_optimizer`.
+    model_save_weights_kw: dict / None
+        Passed as kwargs to `model.save_weights()`; commonly includes
+        `save_format`.
 """
 
 _DEFAULT_DATAGEN_CFG = dict(

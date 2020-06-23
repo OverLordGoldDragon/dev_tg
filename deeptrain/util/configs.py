@@ -8,7 +8,7 @@ from .fonts import fontsdir
 from .algorithms import builtin_or_npscalar
 
 
-_PLOT_CFG = [
+PLOT_CFG = [
 {
  'metrics': None,
  'x_ticks': None,
@@ -41,7 +41,7 @@ _PLOT_CFG = [
 
 
 # order-dependent
-_MODEL_NAME_CFG = dict(
+MODEL_NAME_CFG = dict(
     optimizer       = '',
     lr              = '',
     best_key_metric = '_max',
@@ -49,7 +49,7 @@ _MODEL_NAME_CFG = dict(
 
 
 # * == wildcard (match as substring)
-_REPORT_CFG = {
+REPORT_CFG = {
     'model':
         {},
     'traingen':
@@ -83,13 +83,12 @@ _REPORT_CFG = {
 }
 
 
-_TRAINGEN_SAVESKIP_LIST = [
+TRAINGEN_SAVESKIP_LIST = [
     'model',
+    'optimizer_state',
     'callbacks',
     'key_metric_fn',
     'custom_metrics',
-    'use_passed_dirs_over_loaded',
-    'check_model_health',
     'metric_to_alias',
     'alias_to_metric',
     'name_process_key_fn',
@@ -108,8 +107,6 @@ _TRAINGEN_SAVESKIP_LIST = [
 
     '_imports',
     '_history_fig',
-    '_fit_iters',
-    '_val_iters',
     '_val_max_set_name_chars',
     '_max_set_name_chars',
     '_inferred_batch_size',
@@ -123,21 +120,24 @@ _TRAINGEN_SAVESKIP_LIST = [
     '_val_set_num',
 ]
 
-_TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
-                           'model_num']
+TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
+                          'model_num', 'use_passed_dirs_over_loaded']
 
-_DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
-                          '_group_batch', '_group_labels']
-_DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
-                          'data_loader', 'set_nums_original',
-                          'set_nums_to_process', 'superbatch_set_nums']
+DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
+                         '_group_batch', '_group_labels']
+DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
+                         'data_loader', 'set_nums_original',
+                         'set_nums_to_process', 'superbatch_set_nums']
 
-_METRIC_PRINTSKIP_CFG = {
+MODEL_SAVE_KW = {'save_format': 'h5', 'include_optimizer': True}
+MODEL_SAVE_WEIGHTS_KW = {'save_format': 'h5'}
+
+METRIC_PRINTSKIP_CFG = {
     'train': [],
     'val': [],
 }
 
-_METRIC_TO_ALIAS = {
+METRIC_TO_ALIAS = {
     'loss'    : 'Loss',
     'accuracy': 'Acc',
     'acc'     : 'Acc',
@@ -146,7 +146,7 @@ _METRIC_TO_ALIAS = {
     'tpr'     : '1-Acc',
 }
 
-_ALIAS_TO_METRIC = {
+ALIAS_TO_METRIC = {
     'acc':     'accuracy',
     'mae':     'mean_absolute_error',
     'mse':     'mean_squared_error',
@@ -158,7 +158,7 @@ _ALIAS_TO_METRIC = {
     'f1-score':'f1_score',
 }
 
-def _NAME_PROCESS_KEY_FN(key, alias, attrs):
+def NAME_PROCESS_KEY_FN(key, alias, attrs):
     def _format_float(val, small_th=1e-2):
         def _format_small_float(val):
             def _decimal_len(val):
@@ -246,30 +246,30 @@ _TRAINGEN_CFG = dict(
     _val_max_set_name_chars     = 2,
     _max_set_name_chars  = 3,
     predict_threshold    = 0.5,
-    best_subset_size     = 0,
+    best_subset_size     = None,
     check_model_health   = True,
-    max_one_best_save    = None,
+    max_one_best_save    = True,
     max_checkpoints = 5,
     report_fontpath = fontsdir + "consola.ttf",
     model_base_name = "model",
     final_fig_dir   = None,
 
-    loadskip_list = _TRAINGEN_LOADSKIP_LIST,
-    saveskip_list = _TRAINGEN_SAVESKIP_LIST,
-    model_save_kw = None,
-    model_save_weights_kw = None,
-    metric_to_alias       = _METRIC_TO_ALIAS,
-    alias_to_metric       = _ALIAS_TO_METRIC,
-    report_configs        = _REPORT_CFG,
-    model_name_configs    = _MODEL_NAME_CFG,
-    name_process_key_fn   = _NAME_PROCESS_KEY_FN,
-    metric_printskip_configs = _METRIC_PRINTSKIP_CFG,
+    loadskip_list = TRAINGEN_LOADSKIP_LIST,
+    saveskip_list = TRAINGEN_SAVESKIP_LIST,
+    model_save_kw = MODEL_SAVE_KW,
+    model_save_weights_kw = MODEL_SAVE_WEIGHTS_KW,
+    metric_to_alias       = METRIC_TO_ALIAS,
+    alias_to_metric       = ALIAS_TO_METRIC,
+    report_configs        = REPORT_CFG,
+    model_name_configs    = MODEL_NAME_CFG,
+    name_process_key_fn   = NAME_PROCESS_KEY_FN,
+    metric_printskip_configs = METRIC_PRINTSKIP_CFG,
 )
 
 _DATAGEN_CFG = dict(
     shuffle_group_batches=False,
     shuffle_group_samples=False,
     full_batch_shape=None,
-    saveskip_list=_DATAGEN_SAVESKIP_LIST,
-    loadskip_list=_DATAGEN_LOADSKIP_LIST,
+    saveskip_list=DATAGEN_SAVESKIP_LIST,
+    loadskip_list=DATAGEN_LOADSKIP_LIST,
 )

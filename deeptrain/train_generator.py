@@ -892,7 +892,7 @@ class TrainGenerator(TraingenUtils):
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
                      notify_detected_only=True):
         """Check whether any layer weights have 'zeros' or NaN weights;
-        very fast.
+        very fast / inexpensive.
 
         Arguments:
             dead_threshold: float

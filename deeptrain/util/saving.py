@@ -12,10 +12,11 @@ from .experimental import exclude_unpickleable
 from ..backend import tensor_utils
 
 
-def _save_best_model(self, del_previous_best=False):
+def _save_best_model(self, del_previous_best=None):
     """Saves `model`, history fig, `TrainGenerator` state, and report
     if latest key metric is a new best (max/min, as per `max_is_best`).
-    Also deletes previous best saves if `max_one_best_save`.
+    Also deletes previous best saves if `max_one_best_save` (as called by
+    :meth:`TrainGenerator._on_val_end`, and defaulting to if None passed).
     """
     def _validate_is_best():
         """Enforce best model condition in case the method is called manually"""
@@ -37,6 +38,8 @@ def _save_best_model(self, del_previous_best=False):
         if len(prev_files) != 0:
             [os.remove(f) for f in prev_files]
 
+    if del_previous_best is None:
+        del_previous_best = bool(self.max_one_best_save)
     if del_previous_best:
         try:
             _del_previous_best()
@@ -174,8 +177,8 @@ def checkpoint(self, forced=False, overwrite=None):
     try:
         _clear_checkpoints_IF()
     except BaseException as e:
-        print(WARN, "Checkpoint files could not be cleared; skipping")
-        print("Errmsg:", e)
+        print(WARN, "Checkpoint files could not be cleared; skipping\n"
+              "Errmsg:", e)
 
 
 def _make_model_save_fns(self, basepath):
@@ -277,8 +280,8 @@ def save(self, savepath=None):
             pickle.dump(savedict, savefile)
             print("TrainGenerator state saved")
     except BaseException as e:
-        print(WARN, "TrainGenerator state could not be saved; skipping...")
-        print("Errmsg:", e)
+        print(WARN, "TrainGenerator state could not be saved; skipping...\n"
+              "Errmsg:", e)
     _restore_cached_attributes(self, cached_attrs)
 
 
@@ -533,9 +536,10 @@ def _save_history_fig(self, savepath=None):
             `'_temp_model__hist.png'`. Also if None, and `final_fig_dir`
             is set, will use full model name instead.
 
-    If `final_fig_dir` is set, will also save (at most one) figure there using
-    full model name; if there are existing savefiles (.png) with same `model_num`,
-    will delete them. Intended to document latest state of history.
+    If `final_fig_dir` is set, will also save (at most one per `model_num`)
+    figure there using full model name; if there are existing savefiles (.png)
+    with same `model_num`, will delete them. Intended to document latest state
+    of history.
     """
     def _save_final_fig():
         prev_figs = [os.path.join(self.final_fig_dir, name)
