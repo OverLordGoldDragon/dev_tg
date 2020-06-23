@@ -131,7 +131,7 @@ _DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
                                   'data_loader', 'set_nums_original',
                                   'set_nums_to_process', 'superbatch_set_nums']
 
-_DEFAULT_MODEL_SAVE_KW = {'save_format': 'h5', 'include_optimizer': True}
+_DEFAULT_MODEL_SAVE_KW = {'include_optimizer': True}
 _DEFAULT_MODEL_SAVE_WEIGHTS_KW = {'save_format': 'h5'}
 
 _DEFAULT_METRIC_PRINTSKIP_CFG = {
@@ -367,7 +367,7 @@ Parameters:
         and should be loaded separately (e.g. `batch`), or should be
         reinstantiated (e.g. `_imports`).
     model_save_kw: dict / None
-        Passed as kwargs to `model.save()`; commonly includes `save_format`
+        Passed as kwargs to `model.save()`; commonly includes `save_format` (TF2+)
         and `include_optimizer`.
     model_save_weights_kw: dict / None
         Passed as kwargs to `model.save_weights()`; commonly includes

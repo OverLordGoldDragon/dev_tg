@@ -129,7 +129,7 @@ DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
                          'data_loader', 'set_nums_original',
                          'set_nums_to_process', 'superbatch_set_nums']
 
-MODEL_SAVE_KW = {'save_format': 'h5', 'include_optimizer': True}
+MODEL_SAVE_KW = {'include_optimizer': True}
 MODEL_SAVE_WEIGHTS_KW = {'save_format': 'h5'}
 
 METRIC_PRINTSKIP_CFG = {
