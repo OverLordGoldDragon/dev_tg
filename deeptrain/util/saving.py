@@ -66,7 +66,7 @@ def _save_best_model(self, del_previous_best=None):
         try:
             self.save_report(basepath + '__report.png')
         except BaseException as e:
-            print(WARN,  "Best model report could not be saved; skipping")
+            print(WARN, "Best model report could not be saved; skipping")
             print("Errmsg", e)
     print("Best model saved to " + basepath)
 

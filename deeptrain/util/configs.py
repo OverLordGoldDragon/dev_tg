@@ -44,7 +44,7 @@ PLOT_CFG = [
 MODEL_NAME_CFG = dict(
     optimizer       = '',
     lr              = '',
-    best_key_metric = '_max',
+    best_key_metric = '__max',
 )
 
 
@@ -199,13 +199,13 @@ def NAME_PROCESS_KEY_FN(key, alias, attrs):
         return _str.rstrip('_')
 
     def _process_special_keys(key, val):
-        if key == 'timesteps':
-            val = val // 1000 if (val / 1000).is_integer() else val / 1000
-            val = str(val) + 'k'
+        if key == 'best_key_metric':
+            val = ("%.3f" % val).lstrip('0')
         elif key == 'name':
             val = ''
-        elif key == 'best_key_metric':
-            val = ("%.3f" % val).lstrip('0')
+        elif key == 'timesteps':
+            val = val // 1000 if (val / 1000).is_integer() else val / 1000
+            val = str(val) + 'k'
         return val
 
     def _process_val(key, val):
@@ -231,7 +231,10 @@ def NAME_PROCESS_KEY_FN(key, alias, attrs):
     val = _process_val(key, val)
 
     name = alias if alias is not None else key
-    return "-{}{}".format(name, val)
+    if key != 'best_key_metric':
+        return "-{}{}".format(name, val)
+    else:
+        return "{}{}".format(name, val)
 
 
 _TRAINGEN_CFG = dict(

@@ -445,18 +445,32 @@ def _validate_traingen_configs(self):
                 _validate_types(cb, stage)
 
     def _validate_model_save_kw():
+        def _set_save_format(kw):
+            save_format = kw.get('save_format', None)
+            if save_format is None:
+                if TF_KERAS:
+                    kw['save_format'] = 'h5'
+                else:
+                    kw.pop('save_format', None)
+            elif not TF_KERAS:
+                if save_format == 'h5':  # `keras` saves in 'h5' automatically
+                    kw.pop('save_format', None)
+                else:
+                    # don't raise on 'h5' since it still yields desired behavior
+                    raise ValueError(f"`keras` does not support "
+                                     "`save_format` kwarg")
+
         if self.model_save_kw is None:
             self.model_save_kw = {'include_optimizer': True}
             if TF_KERAS:
                 self.model_save_kw['save_format'] = 'h5'
-        elif 'save_format' in self.model_save_kw and not TF_KERAS:
-            raise ValueError(f"`keras` `model.save()` does not support "
-                             "'save_format' kwarg, defaulting to 'h5'")
+        else:
+            _set_save_format(self.model_save_kw)
+
         if self.model_save_weights_kw is None:
             self.model_save_weights_kw = {'save_format': 'h5'} if TF_KERAS else {}
-        elif 'save_format' in self.model_save_weights_kw and not TF_KERAS:
-            raise ValueError("f`keras` `model.save_weights()` does not support "
-                             "'save_format' kwarg, defaulting to 'h5'")
+        else:
+            _set_save_format(self.model_save_weights_kw)
 
     def _validate_freq_configs():
         for name in ('val_freq', 'plot_history_freq', 'unique_checkpoint_freq',
@@ -468,6 +482,7 @@ def _validate_traingen_configs(self):
                 raise ValueError(f"{name} supports up to one key-value pair "
                                  "(got: {attr})")
 
-    for name, fn in locals().items():
+    loc_names = list(locals())
+    for name in loc_names:
         if name.startswith('_validate_'):
-            fn()
+            locals()[name]()
