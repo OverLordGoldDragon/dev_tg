@@ -206,7 +206,7 @@ def test_configs():
         assert name_fn('name',      'name', cfg) == '-name'
         assert name_fn('optimizer', '',     cfg) == '-Adam'
         assert name_fn('opt',       '',     cfg) == '-Adam'
-        assert name_fn('best_key_metric', 'max', cfg) == '-max.910'
+        assert name_fn('best_key_metric', '__max', cfg) == '__max.910'
 
     names = ['PLOT_CFG', 'MODEL_NAME_CFG', 'REPORT_CFG',
              'TRAINGEN_SAVESKIP_LIST', 'TRAINGEN_LOADSKIP_LIST',

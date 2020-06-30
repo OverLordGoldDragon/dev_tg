@@ -388,6 +388,24 @@ Parameters:
         Dict mapping a metric alias to its TF/Keras/DeepTrain name. If defined
         in TF/Keras, DeepTrain uses the same names - else, they'll match function
         names in :mod:`deeptrain.metrics`.
+    report_configs: dict
+        Dict specifying :func:`~deeptrain.logging.generate_report` behavior;
+        see the method for info.
+    model_name_configs: dict
+        Dict specifying :func:`~deeptrain.logging.get_unique_model_name` behavior;
+        see the method for info.
+    name_process_key_fn: function
+        Function used within :func:`~deeptrain.logging.get_unique_model_name`;
+        see the method for info.
+    metric_printskip_configs: dict
+        Names of train/val metrics (and their values) to omit in printing
+        progress via :meth:`TrainGenerator._print_train_progress` and
+        :meth:`TrainGenerator._print_val_progress`. Ex:
+
+        >>> {'train': 'accuracy',
+        ...  'val':   ['f1_score', 'r2_score']}
+        >>> # So, if train metrics are ['loss', 'accuracy'], then will only print
+        ... # 'loss' and its value.
 """
 
 _DEFAULT_DATAGEN_CFG = dict(
