@@ -60,9 +60,18 @@ class TraingenCallback():
 
     Methods not implemented by the inheriting class will be skipped by catching
     `NotImplementedError`.
+
+    `__init__` sets a private attribute `_counters`, which can be used along
+    a "freq" to call methods every Nth callback, instead of every callback.
+    Example: :class:`RandomSeedSetter`.
     """
     def __init__(self):
-        pass
+        # can increment to call methods on N-th callback instead of every,
+        # e.g. every 5 iterations or every 2nd epoch. Optional attribute.
+        self._counters = {name: 0 for name in
+                          ('init', 'train:iter', 'train:batch', 'train:epoch',
+                           'val:iter', 'val:batch', 'val:epoch', 'val_end',
+                           'save', 'load')}
 
     def init_with_traingen(self, traingen=None):
         """Called by `TrainGenerator.__init__()`, passing in `self`
@@ -129,8 +138,26 @@ class TraingenCallback():
 
 
 class RandomSeedSetter(TraingenCallback):
-    def __init__(self, seeds=None):
+    """Periodically sets `random`, `numpy`, TensorFlow graph-level, and
+    TensorFlow global seeds.
+
+    Arguments:
+        seeds: dict / None
+            Dict of initial seeds; if None, will default all to 0. E.g.:
+            `{'random': 0, 'numpy': 0, 'tf-graph': 1, 'tf-global': 2}`.
+        freq: dict
+            When to set / reset the seeds. E.g. `{'train:epoch': 2}` (default)
+            will set every 2 train epochs. By default, seeds are incremented
+            by 1 to avoid repeating random sequences with each setting.
+
+    Methods can be overridden to increment by a different amount or not at all,
+    and to clear keras session & reset TF default graph, which doesn't happen
+    by default.
+    """
+    def __init__(self, seeds=None, freq={'train:epoch': 2}):
+        super().__init__()
         names = ('random', 'numpy', 'tf-graph', 'tf-global')
+
         if seeds is None:
             self.seeds = {name: 0 for name in names}
         elif isinstance(seeds, int):
@@ -139,6 +166,7 @@ class RandomSeedSetter(TraingenCallback):
             raise ValueError("`seeds` must be int or dict, got %s" % seeds)
         else:
             self.seeds = seeds
+        self.freq = freq
 
     def set_seeds(self, increment=0, seeds=None, reset_graph=False, verbose=1):
         """Sets seeds. `increment` will add to each of `self.seeds`. If `seeds`
@@ -159,7 +187,7 @@ class RandomSeedSetter(TraingenCallback):
                                                'tf-graph', 'tf-global')}
         random.seed(seeds['random'])
         np.random.seed(seeds['numpy'])
-        tf.compat.v1.set_random.seed(seeds['tf-graph'])
+        tf.compat.v1.set_random_seed(seeds['tf-graph'])
         if tf.__version__[0] == '2':
             tf.random.set_seed(seeds['tf-global'])
         else:
@@ -173,11 +201,61 @@ class RandomSeedSetter(TraingenCallback):
 
     @classmethod
     def reset_graph(self, verbose=1):
-        """Clears keras session, and resets TensorFlow default graph."""
+        """Clears keras session, and resets TensorFlow default graph.
+
+        NOTE: after calling, best practice is to re-instantiate model, else
+        some internal operations may fail due to elements from different graphs
+        interacting (of pre-reset model and post-reset tensors).
+        """
         K.clear_session()
         tf.compat.v1.reset_default_graph()
         if verbose:
             print("KERAS AND TENSORFLOW GRAPHS RESET")
+
+    #### Callback calls ######################################################
+    def call_on_freq(fn):
+        def wrap(self, stage):
+            if stage in self.freq:
+                self._counters[stage] += 1
+                if self._counters[stage] % self.freq[stage] == 0:
+                    fn(self, stage)
+        return wrap
+
+    @call_on_freq
+    def on_train_iter_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_train_batch_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_train_epoch_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_val_iter_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_val_batch_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_val_epoch_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_val_end(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_save(self, stage=None):
+        self.set_seeds(increment=1)
+
+    @call_on_freq
+    def on_load(self, stage=None):
+        self.set_seeds(increment=1)
 
 
 class TraingenLogger(TraingenCallback):

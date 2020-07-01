@@ -20,7 +20,9 @@ from backend import _init_session, _do_test_load, _get_test_names
 from backend import CL_CONFIGS
 from see_rnn import get_weights, features_2D
 from deeptrain.callbacks import TraingenCallback, TraingenLogger
+from deeptrain.callbacks import RandomSeedSetter
 from deeptrain.callbacks import make_layer_hists_cb
+from deeptrain import set_seeds
 
 
 #### CONFIGURE TESTING #######################################################
@@ -29,7 +31,7 @@ CONFIGS = deepcopy(CL_CONFIGS)
 batch_size, width, height, channels = CONFIGS['model']['batch_shape']
 logger_savedir = os.path.join(BASEDIR, 'tests', '_outputs', '_logger_outs')
 
-model = make_classifier(**CONFIGS['model'])
+set_seeds()
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
@@ -110,6 +112,9 @@ layer_hists_cbs = [
                                              'plot': dict(annot_kw=None)},
     )},
 ]
+
+seed_setter = RandomSeedSetter(freq={'train:epoch': 1})
+
 ###############################################################################
 
 @notify(tests_done)
@@ -119,12 +124,14 @@ def test_main():
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']), \
             tempdir(logger_savedir):
-        callbacks = [_make_logger_cb(), _make_2Dviz_cb(), *layer_hists_cbs]
+        callbacks = [_make_logger_cb(), _make_2Dviz_cb(), *layer_hists_cbs,
+                     seed_setter]
         C['traingen']['callbacks'] = callbacks
 
-        tg = init_session(C, model=model)
+        tg = init_session(C)
         tg.train()
         _test_load(tg, C)
+        set_seeds(reset_graph=True)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
@@ -150,7 +157,7 @@ def test_traingen_logger():
             gather_fns={'weights': get_weights},
             )]
         C['traingen']['callbacks'] = callbacks
-        tg = init_session(C, model=model)
+        tg = init_session(C)
         tg.train()
 
 

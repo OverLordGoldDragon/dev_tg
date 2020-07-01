@@ -460,8 +460,10 @@ class TrainGenerator(TraingenUtils):
         def _on_epoch_end(val=False):
             self.temp_history = deepcopy(self._temp_history_empty)
             self.epoch = self.datagen.on_epoch_end()
-            decor = "\n_________________________\n\033[4m {}{}{} \033[0m\n"
-            print(decor.format("EPOCH ", self.epoch, " -- COMPLETE"))
+
+            overline = "_" * len(f" EPOCH {self.epoch} -- COMPLETE ")
+            decor = "\n{}\n\033[4m {}{}{} \033[0m\n"
+            print(decor.format(overline, "EPOCH ", self.epoch, " -- COMPLETE"))
 
             self._hist_vlines     += [self._batches_fit]
             self._val_hist_vlines += [self._times_validated]
