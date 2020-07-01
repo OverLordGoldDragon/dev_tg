@@ -1,5 +1,8 @@
 import os
 import pickle
+import random
+import numpy as np
+import tensorflow as tf
 
 from pathlib import Path
 from see_rnn import get_weights, get_outputs, get_gradients
@@ -7,7 +10,7 @@ from see_rnn import get_weights, get_outputs, get_gradients
 from .visuals import binary_preds_per_iteration
 from .visuals import binary_preds_distribution
 from .visuals import infer_train_hist, layer_hists
-from .util._backend import NOTE
+from .util._backend import K, NOTE
 from .util.misc import argspec
 
 
@@ -123,6 +126,58 @@ class TraingenCallback():
         """Called by :meth:`TrainGenerator.load()` with `stage='load'`.
         """
         raise NotImplementedError
+
+
+class RandomSeedSetter(TraingenCallback):
+    def __init__(self, seeds=None):
+        names = ('random', 'numpy', 'tf-graph', 'tf-global')
+        if seeds is None:
+            self.seeds = {name: 0 for name in names}
+        elif isinstance(seeds, int):
+            self.seeds = {name: seeds for name in names}
+        elif not isinstance(seeds, dict):
+            raise ValueError("`seeds` must be int or dict, got %s" % seeds)
+        else:
+            self.seeds = seeds
+
+    def set_seeds(self, increment=0, seeds=None, reset_graph=False, verbose=1):
+        """Sets seeds. `increment` will add to each of `self.seeds`. If `seeds`
+        is not None, will override `increment`.
+        """
+        if seeds is None:
+            seeds = {k: v + increment for k, v in self.seeds.items()}
+        self._set_seeds(seeds, reset_graph, verbose)
+
+    @classmethod
+    def _set_seeds(self, seeds=None, reset_graph=False, verbose=1):
+        """See :meth:`set_seeds`; `_set_seeds` can be used without instantiating
+        class, as is used in :func:`deeptrain.set_seeds`.
+        """
+        if reset_graph:
+            self.reset_graph(verbose)
+        seeds = seeds or {name: 0 for name in ('random', 'numpy',
+                                               'tf-graph', 'tf-global')}
+        random.seed(seeds['random'])
+        np.random.seed(seeds['numpy'])
+        tf.compat.v1.set_random.seed(seeds['tf-graph'])
+        if tf.__version__[0] == '2':
+            tf.random.set_seed(seeds['tf-global'])
+        else:
+            tf.set_random_seed(seeds['tf-global'])
+
+        if verbose:
+            print(("RANDOM SEEDS RESET (random: {}, numpy: {}, tf-graph: {}, "
+                   "tf-global: {})").format(seeds['random'], seeds['numpy'],
+                                            seeds['tf-graph'], seeds['tf-global']
+                                            ))
+
+    @classmethod
+    def reset_graph(self, verbose=1):
+        """Clears keras session, and resets TensorFlow default graph."""
+        K.clear_session()
+        tf.compat.v1.reset_default_graph()
+        if verbose:
+            print("KERAS AND TENSORFLOW GRAPHS RESET")
 
 
 class TraingenLogger(TraingenCallback):

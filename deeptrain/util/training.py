@@ -394,7 +394,8 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
                     pred_threshold=self.predict_threshold)
 
         if name == 'loss':
-            api_name = _get_api_metric_name('loss', self.model.loss)
+            api_name = _get_api_metric_name('loss', self.model.loss,
+                                            self._alias_to_metric_name)
             metrics[name] = _compute_metric(data, metric_name=api_name)
             metrics[name] += weight_loss(self.model)
         elif name == self.key_metric:
@@ -403,7 +404,8 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
             metrics[name] = _compute_metric(data,
                                             metric_fn=self.custom_metrics[name])
         else:
-            api_name = _get_api_metric_name(name, self.model.loss)
+            api_name = _get_api_metric_name(name, self.model.loss,
+                                            self._alias_to_metric_name)
             metrics[name] = _compute_metric(data, metric_name=api_name)
 
     metrics = _ensure_scalar_metrics(metrics)

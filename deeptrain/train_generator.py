@@ -916,14 +916,10 @@ class TrainGenerator(TraingenUtils):
         print_nan_weights(self.model, notify_detected_only)
 
     def _alias_to_metric_name(self, alias):
-        if alias in self.alias_to_metric:
-            return self.alias_to_metric[alias.lower()]
-        return alias
+        return self.alias_to_metric.get(alias.lower(), alias)
 
     def _metric_name_to_alias(self, metric_name):
-        if metric_name in self.metric_to_alias:
-            return self.metric_to_alias[metric_name.lower()]
-        return metric_name
+        return self.metric_to_alias.get(metric_name.lower(), metric_name)
 
     def destroy(self, confirm=False, verbose=1):
         """Class 'destructor'. Sets own, datagen's, and val_datagen's attributes

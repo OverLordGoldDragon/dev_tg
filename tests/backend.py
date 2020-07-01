@@ -347,6 +347,7 @@ class TraingenDummy():
         self.model_num_continue_from_max = False
         self.model_base_name = 'M'
         self.name_process_key_fn = util.configs.NAME_PROCESS_KEY_FN
+        self.alias_to_metric = util._default_configs._DEFAULT_ALIAS_TO_METRIC
 
     def set_shapes(self, batch_size, label_dim):
         self.batch_size = batch_size
@@ -358,6 +359,9 @@ class TraingenDummy():
         self._preds_cache = y_pred.copy()
         self._sw_cache = np.ones(y_true.shape)
         self._class_labels_cache = y_true.copy()
+
+    def _alias_to_metric_name(self, alias):
+        return self.alias_to_metric.get(alias.lower(), alias)
 
 
 for name in ('_transform_eval_data', '_validate_data_shapes',
