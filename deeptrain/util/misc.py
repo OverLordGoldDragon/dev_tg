@@ -11,7 +11,7 @@ from copy import deepcopy
 from deeptrain.backend import model_utils
 from .algorithms import deepmap, obj_to_str
 from .experimental import deepcopy_v2
-from .configs import PLOT_CFG, ALIAS_TO_METRIC
+from .configs import PLOT_CFG
 from ._backend import WARN, NOTE, TF_KERAS
 
 
@@ -100,18 +100,6 @@ def _init_optimizer(model, class_weights=None, input_as_labels=False,
                     alias_to_metric_name_fn=None):
     """Instantiates optimizer (and maybe trainer), but does NOT train
     (update weights)."""
-    loss = model.loss
-    if not isinstance(loss, str):
-        if not hasattr(loss, '__name__'):
-            raise Exception("unable to instantiate optimizer; open an Issue "
-                            "with a minimally-reproducible example")
-        loss = loss.__name__
-
-    if alias_to_metric_name_fn is not None:
-        loss = alias_to_metric_name_fn(model.loss)
-    else:
-        loss = ALIAS_TO_METRIC.get(model.loss, model.loss)
-
     if hasattr(model, '_make_train_function'):
         model._make_train_function()
     else:

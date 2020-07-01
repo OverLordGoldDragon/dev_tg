@@ -26,7 +26,6 @@ from deeptrain.metrics import (
     )
 from deeptrain import metrics as metric_fns
 
-
 tests_done = {}
 
 
