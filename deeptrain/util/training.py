@@ -177,6 +177,7 @@ def _get_weighted_sample_weight(self, class_labels_all, val=False,
 
 
 def _set_predict_threshold(self, predict_threshold, for_current_iter=False):
+    """Set `predict_threshold` and maybe `dynamic_predict_threshold`."""
     if not for_current_iter:
         self.dynamic_predict_threshold = predict_threshold
     self.predict_threshold = predict_threshold
@@ -336,6 +337,9 @@ def _get_api_metric_name(name, loss_name, alias_to_metric_name_fn=None):
 
 
 def _compute_metric(data, metric_name=None, metric_fn=None):
+    """Compute metric given labels, preds, and sample weights or prediction
+    threshold where applicable - and metric name or function.
+    """
     def _del_if_not_in_metric_fn(name, data, metric_fn):
         if name in data and name not in argspec(metric_fn):
             del data[name]
@@ -348,6 +352,23 @@ def _compute_metric(data, metric_name=None, metric_fn=None):
 
 
 def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
+    """Computes metrics from labels, predictions, and sample weights, via
+    :func:`_compute_metric`.
+
+    Iterates over metric names in `val_metrics`:
+
+        - `name == 'loss'`: fetches loss name from `model.loss`, then function
+          from `deeptrain.util.metrics`, computes metric, and adds model
+          weight penalty loss (L1/L2). Loss from `model.evaluate()` may still
+          differ, as no other regularizer loss is accounted for.
+        - `name == key_metric`: computes metric with `key_metric_fn`.
+        - `name in custom_metrics`: computes metric with `custom_metrics[name]`
+          function.
+        - `name` none of the above: passes name and `model.loss` to
+          :func:`_compute_metric`.
+
+    Ensures computed metrics are scalars (numbers, instead of lists, tuples, etc).
+    """
     def _ensure_scalar_metrics(metrics):
         def _ensure_is_scalar(metric):
             if np.ndim(metric) != 0:
@@ -372,10 +393,12 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
                     sample_weight=sample_weight_all,
                     pred_threshold=self.predict_threshold)
 
-        if name == 'loss' or name == self.key_metric:
+        if name == 'loss':
+            api_name = _get_api_metric_name('loss', self.model.loss)
+            metrics[name] = _compute_metric(data, metric_name=api_name)
+            metrics[name] += weight_loss(self.model)
+        elif name == self.key_metric:
             metrics[name] = _compute_metric(data, metric_fn=self.key_metric_fn)
-            if name == 'loss' or name[-1] == '*':
-                metrics[name] += weight_loss(self.model)
         elif name in self.custom_metrics:
             metrics[name] = _compute_metric(data,
                                             metric_fn=self.custom_metrics[name])

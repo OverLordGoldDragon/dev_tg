@@ -273,6 +273,6 @@ _DATAGEN_CFG = dict(
     shuffle_group_batches=False,
     shuffle_group_samples=False,
     full_batch_shape=None,
-    saveskip_list=DATAGEN_SAVESKIP_LIST,
     loadskip_list=DATAGEN_LOADSKIP_LIST,
+    saveskip_list=DATAGEN_SAVESKIP_LIST,
 )

@@ -25,7 +25,11 @@ def numpy_loader(self, set_num):
 def numpy_lz4f_loader(self, set_num):
     """For numpy arrays (.npy) compressed with `lz4framed`; see
     :func:`preprocessing.numpy_to_lz4f`.
-    `self.data_loader_dtype` must be original (save) dtype.
+    `self.data_loader_dtype` must be original (save) dtype; if there's a mismatch,
+    data of wrong value or shape will be decoded.
+
+    Requires `full_batch_shape` attribute to be set, as compressed representation
+    omits shape info.
     """
     bytes_npy = lz4f.decompress(np.load(_path(self, set_num)))
     return np.frombuffer(bytes_npy, dtype=self.data_loader_dtype).reshape(

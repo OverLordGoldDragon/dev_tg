@@ -757,18 +757,24 @@ class TrainGenerator(TraingenUtils):
             self.history[metric] += [value]
 
     def _print_train_progress(self):
+        """Called within :meth:`_train_postiter_processing`, by `on_batch_end()`.
+        """
         train_metrics = self._get_train_history()
         for name in self.metric_printskip_configs.get('train', []):
             train_metrics.pop(name, None)
         self._print_progress(train_metrics, endchar='')
 
     def _print_val_progress(self):
+        """Called within :meth:`_val_postiter_processing`, by `on_batch_end()`.
+        """
         val_metrics = self._get_val_history(for_current_iter=True)
         for name in self.metric_printskip_configs.get('val', []):
             val_metrics.pop(name, None)
         self._print_progress(val_metrics)
 
     def _print_progress(self, metrics, endchar='\n'):
+        """Called by :meth:`_print_train_progress` and
+        :meth:`_print_val_progress`."""
         names  = [self._metric_name_to_alias(name) for name in metrics]
         values = [v for v in metrics.values()]
         assert len(names) == len(values)
@@ -781,6 +787,7 @@ class TrainGenerator(TraingenUtils):
         print(" {} = {} ".format(names_joined, values_joined), end=endchar)
 
     def _print_iter_progress(self, val=False):
+        """Called within :meth:`train` and :meth:`validate`."""
         if val:
             if not self._val_has_notified_of_new_batch:
                 pad = self._val_max_set_name_chars + 3
