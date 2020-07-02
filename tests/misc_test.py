@@ -174,6 +174,23 @@ def test_custom_metrics():
     _test_predict_mode()
 
 
+@notify(tests_done)
+def test_reset_validation():
+    C = deepcopy(CONFIGS)
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
+        tg = init_session(C, model=classifier)
+        vdg = tg.val_datagen
+        val_set_nums_original = vdg.set_nums_original.copy()
+
+        tg.train()
+
+        tg.reset_validation()
+        assert vdg.set_nums_original   == val_set_nums_original
+        assert vdg.set_nums_to_process == val_set_nums_original
+        tg.validate(restart=True)
+
+
 tests_done.update({name: None for name in _get_test_names(__name__)})
 
 if __name__ == '__main__':

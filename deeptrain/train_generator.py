@@ -342,6 +342,7 @@ class TrainGenerator(TraingenUtils):
               applied and weights are updated - but metrics aren't stored, and
               `_has_postiter_processed=False`, restarting the loop without
               recording progress.
+            - Best bet is during :meth:`validate`, as `get_data` may be too brief.
         """
         def _get_inputs(x, y, sw):
             if 'train' in self._fit_fn_name:
@@ -369,7 +370,7 @@ class TrainGenerator(TraingenUtils):
 
         print("Training has concluded.")
 
-    def validate(self, record_progress=True, clear_cache=True):
+    def validate(self, record_progress=True, clear_cache=True, restart=False):
         """Validation loop.
 
             - Fetches data from `get_data`
@@ -380,6 +381,7 @@ class TrainGenerator(TraingenUtils):
             - Calls `_on_val_end` at end of validation to compute metrics
               and store them in `val_history`
             - Applies `'val_end'` and maybe `('val_end': 'train:epoch')` callbacks
+            - If `restart`, calls :meth:`reset_validation`.
 
         **Interruption:**
 
@@ -390,7 +392,7 @@ class TrainGenerator(TraingenUtils):
               appending, which will error or yield inaccuracies.
               (* forward pass may consume random seed if random ops are used)
             - *In practice*: prefer interrupting immediately after
-              `_print_iter_progress` executes
+              `_print_iter_progress` executes.
         """
         def _get_inputs(x, y, sw):
             if 'evaluate' in self._eval_fn_name:
@@ -399,6 +401,8 @@ class TrainGenerator(TraingenUtils):
             else:
                 return {'x': x, 'batch_size': len(x)}
 
+        if restart:
+            self.reset_validation()
         print("\n\nValidating..." if not self._has_validated else
               "\n\nFinishing post-val processing...")
 
@@ -650,8 +654,7 @@ class TrainGenerator(TraingenUtils):
 
     def clear_cache(self, reset_val_flags=False):  # to `validate` from scratch
         """Call to reset cache attributes accumulated during validation; useful
-        for "restarting" validation (before calling
-        :meth:`validate`).
+        for "restarting" validation (before calling :meth:`validate`).
 
         Attributes set to `[]`: `{'_preds_cache', '_labels_cache', '_sw_cache',
         '_class_labels_cach', '_set_name_cache', '_val_set_name_cach',
@@ -669,6 +672,15 @@ class TrainGenerator(TraingenUtils):
             self._has_validated = False
             self._has_trained = False
             self._val_has_postiter_processed = True
+
+    def reset_validation(self):
+        """Used to restart validation (e.g. in case interrupted); calls
+        :meth:`clear_cache` and :meth:`DataGenerator.reset_state`.
+
+        Does not reset validation counters (e.g. `_val_iters`).
+        """
+        self.clear_cache(reset_val_flags=True)
+        self.val_datagen.reset_state(shuffle=False)
 
     def _should_do(self, freq_config, forced=False):
         """Checks whether a counter meets a frequency as specified in

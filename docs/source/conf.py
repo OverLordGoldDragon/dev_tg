@@ -159,6 +159,7 @@ reftarget_aliases = [
     ('train_generator', 'TrainGenerator._print_train_progress'),
     ('train_generator', 'TrainGenerator._print_val_progress'),
     ('train_generator', 'TrainGenerator._print_progress'),
+    ('train_generator', 'TrainGenerator.reset_validation'),
     ('train_generator', 'TrainGenerator.check_health'),
     ('train_generator', 'TrainGenerator._on_val_end'),
     ('train_generator', 'TrainGenerator.__init__'),

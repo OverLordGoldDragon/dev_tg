@@ -319,10 +319,13 @@ class DataGenerator():
         if self.batch_exhausted and self.set_nums_to_process == []:
             self.all_data_exhausted = True
 
-    def reset_state(self):
+    def reset_state(self, shuffle=None):
         """Calls `preprocessor.reset_state()`, sets `batch_exhausted = True`,
         `batch_loaded = False`, resets `set_nums_to_process` to
         `set_nums_original`, and shuffles `set_nums_to_process` if `shuffle`.
+
+            - If `shuffle` passed in is None, will set from `self.shuffle`.
+            - Used in :meth:`TrainGenerator.reset_validation` w/ `shuffle=False`.
         """
         self.preprocessor.reset_state()
         # ensure below values prevail, in case `preprocessor` sets them to
@@ -331,7 +334,9 @@ class DataGenerator():
         self.batch_loaded = False
         self.set_nums_to_process = self.set_nums_original.copy()
 
-        if self.shuffle:
+        if shuffle is None:
+            shuffle = self.shuffle
+        if shuffle:
             random.shuffle(self.set_nums_to_process)
             print('\nData set_nums shuffled\n')
 
