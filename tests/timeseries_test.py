@@ -64,7 +64,7 @@ TRAINGEN_CFG = dict(
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
            'val_datagen': VAL_DATAGEN_CFG, 'traingen': TRAINGEN_CFG}
 tests_done = {}
-model = make_timeseries_classifier(**CONFIGS['model'])
+# model = make_timeseries_classifier(**CONFIGS['model'])
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
@@ -77,7 +77,7 @@ def test_main():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), tempdir(
             C['traingen']['best_models_dir']):
-        tg = init_session(C, model=model)
+        tg = init_session(C)#, model=model)
         tg.train()
         _test_load(tg, C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
@@ -92,7 +92,7 @@ def test_weighted_slices():
                               pred_weighted_slices_range=(.5, 1.5)))
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
-        tg = init_session(C, model=model)
+        tg = init_session(C)#, model=model)
         tg.train()
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
@@ -112,7 +112,7 @@ def test_predict():
                                   class_weights={0: 1, 1: 5},
                                   iter_verbosity=2,
                                   ))
-        tg = init_session(C, model=model)
+        tg = init_session(C)#, model=model)
         tg.train()
         _test_load(tg, C)
     print("\nTime elapsed: {:.3f}".format(time() - t0))
@@ -126,7 +126,7 @@ def test_start_increments():
         C['datagen']['preprocessor_configs'] = dict(window_size=4,
                                                     start_increments=[0, 2])
         C['traingen']['epochs'] = 2
-        tg = init_session(C, model=model)
+        tg = init_session(C)#, model=model)
         tg.train()
         _test_load(tg, C)
 

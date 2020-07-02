@@ -44,7 +44,7 @@ PLOT_CFG = [
 MODEL_NAME_CFG = dict(
     optimizer       = '',
     lr              = '',
-    best_key_metric = '__max',
+    best_key_metric = None,
 )
 
 

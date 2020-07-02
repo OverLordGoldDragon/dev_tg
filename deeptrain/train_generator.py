@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 ## TODO
-"""- random seeds management in TrainGenerator?
-   - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
-   - 'min' for `max_is_best=False` in model naming
+"""- deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - Safe to interrupt flags print option?

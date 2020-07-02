@@ -302,7 +302,7 @@ def get_unique_model_name(self):
     ...                        "filters":            None,
     ...                        "optimizer":          "",
     ...                        "lr":                 "",
-    ...                        "best_key_metric":    "-max"}
+    ...                        "best_key_metric":    "__max"}
     >>> model_configs = {"conv_filters": [32, 64],
     ...                  "lr":           0.0002,
     ...                  "optimizer":    tf.keras.optimizers.SGD}
@@ -310,7 +310,7 @@ def get_unique_model_name(self):
     >>> tg.datagen.batch_size == 32
     ...
     ... # will yield
-    >>> "M8__AutoEncoder-BS32-filters32_64-SGD-2e-4--max.975"
+    >>> "M8__AutoEncoder-BS32-filters32_64-SGD-2e-4__max.975"
 
     Note that if `model_num_continue_from_max` is True, then will set to +1
     the max number after `"M"` for directory names in `logs_dir`; e.g. if

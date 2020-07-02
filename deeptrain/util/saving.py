@@ -565,6 +565,7 @@ def _save_history_fig(self, savepath=None):
                                                "saved; skipping"))
 
 
-def _update_best_key_metric_in_model_name(self, keyword='__max'):
+def _update_best_key_metric_in_model_name(self):
+    keyword = self.model_name_configs['best_key_metric']
     self.model_name = self.model_name.split(keyword)[0] + keyword + (
         '%.3f' % self.best_key_metric).replace('0.', '.')

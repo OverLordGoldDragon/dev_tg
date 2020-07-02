@@ -45,7 +45,7 @@ _DEFAULT_PLOT_CFG = [
 _DEFAULT_MODEL_NAME_CFG = dict(
     optimizer       = '',
     lr              = '',
-    best_key_metric = '__max',
+    best_key_metric = None,
 )
 
 
@@ -394,7 +394,10 @@ Parameters:
         see the method for info.
     model_name_configs: dict
         Dict specifying :func:`~deeptrain.util.logging.get_unique_model_name`
-        behavior; see the method for info.
+        behavior; see the method for info. If `'best_key_metric'` is None,
+        will default to `'__max'` if `max_is_best`, else `'__min'`, in
+        :func:`~deeptrain.util.misc._validate_traingen_configs`, within
+        `_validate_model_name_configs`.
     name_process_key_fn: function
         Function used within
         :func:`~deeptrain.util.logging.get_unique_model_name`;

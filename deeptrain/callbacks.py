@@ -205,10 +205,11 @@ class RandomSeedSetter(TraingenCallback):
 
         NOTE: after calling, best practice is to re-instantiate model, else
         some internal operations may fail due to elements from different graphs
-        interacting (of pre-reset model and post-reset tensors).
+        interacting (from docs: "using any previously created `tf.Operation` or
+        `tf.Tensor` objects after calling this function will result in undefined
+        behavior").
         """
         K.clear_session()
-        tf.compat.v1.reset_default_graph()
         if verbose:
             print("KERAS AND TENSORFLOW GRAPHS RESET")
 

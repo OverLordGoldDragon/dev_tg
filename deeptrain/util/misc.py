@@ -214,6 +214,9 @@ def _make_plot_configs_from_metrics(self):
 
 
 def _validate_traingen_configs(self):
+    """Ensures various attributes are properly configured, and attempts correction
+    where possible.
+    """
     def _validate_metrics():
         def _validate(metric, failmsg):
             if metric == 'accuracy':
@@ -469,6 +472,11 @@ def _validate_traingen_configs(self):
             if isinstance(attr, dict) and len(attr) > 1:
                 raise ValueError(f"{name} supports up to one key-value pair "
                                  "(got: {attr})")
+
+    def _validate_model_name_configs():
+        if self.model_name_configs.get('best_key_metric', None) is None:
+            self.model_name_configs['best_key_metric'
+                                    ] = ('__max' if self.max_is_best else '__min')
 
     loc_names = list(locals())
     for name in loc_names:
