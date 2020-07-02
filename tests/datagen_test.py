@@ -149,7 +149,7 @@ def test_preprocessors():
         try:
             pp.start_increment = 5.0
             assert False, "shouldn't be able to set `start_increment` to a float"
-        except AssertionError:
+        except ValueError:
             pass
 
     def _test_start_increment_warning(C):
@@ -161,8 +161,9 @@ def test_preprocessors():
         output = str_io.getvalue()
         assert "WARNING:" in output, "print(%s)" % output
 
-    for name, fn in locals().items():
-        if name.startswith('_test_') or name.startswith('test'):
+    names, fns = zip(*locals().items())
+    for name, fn in zip(names, fns):
+        if name.startswith('_test_') or name.startswith('test_'):
             C = deepcopy(DATAGEN_CFG)
             fn(C)
 

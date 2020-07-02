@@ -24,10 +24,11 @@ def _save_best_model(self, del_previous_best=None):
             new_best = (self.key_metric_history[-1] > self.best_key_metric)
         else:
             new_best = (self.key_metric_history[-1] < self.best_key_metric)
-        assert new_best, ("`_save_best_model` was called with latest key_metric "
-                          "not being a new best (new: {}, prev-best: {})"
-                          ).format(self.best_key_metric,
-                                   self.key_metric_history[-1])
+        if not new_best:
+            raise Exception("`_save_best_model` was called with latest key_metric "
+                            "not being a new best (new: {}, prev-best: {})"
+                            ).format(self.best_key_metric,
+                                     self.key_metric_history[-1])
 
     def _del_previous_best():
         def _get_prev_files():

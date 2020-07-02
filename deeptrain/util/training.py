@@ -20,10 +20,10 @@ def _update_temp_history(self, metrics, val=False):
     """
     def _get_metric_names(metrics, val):
         metric_names = self.val_metrics if val else self.train_metrics
-        if not val or (val and 'evaluate' in self._eval_fn_name):
-            assert len(metric_names) == len(metrics), (
-                f"{len(metric_names)} != {len(metrics)}, \n"
-                f"{metric_names}\n{metrics}")
+        if (not val or (val and 'evaluate' in self._eval_fn_name)
+            ) and len(metric_names) != len(metrics):
+            raise Exception(f"{len(metric_names)} != {len(metrics)}, \n"
+                            f"{metric_names}\n{metrics}")
         return metric_names
 
     def _get_temp_history(val):
@@ -32,7 +32,6 @@ def _update_temp_history(self, metrics, val=False):
                 if not isinstance(temp_history[name], list):
                     print(NOTE, "`temp_history` is non-list; attempting casting")
                     temp_history[name] = list(temp_history[name])
-                    assert isinstance(temp_history[name], list)
             return temp_history
 
         temp_history = self.val_temp_history if val else self.temp_history
@@ -63,8 +62,9 @@ def _update_temp_history(self, metrics, val=False):
     no_slices, slice_idx, slices_per_batch = _get_slice_info(val)
 
     for name, value in zip(metric_names, metrics):
-        assert not (np.ndim(value) != 0 or isinstance(value, dict)
-                    ), f"got non-scalar value ({type(value)}) for metric {name}"
+        if (np.ndim(value) != 0 or isinstance(value, dict)):
+            raise TypeError(f"got non-scalar value ({type(value)}) for metric "
+                            f"{name}")
 
         if no_slices or slice_idx == 0:
             temp_history[name].append([])
@@ -291,7 +291,8 @@ def _get_best_subset_val_history(self):
         def _filter_by_indices(indices, *arrs):
             return [np.asarray([x[idx] for idx in indices]) for x in arrs]
 
-        assert best_subset_idxs, "`best_subset_idxs` is empty"
+        if not best_subset_idxs:
+            raise Exception("`best_subset_idxs` is empty")
         ALL = _filter_by_indices(best_subset_idxs, d['labels_all_norm'],
                                  d['preds_all_norm'], d['sample_weight_all'])
 
@@ -372,8 +373,9 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
     def _ensure_scalar_metrics(metrics):
         def _ensure_is_scalar(metric):
             if np.ndim(metric) != 0:
-                assert (metric.ndim <= 1), (
-                    "unfamiliar metric.ndim: %s" % metric.ndim)
+                if (metric.ndim > 1):
+                    raise Exception("unfamiliar metric.ndim: %s" % metric.ndim
+                                    + "; expected <= 1.")
                 metric = metric.mean()
             return metric
 
@@ -465,7 +467,11 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
             # shapes: (batches, slices, samples, *) -> (batches, samples, *)
             preds_all_norm = self._weighted_normalize_preds(preds_all)
             labels_all_norm = labels_all[:, 0]  # collapse slices dim
-            assert (preds_all_norm.min() >= 0) and (preds_all_norm.max() <= 1)
+
+            pmin, pmax = preds_all_norm.min(), preds_all_norm.max()
+            if not (pmin >= 0 and pmax <= 1):
+                raise ValueError("preds must lie within [0, 1], got "
+                                 f"min={pmin}, max={pmax}")
         else:
             preds_all_norm = preds_all
             labels_all_norm = labels_all
@@ -513,13 +519,14 @@ def _weighted_normalize_preds(self, preds_all):
     """
     def _validate_data(preds_all, n_slices):
         spb = self.val_datagen.slices_per_batch
-        assert (n_slices == spb), ("`n_slices` inferred from `preds_all` differs"
-                                   " from `val_datagen.slices_per_batch` "
-                                   "(%s != %s)" % (n_slices, spb))
-        assert (np.asarray(preds_all).max() <= 1), (
-            "`max(preds_all) > 1`; can only normalize in (0, 1) range")
-        assert (np.asarray(preds_all).min() >= 0), (
-            "`min(preds_all) < 0`; can only normalize in (0, 1) range")
+        if n_slices != spb:
+            raise Exception("`n_slices` inferred from `preds_all` differs"
+                            " from `val_datagen.slices_per_batch` "
+                            "(%s != %s)" % (n_slices, spb))
+        pmin, pmax = preds_all.min(), preds_all.max()
+        if not (pmin >= 0 and pmax <= 1):
+            raise ValueError("preds must lie within [0, 1], got "
+                             f"min={pmin}, max={pmax}")
 
     n_slices = preds_all.shape[1]
     # validate even if n_slices == 1 to ensure expected behavior
@@ -575,12 +582,13 @@ def _validate_data_shapes(self, data, val=True,
         batch_size = outs_shape[0]
         if batch_size is None:
             batch_size = self.batch_size or self._inferred_batch_size
-            assert batch_size is not None
+            if batch_size is None:
+                raise ValueError("unable to infer `batch_size`")
 
         for name, x in data.items():
-            assert (batch_size in x.shape), (
-                f"`{name}.shape` must include batch_size (={batch_size}) "
-                f"{x.shape}")
+            if batch_size not in x.shape:
+                raise Exception(f"`{name}.shape` must include batch_size "
+                                f"(={batch_size}) {x.shape}")
         return batch_size
 
     def _validate_iter_ndim(data, slices_per_batch, ndim):
@@ -601,19 +609,22 @@ def _validate_data_shapes(self, data, val=True,
 
     def _validate_last_dims_match_outs_shape(data, outs_shape, ndim):
         for name, x in data.items():
-            assert (x.shape[-ndim:] == outs_shape), (
-                f"last dims of `{name}` must equal model.output_shape "
-                "[%s != %s]" % (x.shape[-ndim:], outs_shape))
+            if x.shape[-ndim:] != outs_shape:
+                raise Exception(f"last dims of `{name}` must equal "
+                                f"model.output_shape [%s != %s]" % (
+                                    x.shape[-ndim:], outs_shape))
 
     def _validate_equal_shapes(data):
         x = list(data.values())[0]
-        assert all([y.shape == x.shape for y in data.values()])
+        if not all(y.shape == x.shape for y in data.values()):
+            raise Exception("got unequal shapes for", ", ".join(list(data)))
 
     def _validate_n_slices(data, slices_per_batch):
         if slices_per_batch is not None:
             for name, x in data.items():
-                assert (slices_per_batch in x.shape), (
-                    f"{name} -- {x.shape}, {slices_per_batch} slices_per_batch")
+                if slices_per_batch not in x.shape:
+                    raise Exception(f"{name} -- {x.shape}, {slices_per_batch} "
+                                    "slices_per_batch")
 
     for name in data:
         data[name] = np.asarray(data[name])

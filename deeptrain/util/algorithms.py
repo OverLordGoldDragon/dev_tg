@@ -190,7 +190,8 @@ def deep_isinstance(obj, cond):
 
     try:
         list(iter(obj))
-        assert len(obj) > 0
+        if not len(obj) > 0:
+            raise Exception
         deepmap(obj, fn)
     except:
         fn(obj)

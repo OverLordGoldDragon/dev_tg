@@ -259,9 +259,10 @@ def numpy_data_to_numpy_sets(data, labels, savedir=None, batch_size=32,
         print("`data` & `labels` samples shuffled")
 
     n_batches = len(data) / batch_size
-    assert (n_batches.is_integer()), ("len(data) must be divisible by "
-                                      "`batch_size` ({} / {} = {})".format(
-                                          len(data), batch_size, n_batches))
+    if not n_batches.is_integer():
+        raise Exception(("len(data) must be divisible by "
+                         "`batch_size` ({} / {} = {})").format(
+                             len(data), batch_size, n_batches))
     data = data.reshape(int(n_batches), batch_size, *data.shape[1:])
     labels = labels.reshape(int(n_batches), batch_size, *labels.shape[1:])
 
@@ -323,7 +324,8 @@ def numpy2D_to_csv(data, savepath=None, batch_size=None, columns=None,
 
     """
     def _process_data(data, batch_size, sample_dim):
-        assert data.ndim == 2, "`data` must be 2D"
+        if data.ndim != 2:
+            raise ValueError("`data` must be 2D (got data.ndim=%s)" % data.ndim)
 
         batch_size = batch_size or data.shape[1]
         if data.shape[1] != batch_size:

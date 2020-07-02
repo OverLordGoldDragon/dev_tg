@@ -422,8 +422,9 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     if plot_configs is None:
         plot_configs = self.plot_configs
-    assert all(('metrics' in cfg and 'x_ticks' in cfg) for cfg in plot_configs
-               ), "all dicts in `plot_configs` must include 'metrics', 'x_ticks'"
+    if not all(('metrics' in cfg and 'x_ticks' in cfg) for cfg in plot_configs):
+        raise ValueError("all dicts in `plot_configs` must include 'metrics', "
+                         "'x_ticks'")
 
     fig, axes = plt.subplots(len(plot_configs), 1)
     axes = np.atleast_1d(axes)

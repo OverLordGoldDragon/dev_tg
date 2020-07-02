@@ -56,8 +56,9 @@ class Preprocessor(metaclass=ABCMeta):
         :meth:`DataGenerator._set_preprocessor`.
         """
         spb = self.slices_per_batch
-        assert (spb is None or (isinstance(spb, int) and spb >= 1)
-                ), ("`slices_per_batch` must be None or int >= 1, got: %s" % spb)
+        if not (spb is None or (isinstance(spb, int) and spb >= 1)):
+            raise ValueError("`slices_per_batch` must be None or int >= 1, "
+                             "got: %s" % spb)
 
 
 class TimeseriesPreprocessor(Preprocessor):
@@ -180,8 +181,9 @@ class TimeseriesPreprocessor(Preprocessor):
     @start_increment.setter
     def start_increment(self, value):
         def _validate(value):
-            assert isinstance(value, int), ("`start_increment` must be set to "
-                                            "integer (got: %s)" % value)
+            if not isinstance(value, int):
+                raise ValueError("`start_increment` must be set to "
+                                 "integer (got: %s)" % value)
             if value not in self.start_increments:
                 print(WARN,
                       ("setting `start_increment` to {}, which is not in "

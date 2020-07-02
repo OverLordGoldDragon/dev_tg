@@ -422,10 +422,11 @@ class TraingenLogger(TraingenCallback):
                         configs[key] = [value]
                 value = configs[key]
                 for x in value:
-                    assert isinstance(x, (str, int)), (
-                        ("loggables specifiers must be of type str or "
-                         "int (values of keys: {}) - got: {}").format(
-                             ', '.join(self._loggables), value))
+                    if not isinstance(x, (str, int)):
+                        raise TypeError(
+                            ("loggables specifiers must be of type str or "
+                             "int (values of keys: {}) - got: {}").format(
+                                 ', '.join(self._loggables), value))
 
             supported = list(self._loggables)
             supported += [f'{n}-kw' for n in supported]
@@ -436,9 +437,9 @@ class TraingenLogger(TraingenCallback):
                 value = configs[key]
                 if '-kw' not in key:
                     _validate_types(configs, key, value)
-                else:
-                    assert isinstance(value, dict), (
-                        "-kw keys must be of type dict (got %s)" % value)
+                elif not isinstance(value, dict):
+                    raise TypeError("-kw keys must be of type dict "
+                                    f"(got {value})")
 
         def _process_get_data_fn(get_data_fn):
             if get_data_fn is not None:
@@ -458,7 +459,8 @@ class TraingenLogger(TraingenCallback):
             self.get_labels_fn = lambda: labels
 
         def _process_init_log_id(init_log_id):
-            assert isinstance(init_log_id, (int, type(None)))
+            if not isinstance(init_log_id, (int, type(None))):
+                raise TypeError("`init_log_id` must be of type int or NoneType")
             self._id = init_log_id or -1
 
         def _process_gather_fns(gather_fns):

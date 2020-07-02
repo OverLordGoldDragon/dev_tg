@@ -210,11 +210,12 @@ def NAME_PROCESS_KEY_FN(key, alias, attrs):
 
     def _process_val(key, val):
         if not builtin_or_npscalar(val, include_type_type=False):
-            assert hasattr(val, '__name__') or hasattr(type(val), '__name__'), (
-                f"cannot encode {val} for model name; `model_configs` values must"
-                " be either Python literals (str, int, etc), or objects (or their"
-                " classes) with  '__name__' attribute. Alternatively, set custom"
-                " `name_process_key_fn`")
+            if not (hasattr(val, '__name__') or hasattr(type(val), '__name__')):
+                raise TypeError(
+                    f"cannot encode {val} for model name; `model_configs` values "
+                    "must be either Python literals (str, int, etc), or objects "
+                    "(or their classes) with  '__name__' attribute. "
+                    "Alternatively, set custom `name_process_key_fn`")
             val = val.__name__ if hasattr(val, '__name__') else type(val).__name__
             val = val.split('.')[-1]  # drop packages/modules
         else:

@@ -47,8 +47,8 @@ def _weighted_loss(losses, sample_weight):
             sample_weight.ndim != losses.ndim):
         if losses.ndim < sample_weight.ndim:
             losses = np.expand_dims(losses, -1)
-        assert (sample_weight.ndim == losses.ndim), (
-            "[%s vs %s]" % (sample_weight.shape, losses.shape))
+        if (sample_weight.ndim != losses.ndim):
+            raise Exception("[%s vs %s]" % (sample_weight.shape, losses.shape))
     return np.mean(losses * sample_weight)
 
 

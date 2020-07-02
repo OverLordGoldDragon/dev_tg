@@ -3,10 +3,8 @@
 """- deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
-   - Safe to interrupt flags print option?
    - examples/callbacks
    - examples/visuals
-   - replace `assert` with `if`
    - configurable error / warn levels (e.g. save fail)
    - MetaTrainer
 """
@@ -982,14 +980,15 @@ class TrainGenerator(TraingenUtils):
                              supported_fn_names=('evaluate', 'predict'))
 
     def _attr_fn_setter(self, fn, attr_name, supported_fn_names):
-        assert isinstance(fn, (LambdaType, MethodType)), (
-            f"'{attr_name}' must be set to a function/method (got: {fn})")
+        if not isinstance(fn, (LambdaType, MethodType)):
+            raise TypeError(f"'{attr_name}' must be set to a function/method "
+                            f"(got: {fn})")
 
         name = getattr(fn, '__qualname__', '') or fn.__name__
         name = name.split('.')[-1]  # drop packages / modules / classes
-        assert any(s in name for s in supported_fn_names), (
-            f"set `{attr_name}` with unsupported name; must contain one of: "
-            ", ".join(supported_fn_names))
+        if not any(s in name for s in supported_fn_names):
+            raise ValueError(f"set `{attr_name}` with unsupported name; must "
+                             "contain one of: " + ", ".join(supported_fn_names))
 
         setattr(self, f'_{attr_name}', fn)
         setattr(self, f'_{attr_name}_name', name)
