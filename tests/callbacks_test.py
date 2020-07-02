@@ -131,7 +131,7 @@ def test_main():
         tg = init_session(C)
         tg.train()
         _test_load(tg, C)
-        set_seeds(reset_graph=True)
+        # set_seeds(reset_graph=True)
 
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
