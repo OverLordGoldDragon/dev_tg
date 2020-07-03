@@ -6,6 +6,7 @@
    - examples/callbacks
    - examples/visuals
    - configurable error / warn levels (e.g. save fail)
+   - default TF_KERAS=1?
    - MetaTrainer
 """
 
@@ -862,8 +863,8 @@ class TrainGenerator(TraingenUtils):
                 return all(cs == stage for cs in cb_stage)
             return cb_stage in stage
 
-        if not hasattr(self, 'cb_alias'):
-            self.cb_alias = {'train:iter':  'on_train_iter_end',
+        if not hasattr(self, '_cb_alias'):
+            self._cb_alias = {'train:iter':  'on_train_iter_end',
                              'train:batch': 'on_train_batch_end',
                              'train:epoch': 'on_train_epoch_end',
                              'val:iter':    'on_val_iter_end',
@@ -876,7 +877,7 @@ class TrainGenerator(TraingenUtils):
         for cb in self.callbacks:
             if isinstance(cb, TraingenCallback):
                 _stage = stage if not isinstance(stage, tuple) else stage[0]
-                fn = getattr(cb, self.cb_alias[_stage])
+                fn = getattr(cb, self._cb_alias[_stage])
                 try:
                     fn(stage)
                 except NotImplementedError:

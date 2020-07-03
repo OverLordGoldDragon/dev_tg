@@ -199,12 +199,12 @@ CL_TRAINGEN_CFG = TRAINGEN_CFG.copy()
 AE_TRAINGEN_CFG.update({'model_configs': AE_MODEL_CFG, 'input_as_labels': True})
 CL_TRAINGEN_CFG.update({'model_configs': CL_MODEL_CFG})
 
-data_cfgs = {'datagen':      IMG_DATAGEN_CFG,
-             'val_datagen':  IMG_VAL_DATAGEN_CFG}
-AE_CONFIGS = {'model':       AE_MODEL_CFG,
-              'traingen':    AE_TRAINGEN_CFG}
-CL_CONFIGS = {'model':       CL_MODEL_CFG,
-              'traingen':    CL_TRAINGEN_CFG}
+data_cfgs = {'datagen':     IMG_DATAGEN_CFG,
+             'val_datagen': IMG_VAL_DATAGEN_CFG}
+AE_CONFIGS = {'model':      AE_MODEL_CFG,
+              'traingen':   AE_TRAINGEN_CFG}
+CL_CONFIGS = {'model':      CL_MODEL_CFG,
+              'traingen':   CL_TRAINGEN_CFG}
 AE_CONFIGS.update(data_cfgs)
 CL_CONFIGS.update(data_cfgs)
 

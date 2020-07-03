@@ -60,8 +60,9 @@ REPORT_CFG = {
              'history', 'val_history', 'temp_history', 'val_temp_history',
              'name_process_key_fn', 'report_fontpath', 'model_name_configs',
              'report_configs', 'datagen', 'val_datagen', 'logdir', 'logs_dir',
-             'best_models_dir', 'fit_fn', 'eval_fn', 'callbacks',
-             '_history_fig', 'metric_printskip_configs', '_inferred_batch_size',
+             'best_models_dir', 'fit_fn', 'eval_fn', '_fit_fn', '_eval_fn',
+             'callbacks', '_cb_alias', '_passed_args', '_history_fig',
+             'metric_printskip_configs', '_inferred_batch_size',
              'plot_first_pane_max_vals', '_imports', 'iter_verbosity',
              '_max_set_name_chars', '_val_max_set_name_chars',
              'metric_to_alias', 'alias_to_metric',
@@ -77,7 +78,7 @@ REPORT_CFG = {
              'batch_loaded', 'batch_exhausted', 'set_num', 'set_name',
              '_set_names', 'set_nums_original', 'set_nums_to_process',
              'superbatch_set_nums', 'data_loader', 'data_dir', 'labels_path',
-             'loadskip_list', '_path_attrs', 'preprocessor',
+             'saveskip_list', 'loadskip_list', '_path_attrs', 'preprocessor',
              '*_ATTRS', '*superbatch', '*_filepaths', '*_filenames']
         },
 }

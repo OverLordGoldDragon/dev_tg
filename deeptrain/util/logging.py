@@ -88,6 +88,7 @@ def generate_report(self):
     See :data:`~deeptrain.util._default_configs._DEFAULT_REPORT_CFG` for the
     default `report_configs`, containing every possible config case.
     """
+    # TODO: lists are =-separated
     def _list_to_str_side_by_side_by_side(_list, space_between_cols=0):
         def _split_in_three(_list):
             def _pad_column_bottom(_list):
@@ -259,7 +260,7 @@ def generate_report(self):
         return _all_txt
 
     def _dict_lists_to_tuples(_dict):
-        return {key: tuple(val) for key,val in _dict.items()
+        return {key: tuple(val) for key, val in _dict.items()
                 if isinstance(val, list)}
 
     txt_dicts = _process_attributes_to_text_dicts()

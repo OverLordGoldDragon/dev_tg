@@ -1,7 +1,11 @@
-import os
 import tensorflow as tf
+from termcolor import colored
+from deeptrain.util._backend import TF_KERAS
 
-TF_KERAS = bool(os.environ.get('TF_KERAS', "0") == "1")
+WARN = colored('WARNING:', 'red')
+NOTE = colored('NOTE:', 'blue')
+
+#### Env flags & Keras backend ###############################################
 TF_EAGER = bool(tf.executing_eagerly())
 TF_2 = bool(tf.__version__[0] == '2')
 
@@ -10,8 +14,10 @@ if TF_KERAS:
 else:
     import keras.backend as K
 
-###############################################################################
+#### Subpackage imports ######################################################
 from . import model_utils
 
 from .model_utils import *
+
+
 
