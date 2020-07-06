@@ -13,7 +13,7 @@ from termcolor import cprint
 #### Environment configs ######################################################
 # for testing locally
 os.environ['TF_KERAS'] = os.environ.get("TF_KERAS", '1')
-os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '1')
+os.environ['TF_EAGER'] = os.environ.get("TF_EAGER", '0')
 
 BASEDIR = str(Path(__file__).parents[1])
 TF_KERAS = bool(os.environ['TF_KERAS'] == '1')

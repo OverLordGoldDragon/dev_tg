@@ -73,6 +73,7 @@ def compute_gradient_norm(self, input_data, labels, sample_weight=None,
     else:
         outer_fn, inner_fn = lambda x: x, norm_fn
 
+    sample_weight = _validate_sample_weight(self.model, sample_weight)
     grads = get_gradients(self.model, _id, input_data, labels, sample_weight,
                           learning_phase, mode=mode, as_dict=False)
     inner_sum = [np.sum(inner_fn(g)) for g in grads]
@@ -327,15 +328,18 @@ def _make_gradients_fn(model, learning_phase, mode, return_names=False):
         _g_fn = _make_grads_fn(model, params=params, mode=mode)
 
         def grads_fn(x, y, sw):
-            if sw is None:
-                if isinstance(x, list):
-                    sw = []
-                    for data in x:
-                        # extend to each input
-                        sw.append(np.ones(len(data)))
-                else:
-                    sw = [np.ones(len(x))]
-            ins = [x, y, sw]
+            ins = [x, y]
+            if _sample_weight_built(model):
+                if sw is None:
+                    if isinstance(x, list):
+                        sw = []
+                        for data in x:
+                            # extend to each input
+                            sw.append(np.ones(len(data)))
+                    else:
+                        sw = [np.ones(len(x))]
+                ins.append(sw)
+
             for i, data in enumerate(ins):
                 if not isinstance(data, (list, tuple)):
                     ins[i] = [data]
@@ -448,3 +452,24 @@ def print_nan_weights(model, notify_detected_only=False):
         print("L = layer index, W = weight tensor index", end='')
     elif not notify_detected_only:
         print("No NaN weights detected in any trainable layers")
+
+
+def _sample_weight_built(model):
+    """In Graph execution, `model._feed_sample_weights` isn't built unless
+    model is compiled with `sample_weight_mode` set, or `train_on_batch` or
+    `test_on_batch` is called w/ `sample_weight` passed.
+    """
+    return (not hasattr(model, '_feed_sample_weights')  # Eager case
+            or (model._feed_sample_weights is not None and
+                len(model._feed_sample_weights) > 0))
+
+
+def _validate_sample_weight(model, sample_weight):
+    if sample_weight is None or len(sample_weight) == 0:
+        return None
+    if not _sample_weight_built(model):
+        print(WARN, "passed `sample_weight` but model doesn't have it built; "
+              "compile with `sample_weight_mode='samplewise'` or call "
+              "`train_on_batch` w/ `sample_weight`")
+        return None
+    return sample_weight

@@ -26,8 +26,6 @@ CONFIGS = deepcopy(AE_CONFIGS)
 del CONFIGS['traingen']['logs_dir']         # unused
 del CONFIGS['traingen']['best_models_dir']  # unused
 
-model = make_autoencoder(**CONFIGS['model'])
-
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
                          model=model, model_fn=make_autoencoder)
