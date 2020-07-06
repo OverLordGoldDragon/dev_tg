@@ -141,6 +141,9 @@ def test_resumer_session_restart():
         tg.epochs = 6
         tg.train()
 
+        miscdir = os.path.join(tg.logdir, 'misc')
+        assert [f"epoch{e}.png" in os.listdir(miscdir) for e in (2, 4, 6)]
+
         #### New session w/ changed model hyperparams ########################
         # get best save's model weights & TrainGenerator state
         best_weights = [str(p) for p in Path(tg.best_models_dir).iterdir()

@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 """This example assumes you've read `basic.py`.
-   - Variable-layer model building
    - Multi-phase training
    - Callback streaming images to directory
-   - Saving & loading (# TODO)
+   - Saving & loading
+   - Variable-layer model building
 """
-# TODO make test out of this, and test that callback gets correct epoch_ imgs
-# in each logdir
-#### Imports #################################################################
 import os
-import numpy as np
 from tensorflow.keras.layers import Input, Conv2D, UpSampling2D, Dropout
 from tensorflow.keras.layers import BatchNormalization, Activation
 from tensorflow.keras.models import Model
@@ -93,6 +89,8 @@ TRAINGEN_CFG = dict(
     plot_history_freq={'epoch': 2},
     unique_checkpoint_freq={'epoch': 2},
     model_save_kw=dict(include_optimizer=False, save_format='h5'),
+    model_name_configs=dict(input_dropout='idp', preout_dropout='pdp',
+                            optimizer='', lr='', best_key_metric=None)
 )
 #%%# Create visualization callback ##########################################
 TRAINGEN_CFG['callbacks'] = [VizAE2D(n_images=8, save_images=True)]
@@ -112,7 +110,7 @@ tg.train()
 # forces better image resolution.
 # Internally, TrainGenerator will append 'mae' loss to same list as was 'mse'.
 tg.model.compile('nadam', 'mae')
-tg.epochs = 8
+tg.epochs = 12
 tg.train()
 
 #%%# New session w/ changed model hyperparams ###############################
@@ -130,8 +128,8 @@ del model, dg, vdg, tg
 # increase preout_dropout to strengthen regularization
 MODEL_CFG['preout_dropout'] = .7
 MODEL_CFG['loss'] = 'mae'
-# `epochs` will load at 16, so need to increase
-TRAINGEN_CFG['epochs'] = 12
+# `epochs` will load at 12, so need to increase
+TRAINGEN_CFG['epochs'] = 16
 TRAINGEN_CFG['loadpath'] = latest_best_state
 # ensure model_name uses 1 greater model_num, since using new hyperparams
 TRAINGEN_CFG['model_num_continue_from_max'] = False
@@ -144,9 +142,12 @@ model.load_weights(latest_best_weights)
 dg    = DataGenerator(**DATAGEN_CFG)
 vdg   = DataGenerator(**VAL_DATAGEN_CFG)
 tg    = TrainGenerator(model, dg, vdg, **TRAINGEN_CFG)
+# can also load via `tg.load`, but passing in `loadpath` and starting a
+# new session should work better
 #%%
 tg.train()
 #%%#################
 cwd = os.getcwd()
 print("Checkpoints can be found in", os.path.join(cwd, tg.logdir))
 print("Best model can be found in", os.path.join(cwd, tg.best_models_dir))
+print("AE progress can be found in", os.path.join(cwd, tg.logdir, 'misc'))

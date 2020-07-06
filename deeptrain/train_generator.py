@@ -297,18 +297,18 @@ class TrainGenerator(TraingenUtils):
         self._init_and_validate_kwargs(kwargs)
         self._init_class_vars()
 
-        if self.logdir or self.logs_dir:
-            self._init_logger()
-        else:
-            print(NOTE, "logging OFF")
-            self.logdir = None
-
         self._init_callbacks_called = False
         if self.loadpath:
             self.load(passed_args=self._passed_args)
         else:
             self._prepare_initial_data()
             self._init_callbacks()  # called in `load`
+
+        if self.logdir or self.logs_dir:
+            self._init_logger()
+        else:
+            print(NOTE, "logging OFF")
+            self.logdir = None
 
         if self.logdir:
             savedir = os.path.join(self.logdir, "misc")

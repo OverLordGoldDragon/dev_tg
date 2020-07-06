@@ -452,7 +452,8 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
         max_is_best = config.get('mark_best_cfg', {}).get('max_is_best', True)
         _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx, max_is_best,
                       axis=axis, vhlines=vhlines, ylims=ylims,
-                      legend_kw=legend_kw, key_metric=self.key_metric)
+                      legend_kw=legend_kw, key_metric=self.key_metric,
+                      metric_name_to_alias_fn=self._metric_name_to_alias)
 
     subplot_scaler = .5 * len(axes)
     fig.set_size_inches(14 * w, 11 * h * subplot_scaler)
@@ -462,7 +463,8 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
 def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
                   max_is_best=True, axis=None, vhlines={'v': None, 'h': None},
-                  ylims=(0, 2), legend_kw=None, key_metric='loss'):
+                  ylims=(0, 2), legend_kw=None, key_metric='loss',
+                  metric_name_to_alias_fn=None):
     """Plots metrics according to inputs passed by :func:`get_history_fig`."""
     def _plot_vhlines(vhlines, ax):
         def non_iterable(x):
@@ -490,6 +492,8 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
 
     def _make_legend_label(name, bold):
         mode, metric_name = name.split(':')
+        if metric_name_to_alias_fn:
+            metric_name = metric_name_to_alias_fn(metric_name)
         label = "{} ({})".format(metric_name, mode)
         if bold:
             label = f"$\\bf{label}$"
