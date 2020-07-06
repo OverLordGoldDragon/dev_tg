@@ -49,19 +49,19 @@ MODEL_CFG = dict(
     # good idea if we ever plan on changing them.
 )
 # Configs for (train) DataGenerator
+#   data_dir:    directory where image data is located
+#   labels_path: where labels file is located
+#   batch_size:  number of samples to feed at once to model
+#   shuffle:     whether to shuffle data at end of each epoch
+#   superbatch_set_nums: which files to load into a `superbatch`, which holds
+#       batches persisently in memory (as opposed to `batch`, which is
+#       overwritten after use). Since MNIST is small, we can load it all into RAM.
 datadir = os.path.join("dir", "data", "image")
 DATAGEN_CFG = dict(
-    # directory where image data is located
     data_dir=os.path.join(datadir, 'train'),
-    # where labels file is located
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
-    # number of samples to feed at once to model
     batch_size=batch_size,
-    # whether to shuffle data at end of each epoch
     shuffle=True,
-    # which files to load into a `superbatch`, which holds batches persisently
-    # in memory (as opposed to `batch`, which is overwritten after use).
-    # Since MNIST is small, we can load it all into RAM.
     superbatch_set_nums='all',
 )
 # Configs for (validation) DataGenerator
@@ -73,14 +73,15 @@ VAL_DATAGEN_CFG = dict(
     superbatch_set_nums='all',
 )
 # Configs for TrainGenerator
+#   epochs:   number of epochs to train for
+#   logs_dir: where to save TrainGenerator state, model, report, and history
+#   best_models_dir: where to save model when it achieves new best
+#       validation performance
+#   model_configs: model configurations dict to save & write to report
 TRAINGEN_CFG = dict(
-    # number of epochs to train for
     epochs=3,
-    # where to save TrainGenerator state, model, report, and history
     logs_dir=os.path.join('dir', 'outputs', 'logs'),
-    # where to save model when it achieves new best validation performance
     best_models_dir=os.path.join('dir', 'outputs', 'models'),
-    # model configurations dict to save & write to report
     model_configs=MODEL_CFG,
 )
 #%%# Create training objects ################################################

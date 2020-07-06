@@ -359,8 +359,15 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
     def _equalize_ticks_range(x_ticks, metrics):
         max_value = max(np.max(ticks) for ticks in x_ticks if len(ticks) > 0)
 
-        assert all(ticks[-1] == max_value for ticks in x_ticks)
-        assert all(len(t) == len(m) for t, m in zip(x_ticks, metrics.values()))
+        if not all(ticks[-1] == max_value for ticks in x_ticks):
+            raise Exception(("last xtick isn't greatest (got {}, max is {})"
+                             ).format(", ".join(str(t[-1]) for t in x_ticks),
+                                      max_value))
+        if not all(len(t) == len(m) for t, m in zip(x_ticks, metrics.values())):
+            raise Exception(("len of ticks doesn't match len of metrics:\n{}"
+                             ).format("\n".join("%s %s %s" % (len(t), len(m), n)
+                                                for t, (n, m) in
+                                                zip(x_ticks, metrics.items()))))
         return x_ticks
 
     def _equalize_metric_names(config):

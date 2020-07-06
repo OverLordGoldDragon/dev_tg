@@ -65,6 +65,8 @@ def test_main():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
+        C['datagen']['labels_path'] = None
+        C['val_datagen']['labels_path'] = None
         tg = init_session(C, model=autoencoder)
         tg.train()
         _test_load(tg, C)

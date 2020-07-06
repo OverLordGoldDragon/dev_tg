@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from pathlib import Path
 from see_rnn import get_weights, get_outputs, get_gradients
+from see_rnn import features_2D
 
 from .visuals import binary_preds_per_iteration
 from .visuals import binary_preds_distribution
@@ -257,6 +258,46 @@ class RandomSeedSetter(TraingenCallback):
     @call_on_freq
     def on_load(self, stage=None):
         self.set_seeds(increment=1)
+
+
+class VizAE2D(TraingenCallback):
+    """Image AutoEncoder reconstruction visualizer.
+
+    Plots `n_images` images of original & reconstructed (model outputs) in
+    two rows, side-by-side vertically.
+    """
+    def __init__(self, n_images=8, save_images=False):
+        self.n_images=n_images
+        self.save_images=save_images
+
+    def init_with_traingen(self, traingen):
+        self.tg=traingen
+
+    def on_val_end(self, stage=None):
+        self.viz()
+
+    def viz(self):
+        data = self.get_data()
+        fig, axes = features_2D(data, n_rows=2, cmap='hot', h=.5, w=1.1,
+                                title_mode=False, show_xy_ticks=0, tight=True,
+                                borderwidth=2, bordercolor='white')
+        if self.save_images:
+            # stream to directory
+            savepath = os.path.join(self.tg.logdir, 'misc',
+                                    "epoch{}.png".format(self.tg.epoch))
+            fig.savefig(savepath, pad_inches=0)
+
+    def get_data(self):
+        # squeeze to drop last dim if greyscale
+        orig = self.tg.val_datagen.batch[:self.n_images].squeeze()
+        if 'predict' in self.tg._eval_fn_name:
+            # fetch from prediction cache to save time;
+            # val_datagen still holds last batch, so get last preds
+            pred = self.tg._preds_cache[-1][:self.n_images].squeeze()
+        else:
+            pred = self.tg.model.predict(orig, batch_size=len(orig))
+        data = np.vstack([orig, pred]).squeeze()
+        return data
 
 
 class TraingenLogger(TraingenCallback):

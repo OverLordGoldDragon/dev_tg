@@ -6,7 +6,11 @@
    - examples/callbacks
    - examples/visuals
    - configurable error / warn levels (e.g. save fail)
-   - default TF_KERAS=1?
+   - make .save() account for end of validation?
+   - profile advanced.py validation w/ 'predict'
+   - model_num_continue_from_max -> model_num_same_as_max ?
+   - check how properties (epoch) work in loadskip_list
+   - check if 'adam' -> 'nadam' fails
    - MetaTrainer
 """
 
@@ -87,7 +91,7 @@ class TrainGenerator(TraingenUtils):
             Function, or name of model method to feed data to during training;
             if str, will define `fit_fn = getattr(model, 'fit')` (example).
         eval_fn: str / function
-            Name of model method to feed data to during validation;
+            Function, or name of model method to feed data to during validation;
             if str, will define `eval_fn = getattr(model, 'evaluate')` (example).
         key_metric: str
             Name of metric to track for saving best model; will store in
@@ -99,7 +103,8 @@ class TrainGenerator(TraingenUtils):
         val_metrics: list[str] / None
             Names of metrics to track during validation. Is overridden by
             model metrics (`model.compile(metrics=...)`)
-            if `'predict' not in `eval_fn.__name__`.
+            if `'predict' not in `eval_fn.__name__`. If `'loss'` is not included,
+            will prepend.
         custom_metrics: dict[str: function]
             Name-function pairs of custom functions to use for gathering metrics.
             Functions must obey `(y_true, y_pred)` input signature for first two
@@ -282,19 +287,10 @@ class TrainGenerator(TraingenUtils):
         self.model_configs = model_configs
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
 
-        #### fit & eval fn ####################################################
-        # TODO make into properties
         self.fit_fn=fit_fn if not isinstance(fit_fn, str
                                              ) else getattr(model, fit_fn)
         self.eval_fn=eval_fn if not isinstance(eval_fn, str
                                                ) else getattr(model, eval_fn)
-        self._fit_fn_name = self.fit_fn.__qualname__.split('.')[-1]
-        self._eval_fn_name = self.eval_fn.__qualname__.split('.')[-1]
-
-        # omit args not used internally for speedup in `_get_inputs`
-        usable = ['x', 'y', 'sample_weight', 'batch_size', 'verbose']
-        self._fit_fn_args = [a for a in argspec(self.fit_fn) if a in usable]
-        self._eval_fn_args = [a for a in argspec(self.eval_fn) if a in usable]
 
         #### loading, logging, callbacks, kwargs init #########################
         self._passed_args = kwargs.pop('_passed_args', None)
@@ -358,10 +354,10 @@ class TrainGenerator(TraingenUtils):
                     if self.iter_verbosity:
                         self._print_iter_progress()
                     ins = _get_inputs(x, y, sw)
-                    metrics = self.fit_fn(**ins)
+                    self._metrics_cached = self.fit_fn(**ins)  # for interrupts
 
                 self._has_postiter_processed = False
-                self._train_postiter_processing(metrics)  # may call `validate`
+                self._train_postiter_processing(self._metrics_cached)
                 self._has_postiter_processed = True
             else:
                 self.validate()
@@ -508,15 +504,17 @@ class TrainGenerator(TraingenUtils):
                 self._update_temp_history(metrics, val=True)
 
             self._val_iters += 1
-            if 'predict' in self._eval_fn_name:
-                self._update_val_iter_cache()
-            self.val_datagen.update_state()
 
             if self.batch_size is None:
                 if self._inferred_batch_size is None:
                     self._inferred_batch_size = batch_size
                 elif self._inferred_batch_size != batch_size:
                     self._inferred_batch_size = 'varies'
+
+            if 'predict' in self._eval_fn_name:
+                self._update_val_iter_cache()
+            self.val_datagen.update_state()
+
             self._apply_callbacks(stage='val:iter')
 
         def _on_batch_end():
@@ -574,12 +572,14 @@ class TrainGenerator(TraingenUtils):
                 new_best = (self.key_metric_history[-1] < self.best_key_metric)
 
             if new_best and self.best_models_dir is not None:
+                self._save_from_on_val_end = True  # flag used in `save()`
                 self._save_best_model(del_previous_best=self.max_one_best_save)
 
             if self.logdir:
                 do_temp = self._should_do(self.temp_checkpoint_freq)
                 do_unique = self._should_do(self.unique_checkpoint_freq)
                 if do_temp or do_unique:
+                    self._save_from_on_val_end = True  # flag used in `save()`
                     self.checkpoint()
 
         def _print_best_subset():
@@ -645,9 +645,12 @@ class TrainGenerator(TraingenUtils):
         x, labels = datagen.get()
         y = labels if not self.input_as_labels else x
 
-        class_labels = _standardize_shape(labels)
-        slice_idx = getattr(datagen, 'slice_idx', None)
-        sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
+        if isinstance(labels, (np.ndarray, list)) and len(labels) > 0:
+            class_labels = _standardize_shape(labels)
+            slice_idx = getattr(datagen, 'slice_idx', None)
+            sample_weight = self.get_sample_weight(class_labels, val, slice_idx)
+        else:
+            sample_weight = np.ones(len(x))
 
         return x, y, sample_weight
 
@@ -724,13 +727,18 @@ class TrainGenerator(TraingenUtils):
             # ensure shapes are in format expected by methods in util.training
             ls = []
             for x in data:
-                while len(x.shape) < len(self.model.output_shape):
-                    x = np.expand_dims(x, -1)
+                if isinstance(x, np.ndarray):  # could be empty list
+                    while len(x.shape) < len(self.model.output_shape):
+                        x = np.expand_dims(x, -1)
                 ls.append(x)
             return ls
 
         y, class_labels, sample_weight = _standardize_shapes(
             self._y_true, self.val_datagen.labels, self._val_sw)
+        if (class_labels is None or
+            (isinstance(class_labels, list) and len(class_labels) == 0)):
+            # training.py expects batch_size-sized arrays for `class_labels`
+            class_labels = np.zeros(len(y))
 
         if getattr(self.val_datagen, 'slice_idx', None) is None:
             self._sw_cache.append(sample_weight)
@@ -948,14 +956,14 @@ class TrainGenerator(TraingenUtils):
                 del obj
             gc.collect()
             if verbose:
-                print(">>>TrainGenerator SELF-DESTRUCTED")
+                print(">>>TrainGenerator DESTROYED")
 
         if confirm:
             _destroy()
             return
         response = input("!! WARNING !!\nYou are about to destroy TrainGenerator"
                          "; this will wipe all its own and DataGenerator's "
-                         "(train & val) shallow-refeerenced data, and delete "
+                         "(train & val) shallow-referenced data, and delete "
                          "respective attributes. `model` will be dereferenced, "
                          "but not destroyed. Proceed? [y/n]")
         if response == 'y':
@@ -968,6 +976,7 @@ class TrainGenerator(TraingenUtils):
 
     @fit_fn.setter
     def fit_fn(self, fn):
+        """Ensures fn name and args are changed when fn itself is set."""
         self._attr_fn_setter(fn, 'fit_fn',
                              supported_fn_names=('fit', 'train'))
 
@@ -977,22 +986,52 @@ class TrainGenerator(TraingenUtils):
 
     @eval_fn.setter
     def eval_fn(self, fn):
+        """Ensures fn name and args are changed when fn itself is set."""
         self._attr_fn_setter(fn, 'eval_fn',
                              supported_fn_names=('evaluate', 'predict'))
 
     def _attr_fn_setter(self, fn, attr_name, supported_fn_names):
-        if not isinstance(fn, (LambdaType, MethodType)):
-            raise TypeError(f"'{attr_name}' must be set to a function/method "
-                            f"(got: {fn})")
+        if not isinstance(fn, (LambdaType, MethodType, str)):
+            raise TypeError(f"'{attr_name}' must be a function, method, or name "
+                            f"(str) of to fetch from `model` (got: {fn})")
 
-        name = getattr(fn, '__qualname__', '') or fn.__name__
-        name = name.split('.')[-1]  # drop packages / modules / classes
+        if isinstance(fn, str):
+            name = fn
+            fn = getattr(self.model, name)
+        else:
+            name = getattr(fn, '__qualname__', '') or fn.__name__
+            name = name.split('.')[-1]  # drop packages / modules / classes
         if not any(s in name for s in supported_fn_names):
             raise ValueError(f"set `{attr_name}` with unsupported name; must "
                              "contain one of: " + ", ".join(supported_fn_names))
 
         setattr(self, f'_{attr_name}', fn)
         setattr(self, f'_{attr_name}_name', name)
+
+        # omit args not used internally for speedup in `_get_inputs`
+        usable = ['x', 'y', 'sample_weight', 'batch_size', 'verbose']
+        setattr(self, f'_{attr_name}_args',
+                [a for a in argspec(getattr(self, attr_name)) if a in usable])
+
+    @property
+    def epoch(self):
+        return self._epoch
+
+    @epoch.setter
+    def epoch(self, value):
+        """Ensures `epoch` is also set in corresponding `DataGenerator`."""
+        self._epoch = value
+        self.datagen.epoch = value
+
+    @property
+    def val_epoch(self):
+        return self._val_epoch
+
+    @val_epoch.setter
+    def val_epoch(self, value):
+        """Ensures `epoch` is also set in corresponding `DataGenerator`."""
+        self._val_epoch = value
+        self.val_datagen.epoch = value
 
     ###### INIT METHODS #######################################################
     def _prepare_initial_data(self, from_load=False):
@@ -1004,7 +1043,8 @@ class TrainGenerator(TraingenUtils):
                 dg.preload_superbatch()
             if from_load:
                 dg.batch_loaded = False  # load() might've set to True
-                dg.preload_labels()      # load() might've changed `labels_path`
+                if dg.labels_path:
+                    dg.preload_labels()  # load() might've changed `labels_path`
             dg.advance_batch()
 
             pf = '_val' if 'val' in dg_name else ''  # attr prefix
@@ -1068,8 +1108,7 @@ class TrainGenerator(TraingenUtils):
         self.val_epoch=0
         self._set_name=None
         self._val_set_name=None
-        self.model_name=self.get_unique_model_name()
-        self.model_num=int(self.model_name.split('__')[0].replace('M', ''))
+        self.model_name=self.get_unique_model_name()  # model_num set internally
         self._imports = IMPORTS.copy()
 
         self._history_fig=None
@@ -1085,6 +1124,7 @@ class TrainGenerator(TraingenUtils):
         self._train_has_notified_of_new_batch=False
         self._val_has_notified_of_new_batch=False
         self._inferred_batch_size=None
+        self._save_from_on_val_end=False
 
         as_empty_list = [
             'key_metric_history', 'best_subset_nums', '_labels',

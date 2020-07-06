@@ -15,19 +15,23 @@ import numpy as np
 from copy import deepcopy
 from pathlib import Path
 
-from backend import CL_CONFIGS, tempdir, notify, make_classifier
+from backend import CL_CONFIGS, AE_CONFIGS, tempdir, notify
+from backend import make_classifier, make_autoencoder
 from backend import K, load_model, _init_session, _get_test_names
 
+from deeptrain.callbacks import VizAE2D
 
 #### CONFIGURE TESTING #######################################################
 tests_done = {}
 CONFIGS = deepcopy(CL_CONFIGS)
+AE_CONFIGS = deepcopy(AE_CONFIGS)
 
 classifier = make_classifier(**CONFIGS['model'])
 
-def init_session(C, weights_path=None, loadpath=None, model=None):
+def init_session(C, weights_path=None, loadpath=None, model=None,
+                 model_fn=make_classifier):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
-                         model=model, model_fn=make_classifier)
+                         model=model, model_fn=model_fn)
 ###############################################################################
 
 @notify(tests_done)
@@ -104,7 +108,76 @@ def _validate_save_load(tg, C):
     for s, l in zip(Wo_save, Wo_load):
         assert np.allclose(s, l), "max absdiff: %s" % np.max(np.abs(s - l))
     assert np.allclose(preds_save, preds_load), (
-         "max absdiff: %s" % np.max(np.abs(preds_save - preds_load)))
+          "max absdiff: %s" % np.max(np.abs(preds_save - preds_load)))
+
+
+@notify(tests_done)
+def test_resumer_session_restart():
+    """Ensures TrainGenerator can work with `model` recompiled on-the-fly,
+    and load correctly from __init__.
+    """
+    C = deepcopy(AE_CONFIGS)
+    C['traingen'].update(dict(
+        epochs=4,
+        key_metric='mae',
+        eval_fn='predict',
+        val_freq={'epoch': 2},
+        plot_history_freq={'epoch': 2},
+        unique_checkpoint_freq={'epoch': 2},
+        model_save_kw=dict(include_optimizer=False, save_format='h5'),
+        callbacks=[VizAE2D(n_images=8, save_images=True)],
+    ))
+
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
+        tg = init_session(C, model_fn=make_autoencoder)
+        # do save optimizer weights & attrs to load later
+        tg.saveskip_list.pop(tg.saveskip_list.index('optimizer_state'))
+
+        tg.train()
+
+        #### Phase 2 ##########
+        tg.model.compile('nadam', 'mae')
+        tg.epochs = 6
+        tg.train()
+
+        #### New session w/ changed model hyperparams ########################
+        # get best save's model weights & TrainGenerator state
+        best_weights = [str(p) for p in Path(tg.best_models_dir).iterdir()
+                        if p.name.endswith('__weights.h5')]
+        best_state   = [str(p) for p in Path(tg.best_models_dir).iterdir()
+                        if p.name.endswith('__state.h5')]
+        latest_best_weights = sorted(best_weights, key=os.path.getmtime)[-1]
+        latest_best_state   = sorted(best_state,   key=os.path.getmtime)[-1]
+
+        pre_load_epoch = tg.epoch
+        pre_load_model_num = tg.model_num
+
+        tg.destroy(confirm=True)
+        del tg
+
+        # change hyperparam
+        C['model']['preout_dropout'] = .7
+        # change loss
+        C['model']['loss'] = 'mae'
+        C['traingen']['epochs'] = 8
+        C['traingen']['model_num_continue_from_max'] = False
+        # must re-instantiate callbacks object to hold new TrainGenerator
+        C['traingen']['callbacks'] = [VizAE2D(n_images=8, save_images=True)]
+
+        tg = init_session(C, loadpath=latest_best_state,
+                          model_fn=make_autoencoder)
+        tg.model.load_weights(latest_best_weights)
+
+        assert tg.epoch == pre_load_epoch
+        assert tg.model_num == pre_load_model_num + 1
+        assert Path(tg.logdir).name.split('__')[0][1:] == str(tg.model_num)
+        tg.train()
+        assert tg.epoch > pre_load_epoch
+
+        miscdir = os.path.join(tg.logdir, 'misc')
+        assert 'epoch8.png' in os.listdir(miscdir)
+        assert 'epoch6.png' not in os.listdir(miscdir)
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

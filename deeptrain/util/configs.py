@@ -62,9 +62,9 @@ REPORT_CFG = {
              'report_configs', 'datagen', 'val_datagen', 'logdir', 'logs_dir',
              'best_models_dir', 'fit_fn', 'eval_fn', '_fit_fn', '_eval_fn',
              'callbacks', '_cb_alias', '_passed_args', '_history_fig',
-             'metric_printskip_configs', '_inferred_batch_size',
-             'plot_first_pane_max_vals', '_imports', 'iter_verbosity',
-             '_max_set_name_chars', '_val_max_set_name_chars',
+             '_metrics_cached', 'metric_printskip_configs',
+             '_inferred_batch_size', 'plot_first_pane_max_vals', '_imports',
+             'iter_verbosity', '_max_set_name_chars', '_val_max_set_name_chars',
              'metric_to_alias', 'alias_to_metric',
              '*_has_', '*temp_history_empty',
              ],
@@ -112,8 +112,6 @@ TRAINGEN_SAVESKIP_LIST = [
     '_max_set_name_chars',
     '_inferred_batch_size',
     '_class_labels_cache',
-    '_train_val_x_ticks',
-    '_val_train_x_ticks',
     '_temp_history_empty',
     '_val_temp_history_empty',
     '_val_sw',
@@ -122,7 +120,8 @@ TRAINGEN_SAVESKIP_LIST = [
 ]
 
 TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
-                          'model_num', 'use_passed_dirs_over_loaded']
+                          'model_num', 'use_passed_dirs_over_loaded',
+                          'logdir', '_init_callbacks_called']
 
 DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                          '_group_batch', '_group_labels']
@@ -141,10 +140,11 @@ METRIC_PRINTSKIP_CFG = {
 METRIC_TO_ALIAS = {
     'loss'    : 'Loss',
     'accuracy': 'Acc',
-    'acc'     : 'Acc',
     'f1_score': 'F1',
     'tnr'     : '0-Acc',
     'tpr'     : '1-Acc',
+    'mean_absolute_error': 'MAE',
+    'mean_squared_error' : 'MSE',
 }
 
 ALIAS_TO_METRIC = {

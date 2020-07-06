@@ -221,7 +221,8 @@ def _get_val_history(self, for_current_iter=False):
                                          sample_weight_all, class_labels_all,
                                          return_as_dict=False)
 
-    # `class_labels_all` currently unused; may be useful in the future
+    # `class_labels_all` currently unused (used only for getting sample_weight);
+    # may be useful in the future
     (labels_all_norm, preds_all_norm, sample_weight_all, class_labels_all
      ) = _unpack_and_transform_data(for_current_iter)
 

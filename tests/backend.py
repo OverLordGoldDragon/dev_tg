@@ -52,7 +52,7 @@ if TF_KERAS:
     from tensorflow.keras import metrics as keras_metrics
     from tensorflow.keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D
-    from tensorflow.keras.layers import Activation
+    from tensorflow.keras.layers import Activation, BatchNormalization
     from tensorflow.keras.regularizers import l2
     from tensorflow.keras.optimizers import Adam
     from tensorflow.keras.models import Model, load_model
@@ -62,7 +62,7 @@ else:
     from keras import metrics as keras_metrics
     from keras.layers import Input, Dense, LSTM, Dropout, Flatten
     from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
-    from keras.layers import Activation
+    from keras.layers import Activation, BatchNormalization
     from keras.regularizers import l2
     from keras.optimizers import Adam
     from keras.models import Model, load_model
@@ -71,7 +71,7 @@ else:
 def _init_session(C, weights_path=None, loadpath=None, model=None,
                   model_fn=None):
     if model is None:
-        model = model_fn(weights_path, **C['model'])
+        model = model_fn(weights_path=weights_path, **C['model'])
     dg  = DataGenerator(**C['datagen'])
     vdg = DataGenerator(**C['val_datagen'])
     tg  = TrainGenerator(model, dg, vdg, loadpath=loadpath, **C['traingen'])
@@ -155,13 +155,14 @@ AE_MODEL_CFG = dict(  # autoencoder
     batch_shape=(batch_size, width, height, channels),
     loss='mse',
     metrics=None,
-    optimizer='adam',
-    num_classes=10,
-    activation=['relu'] * 4 + ['sigmoid'],
-    filters=[2, 2, 1, 2, 1],
-    kernel_size=[(3, 3)] * 5,
-    strides=[(2, 2), (2, 2), 1, 1, 1],
-    up_sampling_2d=[None, None, None, (2, 2), (2, 2)],
+    optimizer='nadam',
+    activation=['relu'] * 2,
+    filters=[2, 1, 2],
+    kernel_size=[(3, 3)] * 3,
+    strides=[(2, 2), 1, 1],
+    up_sampling_2d=[None, (2, 2)],
+    input_dropout=.5,
+    preout_dropout=.4,
 )
 CL_MODEL_CFG = dict(  # classifier
     batch_shape=(batch_size, width, height, channels),
@@ -196,7 +197,9 @@ TRAINGEN_CFG = dict(
 )
 AE_TRAINGEN_CFG = TRAINGEN_CFG.copy()
 CL_TRAINGEN_CFG = TRAINGEN_CFG.copy()
-AE_TRAINGEN_CFG.update({'model_configs': AE_MODEL_CFG, 'input_as_labels': True})
+AE_TRAINGEN_CFG.update({'model_configs': AE_MODEL_CFG,
+                        'input_as_labels': True,
+                        'max_is_best': False})
 CL_TRAINGEN_CFG.update({'model_configs': CL_MODEL_CFG})
 
 data_cfgs = {'datagen':     IMG_DATAGEN_CFG,
@@ -242,31 +245,27 @@ def make_classifier(weights_path=None, **kw):
     return model
 
 
-def make_autoencoder(weights_path=None, **kw):
-    def _unpack_configs(kw):
-        expected_kw = ('batch_shape', 'loss', 'metrics', 'optimizer',
-                       'activation', 'filters', 'kernel_size', 'strides',
-                       'up_sampling_2d')
-        return [kw[key] for key in expected_kw]
-
-    (batch_shape, loss, metrics, optimizer, activation, filters, kernel_size,
-     strides, up_sampling_2d) = _unpack_configs(kw)
-
+def make_autoencoder(batch_shape, optimizer, loss, metrics,
+                     filters, kernel_size, strides, activation, up_sampling_2d,
+                     input_dropout, preout_dropout, weights_path=None):
+    """28x compression, denoising AutoEncoder."""
     ipt = Input(batch_shape=batch_shape)
     x   = ipt
+    x   = Dropout(input_dropout)(x)
 
     configs = (activation, filters, kernel_size, strides, up_sampling_2d)
-    for act, f, ks, s, ups in zip(*configs):
-        if ups is not None:
-            x = UpSampling2D(ups)(x)
-        x = Conv2D(f, ks, strides=s, activation=act, padding='same')(x)
+    for a, f, ks, s, ups in zip(*configs):
+        x = UpSampling2D(ups)(x) if ups else x
+        x = Conv2D(f, ks, strides=s, padding='same')(x)
+        x = BatchNormalization()(x)
+        x = Activation(a)(x)
+
+    x   = Dropout(preout_dropout)(x)
+    x   = Conv2D(1, (3, 3), 1, padding='same', activation='sigmoid')(x)
     out = x
 
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)
-
-    if weights_path is not None:
-        model.load_weights(weights_path)
     return model
 
 

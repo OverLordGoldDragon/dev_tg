@@ -32,12 +32,12 @@ def _save_best_model(self, del_previous_best=None):
 
     def _del_previous_best():
         def _get_prev_files():
-            return [os.path.join(self.best_models_dir, name)
-                    for name in os.listdir(self.best_models_dir)
-                    if str(self.model_num) in name]
+            return [str(p) for p in Path(self.best_models_dir).iterdir()
+                    if p.name.split('__')[0][1:] == str(self.model_num)]
+
         prev_files = _get_prev_files()
-        if len(prev_files) != 0:
-            [os.remove(f) for f in prev_files]
+        for f in prev_files:
+            os.remove(f)
 
     if del_previous_best is None:
         del_previous_best = bool(self.max_one_best_save)
@@ -230,6 +230,13 @@ def save(self, savepath=None):
     >>> {'exclude':  # optimizer attributes to exclude
     ...      ['updates', 'epsilon']  # will save everything BUT these
     ... }
+
+    **Note**:
+
+    :func:`checkpoint` or :func:`_save_best_model`` called from within
+    :meth:`TrainGenerator._on_val_end` will set `_save_from_on_val_end=True`,
+    which will then set validation flags so as to not repeat call to
+    `_on_val_end` upon loading `TrainGenerator`.
     """
     def _cache_datagen_attributes():
         """Temporarily store away `DataGenerator` attributes so that
@@ -270,6 +277,13 @@ def save(self, savepath=None):
     cached_attrs = _cache_datagen_attributes()
 
     self._apply_callbacks(stage='save')
+
+    if self._save_from_on_val_end:
+        # mark end of validation so loaded model won't repeat _on_val_end
+        self._inferred_batch_size = None
+        self._has_validated = False
+        self._has_trained = False
+        self._save_from_on_val_end = False
 
     skiplist = self.saveskip_list + ['model']  # do not pickle model
     savedict = {k: v for k, v in vars(self).items() if k not in skiplist}
@@ -335,7 +349,7 @@ def _get_optimizer_state(self):
 def load(self, filepath=None, passed_args=None):
     """Loads `TrainGenerator` state and, if configured to, model optimizer
     attributes and instantiates optimizer (but not model architecture).
-    Instantiates callbacks, and applies them with `stage='load.
+    Instantiates callbacks, and applies them with `stage='load'`.
     Preloads data from `datagen` and `val_datagen`.
 
     Arguments:
@@ -365,6 +379,8 @@ def load(self, filepath=None, passed_args=None):
     - If `passed_args` is falsy, defaults to `[]` (load all).
     - If `'{auto}'` is in `loadskip_list`, then will append `passed_args`
       to `loadskip_list`, and pop `'{auto}'`.
+    - Will omit `'datagen'` & `'val_datagen'` from `passed_args`; only way to
+      skip them is via `self.loadskip_list`.
 
     **Loading optimizer state**:
 
@@ -379,12 +395,20 @@ def load(self, filepath=None, passed_args=None):
     ... }
     """
     def _get_loadskip_list(passed_args):
+        if passed_args:
+            # omit datagen & val_datagen only if in `self.loadskip_list`
+            del passed_args['datagen']
+            del passed_args['val_datagen']
+            passed_args = list(passed_args)
+        else:
+            passed_args = []
+
         if self.loadskip_list == 'auto' or not self.loadskip_list:
-            return list(passed_args) if passed_args else []
+            return passed_args
         elif '{auto}' in self.loadskip_list:
             lsl = self.loadskip_list.copy()
             if passed_args:
-                lsl += list(passed_args)
+                lsl += passed_args
             lsl.pop(lsl.index('{auto}'))
             return lsl
         elif self.loadskip_list == 'none':

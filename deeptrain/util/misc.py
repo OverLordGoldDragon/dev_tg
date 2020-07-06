@@ -263,6 +263,13 @@ def _validate_traingen_configs(self):
             if self.key_metric not in model_metrics:
                 raise ValueError(f"key_metric {self.key_metric} " + basemsg)
 
+        # 'loss' must be in val_metrics, and as first item in list
+        if 'loss' not in self.val_metrics:
+            self.val_metrics.insert(0, 'loss')
+        elif self.val_metrics[0] != 'loss':
+            self.val_metrics.pop(self.val_metrics.index('loss'))
+            self.val_metrics.insert(0, 'loss')
+
         if self.key_metric not in self.val_metrics:
             self.val_metrics.append(self.key_metric)
 
