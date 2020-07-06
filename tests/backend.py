@@ -261,7 +261,7 @@ def make_autoencoder(batch_shape, optimizer, loss, metrics,
         x = Activation(a)(x)
 
     x   = Dropout(preout_dropout)(x)
-    x   = Conv2D(1, (3, 3), 1, padding='same', activation='sigmoid')(x)
+    x   = Conv2D(1, (3, 3), strides=1, padding='same', activation='sigmoid')(x)
     out = x
 
     model = Model(ipt, out)
