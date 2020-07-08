@@ -8,9 +8,11 @@
    - configurable error / warn levels (e.g. save fail)
    - make .save() account for end of validation?
    - profile advanced.py validation w/ 'predict'
-   - model_num_continue_from_max -> model_num_same_as_max ?
    - check how properties (epoch) work in loadskip_list
    - check if 'adam' -> 'nadam' fails
+   - non-AE labels that cannot be loaded all at once
+       - `labels.extend(_get_next_labels())`?
+   - per previous bullet, move `input_as_labels` to DataGenerator?
    - MetaTrainer
 """
 

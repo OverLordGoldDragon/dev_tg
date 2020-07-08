@@ -164,7 +164,7 @@ def test_resumer_session_restart():
         # change loss
         C['model']['loss'] = 'mae'
         C['traingen']['epochs'] = 8
-        C['traingen']['model_num_continue_from_max'] = False
+        C['traingen']['new_model_num'] = False
         # must re-instantiate callbacks object to hold new TrainGenerator
         C['traingen']['callbacks'] = [VizAE2D(n_images=8, save_images=True)]
 

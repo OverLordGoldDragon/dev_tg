@@ -2,6 +2,12 @@
 """TODO: make basic, advanced examples, then skip all the configs setup
 & make_model redefinition and just jump into callbacks as in tests?
 (and add note to reader to see basic/advanced first)
+
+The minimal essentials for DeepTrain are:
+    - compiled model
+    - directory to checkpoint to
+    - directory to load data & labels from (with a particular structure; see
+      examples/preprocessing/mnist.py with which this example's data was made)
 """
 
 #### Imports #################################################################
@@ -92,8 +98,3 @@ traingen    = TrainGenerator(model, datagen, val_datagen, **TRAINGEN_CFG)
 
 #%%# Train ##################################################################
 traingen.train()
-
-#%%##############################
-cwd = os.getcwd()
-print("Checkpoints can be found in", os.path.join(cwd, traingen.logdir))
-print("Best model can be found in", os.path.join(cwd, traingen.best_models_dir))

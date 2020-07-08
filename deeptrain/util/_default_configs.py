@@ -249,7 +249,7 @@ _DEFAULT_TRAINGEN_CFG = dict(
     loss_weighted_slices_range  = None,
     pred_weighted_slices_range  = None,
     logs_use_full_model_name    = True,
-    model_num_continue_from_max = True,
+    new_model_num = True,
     dynamic_predict_threshold   = 0.5,  # initial
     plot_first_pane_max_vals    = 2,
     _val_max_set_name_chars     = 2,
@@ -303,7 +303,7 @@ Parameters:
         Whether to use `model_name` or a minimal name containing number of
         validations done + best key metric, within
         :func:`~deeptrain.util.saving.checkpoint`.
-    model_num_continue_from_max: bool
+    new_model_num: bool
         Used within :func:`~deeptrain.util.logging.get_unique_model_name`.
         If True, will set `model_num` to +1 the max number after `"M"` for
         directory names in `logs_dir`; e.g. if such a directory is

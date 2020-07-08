@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-"""This example assumes you've read `basic.py`.
+"""This example assumes you've read `basic.py`, and covers:
    - Multi-phase training
+       - Changing loss & hyperparameters between phases
    - Callback streaming images to directory
    - Saving & loading
    - Variable-layer model building
 """
+import matplotlib
+matplotlib.use('template')
 import os
 from tensorflow.keras.layers import Input, Conv2D, UpSampling2D, Dropout
 from tensorflow.keras.layers import BatchNormalization, Activation
@@ -19,10 +22,9 @@ from deeptrain.callbacks import VizAE2D
 def make_model(batch_shape, optimizer, loss, metrics,
                filters, kernel_size, strides, activation, up_sampling_2d,
                input_dropout, preout_dropout):
-    """28x compression, denoising AutoEncoder."""
+    """Compressing, denoising AutoEncoder."""
     ipt = Input(batch_shape=batch_shape)
-    x   = ipt
-    x   = Dropout(input_dropout)(x)
+    x   = Dropout(input_dropout)(ipt)
 
     configs = (activation, filters, kernel_size, strides, up_sampling_2d)
     for a, f, ks, s, ups in zip(*configs):
@@ -32,7 +34,7 @@ def make_model(batch_shape, optimizer, loss, metrics,
         x = Activation(a)(x)
 
     x   = Dropout(preout_dropout)(x)
-    x   = Conv2D(1, (3, 3), 1, padding='same', activation='sigmoid')(x)
+    x   = Conv2D(1, (3, 3), strides=1, padding='same', activation='sigmoid')(x)
     out = x
 
     model = Model(ipt, out)
@@ -41,6 +43,7 @@ def make_model(batch_shape, optimizer, loss, metrics,
 
 batch_size = 128
 width, height, channels = 28, 28, 1
+# 28x compression
 MODEL_CFG = dict(
     batch_shape=(batch_size, width, height, channels),
     loss='mse',
@@ -131,8 +134,8 @@ MODEL_CFG['loss'] = 'mae'
 # `epochs` will load at 12, so need to increase
 TRAINGEN_CFG['epochs'] = 16
 TRAINGEN_CFG['loadpath'] = latest_best_state
-# ensure model_name uses 1 greater model_num, since using new hyperparams
-TRAINGEN_CFG['model_num_continue_from_max'] = False
+# ensure model_name uses prev model_num + 1, since using new hyperparams
+TRAINGEN_CFG['new_model_num'] = False
 # must re-instantiate callbacks object to hold new TrainGenerator
 TRAINGEN_CFG['callbacks'] = [VizAE2D(n_images=8, save_images=True)]
 
@@ -151,3 +154,9 @@ cwd = os.getcwd()
 print("Checkpoints can be found in", os.path.join(cwd, tg.logdir))
 print("Best model can be found in", os.path.join(cwd, tg.best_models_dir))
 print("AE progress can be found in", os.path.join(cwd, tg.logdir, 'misc'))
+#%%#################
+"""If comparing overall train time with that of simly model.fit, DeepTrain
+takes substantially longer; that's due to frequent checkpointing and
+visualization, former of which is an overkill for MNIST, but done for a demo.
+In practice, these intermediate steps should be negligible.
+"""

@@ -343,7 +343,7 @@ class TraingenDummy():
                                             '_models')
         self.model_configs = None
         self.model_name_configs = None
-        self.model_num_continue_from_max = False
+        self.new_model_num = False
         self.model_base_name = 'M'
         self.name_process_key_fn = util.configs.NAME_PROCESS_KEY_FN
         self.alias_to_metric = util._default_configs._DEFAULT_ALIAS_TO_METRIC

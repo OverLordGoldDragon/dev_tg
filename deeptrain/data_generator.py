@@ -59,6 +59,20 @@ class DataGenerator():
             `data_loader` along `set_num`. If None, is determined within
             :meth:`.infer_data_info` as longest substring common to all filenames.
 
+    **How it works**:
+
+    Data is fed to :class:`TrainGenerator` via :class:`DataGenerator`. To work,
+    data:
+        - must be in one directory
+        - file extensions must be same (.npy, .h5, etc)
+        - file names must be enumerated with a common name
+          (data1.npy, data2.npy, ...)
+        - file batch size (# of samples, or dim 0 slices) should be same, but
+          can also be in integer or fractal multiples of (x2, x3, x1/2, x1/3, ...)
+        - labels must be in one file - unless feeding input as labels (e.g.
+          autoencoder), which doesn't require labels files; just pass
+          `TrainGenerator(input_as_labels=True)`
+
     **Dynamic batching**:  # TODO "dynamic" implies changing, use another word
 
     Loaded file's batch size may differ from `batch_size`, so long as former
@@ -246,6 +260,9 @@ class DataGenerator():
         """
         return self.data_loader(self, set_num)
 
+    def load_labels(self, set_num):
+        pass
+
     def _get_next_batch(self, set_num=None, update_state=True, warn=True):
         """Gets batch per `set_num`.
 
@@ -276,6 +293,10 @@ class DataGenerator():
         else:
             batch = self.load_data(set_num)
         return batch
+
+    def _get_next_labels(self, set_num=None):
+
+        pass
 
     def _batch_from_group_batch(self):
         """Slices `_group_batch` per `batch_size` and `_group_batch_idx`."""
@@ -482,6 +503,11 @@ class DataGenerator():
         _set_and_validate_set_nums(set_nums)
         _set_and_validate_superbatch_set_nums(superbatch_set_nums)
 
+    def _set_loader(self, name):  # TODO
+        # name in {'data_loader', 'labels_loader'}
+        loader = 0
+        setattr(self, name, loader)
+
     def _set_data_loader(self, data_loader):
         """Sets `data_loader`, from `data_loader`:
 
@@ -583,6 +609,23 @@ class DataGenerator():
     def slice_idx(self, value):
         self.preprocessor.slice_idx = value
 
+    # TODO remove the "set_hdf5_etc", and handle `data` & `labels` separately,
+    # passing in as arg which to handle.
+    #   - `labels_loader` should now be able to load anything that
+    #     `data_loader` can.
+    #   - However, loading by single file path still needs handling
+    #   - Then, maybe case for `batch` should also be handleable by file path?
+    #
+    # Naming:
+    #   - `superbatch`  & `superlabels`
+    #   - `all_batches` & `all_labels`
+    #   - `superbatch`  & `all_labels` [current]
+    #
+    # TODO update docs after changes
+    #   - advance_batch
+    #   - _infer_data_info
+    #   - data_loader
+    #   - labels_loader
     def _infer_data_info(self, data_dir, data_ext=None, data_loader=None,
                          base_name=None):
         """Infers unspecified essential attributes from directory and contained
@@ -621,14 +664,15 @@ class DataGenerator():
                 ref = data[0]
                 for i in range(len(ref)):
                   for j in range(len(ref) - i + 1):
-                    if j > len(substr) and all(ref[i:i+j] in x for x in data):
-                      substr = ref[i:i+j]
+                    if j > len(substr) and all(ref[i:i + j] in x for x in data):
+                      substr = ref[i:i + j]
                 return substr
 
             filenames = [x.rstrip(extension) for x in filenames]
             base_name = _longest_common_substr(filenames)
             return base_name
 
+        # TODO remove "set_hdf5_path" per labels case, pass as info to do later
         def _get_filepaths_or_set_hdf5_path(data_dir, filenames):
             if Path(filenames[0]).suffix == '.h5' and len(filenames) == 1:
                 # hdf5_dataset format
