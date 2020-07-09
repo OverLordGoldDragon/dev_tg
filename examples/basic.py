@@ -55,7 +55,7 @@ MODEL_CFG = dict(
     # good idea if we ever plan on changing them.
 )
 # Configs for (train) DataGenerator
-#   data_dir:    directory where image data is located
+#   data_path:    directory where image data is located
 #   labels_path: where labels file is located
 #   batch_size:  number of samples to feed at once to model
 #   shuffle:     whether to shuffle data at end of each epoch
@@ -64,7 +64,7 @@ MODEL_CFG = dict(
 #       overwritten after use). Since MNIST is small, we can load it all into RAM.
 datadir = os.path.join("dir", "data", "image")
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
+    data_path=os.path.join(datadir, 'train'),
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
     shuffle=True,
@@ -72,7 +72,7 @@ DATAGEN_CFG = dict(
 )
 # Configs for (validation) DataGenerator
 VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
+    data_path=os.path.join(datadir, 'val'),
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
     shuffle=False,

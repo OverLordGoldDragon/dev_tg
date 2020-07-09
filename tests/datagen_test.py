@@ -19,7 +19,7 @@ from copy import deepcopy
 from backend import BASEDIR, tempdir, notify, _get_test_names
 from deeptrain.util.misc import pass_on_error
 from deeptrain.util.algorithms import ordered_shuffle
-from deeptrain.util import data_loaders, labels_preloaders
+from deeptrain.util import data_loaders
 from deeptrain.util import TimeseriesPreprocessor
 from deeptrain import DataGenerator
 
@@ -27,7 +27,7 @@ from deeptrain import DataGenerator
 datadir = os.path.join(BASEDIR, 'tests', 'data')
 
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'image', 'train'),
+    data_path=os.path.join(datadir, 'image', 'train'),
     labels_path=os.path.join(datadir, 'image', 'train', 'labels.h5'),
     batch_size=128,
     shuffle=True,
@@ -92,15 +92,14 @@ def test_data_loaders():
 
         C['data_loader'] = None
         dg = DataGenerator(**C)
-        pass_on_error(dg._set_data_loader, 'invalid_loader')
+        pass_on_error(dg._set_loader, 'invalid_loader')
 
 
     C = deepcopy(DATAGEN_CFG)
-    C['data_dir'] = os.path.join(datadir, 'timeseries_split', 'train')
+    C['data_path'] = os.path.join(datadir, 'timeseries_split', 'train')
     C['labels_path'] = os.path.join(datadir, 'timeseries_split', 'train',
                                     'labels.h5')
     C['batch_size'] = 128
-    C['base_name'] = 'batch32_'
 
     _test_auto_hdf5(C)
     _test_hdf5(C)
@@ -108,16 +107,16 @@ def test_data_loaders():
 
 
 @notify(tests_done)
-def test_labels_preloaders():
+def test_labels_loaders():
     def _test_no_preloader():
         C = deepcopy(DATAGEN_CFG)
-        C['labels_preloader'] = None
+        C['labels_loader'] = None
         C['labels_path'] = None
         DataGenerator(**C)
 
     def _test_hdf5_preloader():
         C = deepcopy(DATAGEN_CFG)
-        C['labels_preloader'] = labels_preloaders.hdf5_preloader
+        C['labels_loader'] = data_loaders.hdf5_dataset_loader
         DataGenerator(**C)
 
     _test_no_preloader()
@@ -197,11 +196,11 @@ def test_shuffle_group_batches():
 
 
 @notify(tests_done)
-def test_infer_data_info():
-    def _test_empty_data_dir():
+def test_infer_info():
+    def _test_empty_data_path():
         C = deepcopy(DATAGEN_CFG)
         with tempdir() as dirpath:
-            C['data_dir'] = dirpath
+            C['data_path'] = dirpath
             pass_on_error(DataGenerator, **C)
 
     def _test_no_supported_file_ext():
@@ -209,10 +208,10 @@ def test_infer_data_info():
         with tempdir() as dirpath:
             plt.plot([0, 1])
             plt.gcf().savefig(os.path.join(dirpath, "img.png"))
-            C['data_dir'] = dirpath
+            C['data_path'] = dirpath
             pass_on_error(DataGenerator, **C)
 
-    _test_empty_data_dir()
+    _test_empty_data_path()
     _test_no_supported_file_ext()
 
 

@@ -77,7 +77,7 @@ REPORT_CFG = {
             ['batch', 'group_batch', 'labels', 'all_labels',
              'batch_loaded', 'batch_exhausted', 'set_num', 'set_name',
              '_set_names', 'set_nums_original', 'set_nums_to_process',
-             'superbatch_set_nums', 'data_loader', 'data_dir', 'labels_path',
+             'superbatch_set_nums', 'data_loader', 'data_path', 'labels_path',
              'saveskip_list', 'loadskip_list', '_path_attrs', 'preprocessor',
              '*_ATTRS', '*superbatch', '*_filepaths', '*_filenames']
         },
@@ -125,7 +125,7 @@ TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
 
 DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                          '_group_batch', '_group_labels']
-DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
+DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_dir',
                          'data_loader', 'set_nums_original',
                          'set_nums_to_process', 'superbatch_set_nums']
 
@@ -274,7 +274,8 @@ _TRAINGEN_CFG = dict(
 _DATAGEN_CFG = dict(
     shuffle_group_batches=False,
     shuffle_group_samples=False,
-    full_batch_shape=None,
+    data_batch_shape=None,
+    labels_batch_shape=None,
     loadskip_list=DATAGEN_LOADSKIP_LIST,
     saveskip_list=DATAGEN_SAVESKIP_LIST,
 )

@@ -83,6 +83,7 @@ def test_group_batch():
     print("\nTime elapsed: {:.3f}".format(time() - t0))
 
 
+
 @notify(tests_done)
 def test_recursive_batch():
     t0 = time()

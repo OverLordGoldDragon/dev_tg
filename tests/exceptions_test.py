@@ -82,9 +82,8 @@ def test_datagen():
         dg._set_preprocessor(None, {})
         pass_on_error(dg._set_preprocessor, "x", {})
 
-        pass_on_error(dg._infer_data_info, dg.data_dir,
-                      data_loader="x")
-        dg._infer_data_info(dg.data_dir, data_loader="hdf5")
+        pass_on_error(dg._infer_info, dg.data_path, loader="x")
+        dg._infer_info(dg.data_path, loader="hdf5")
 
         C['datagen']['invalid_kwarg'] = 5
         pass_on_error(DataGenerator, **C['datagen'])

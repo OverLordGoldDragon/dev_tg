@@ -59,13 +59,13 @@ MODEL_CFG = dict(
 )
 datadir = os.path.join("dir", "data", "image")
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
+    data_path=os.path.join(datadir, 'train'),
     batch_size=batch_size,
     shuffle=True,
     superbatch_set_nums='all',
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
+    data_path=os.path.join(datadir, 'val'),
     batch_size=batch_size,
     shuffle=False,
     superbatch_set_nums='all',

@@ -32,7 +32,7 @@ MODEL_CFG = dict(
     loss='binary_crossentropy'
 )
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
+    data_path=os.path.join(datadir, 'train'),
     labels_path=os.path.join(datadir, 'train', 'labels.csv'),
     batch_size=batch_size,
     shuffle=True,
@@ -40,7 +40,7 @@ DATAGEN_CFG = dict(
     preprocessor_configs=dict(window_size=4),
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
+    data_path=os.path.join(datadir, 'val'),
     superbatch_dir=os.path.join(datadir, 'val'),
     labels_path=os.path.join(datadir, 'val', 'labels.csv'),
     batch_size=batch_size,

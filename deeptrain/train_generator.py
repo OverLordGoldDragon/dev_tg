@@ -13,12 +13,13 @@
    - non-AE labels that cannot be loaded all at once
        - `labels.extend(_get_next_labels())`?
    - per previous bullet, move `input_as_labels` to DataGenerator?
+   - DataGenerator: infer `batch_size`, default=None?
    - MetaTrainer
 """
 
 """TODO-docs:
     - How's it different from other training frameworks?
-       - advanced data pipeline
+       - AutoData
          - trackable
          - batch size flexibility
          - load speed optimizations
@@ -356,7 +357,8 @@ class TrainGenerator(TraingenUtils):
                     if self.iter_verbosity:
                         self._print_iter_progress()
                     ins = _get_inputs(x, y, sw)
-                    self._metrics_cached = self.fit_fn(**ins)  # for interrupts
+                    self._metrics_cached = self.fit_fn(**ins)
+                    # `_metrics_cached` for interrupts
 
                 self._has_postiter_processed = False
                 self._train_postiter_processing(self._metrics_cached)
@@ -1045,8 +1047,8 @@ class TrainGenerator(TraingenUtils):
                 dg.preload_superbatch()
             if from_load:
                 dg.batch_loaded = False  # load() might've set to True
-                if dg.labels_path:
-                    dg.preload_labels()  # load() might've changed `labels_path`
+                if dg.labels_path:       # load() might've changed `labels_path`
+                    dg.preload_all_labels()
             dg.advance_batch()
 
             pf = '_val' if 'val' in dg_name else ''  # attr prefix

@@ -42,14 +42,14 @@ MODEL_CFG = dict(
     dense_units=32,
 )
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
+    data_path=os.path.join(datadir, 'train'),
     superbatch_dir=os.path.join(datadir, 'train'),
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
+    data_path=os.path.join(datadir, 'val'),
     superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,

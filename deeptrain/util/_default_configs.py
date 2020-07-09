@@ -78,7 +78,7 @@ _DEFAULT_REPORT_CFG = {
             ['batch', 'group_batch', 'labels', 'all_labels',
              'batch_loaded', 'batch_exhausted', 'set_num', 'set_name',
              '_set_names', 'set_nums_original', 'set_nums_to_process',
-             'superbatch_set_nums', 'data_loader', 'data_dir', 'labels_path',
+             'superbatch_set_nums', 'data_loader', 'data_path', 'labels_path',
              'saveskip_list', 'loadskip_list', '_path_attrs', 'preprocessor',
              '*_ATTRS', '*superbatch', '*_filepaths', '*_filenames']
         },
@@ -127,7 +127,7 @@ _DEFAULT_TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
 
 _DEFAULT_DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                                   '_group_batch', '_group_labels']
-_DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_dir', 'labels_path', 'superbatch_dir',
+_DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_dir',
                                   'data_loader', 'set_nums_original',
                                   'set_nums_to_process', 'superbatch_set_nums']
 
@@ -418,7 +418,8 @@ Parameters:
 _DEFAULT_DATAGEN_CFG = dict(
     shuffle_group_batches=False,
     shuffle_group_samples=False,
-    full_batch_shape=None,
+    data_batch_shape=None,
+    labels_batch_shape=None,
     loadskip_list=_DEFAULT_DATAGEN_LOADSKIP_LIST,
     saveskip_list=_DEFAULT_DATAGEN_SAVESKIP_LIST,
 )
@@ -431,7 +432,7 @@ internally and will raise an exception).
         See :meth:`DataGenerator._make_group_batch_and_labels`.
     shuffle_group_samples: bool
         See :meth:`DataGenerator._make_group_batch_and_labels`.
-    full_batch_shape: tuple[int]
+    full_batch_shape: tuple[int]  # TODO
         Predefined complete batch shape `(samples, *)` to be used by data
         or labels loaders. Used by the builtin
         :func:`~deeptrain.util.data_loaders.numpy_lz4f_loader`, which requires

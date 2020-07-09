@@ -26,23 +26,23 @@ batch_shape = (batch_size, width, height, channels)
 datadir = os.path.join(BASEDIR, 'tests', 'data', 'image_lz4f')
 
 DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'train'),
+    data_path=os.path.join(datadir, 'train'),
     data_loader='numpy-lz4f',
     data_loader_dtype='float64',
     superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
-    full_batch_shape=batch_shape,
+    data_batch_shape=batch_shape,
     shuffle=True,
 )
 VAL_DATAGEN_CFG = dict(
-    data_dir=os.path.join(datadir, 'val'),
+    data_path=os.path.join(datadir, 'val'),
     data_loader='numpy-lz4f',
     data_loader_dtype='float64',
     superbatch_set_nums='all',
     labels_path=os.path.join(datadir, 'val', 'labels.h5'),
     batch_size=batch_size,
-    full_batch_shape=batch_shape,
+    data_batch_shape=batch_shape,
     shuffle=False,
 )
 

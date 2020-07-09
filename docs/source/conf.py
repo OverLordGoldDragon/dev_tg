@@ -180,7 +180,6 @@ reftarget_aliases = [
     ('util',            'misc._make_plot_configs_from_metrics'),
     ('',                'preprocessing.numpy_to_lz4f'),
     ('*', 'util.data_loaders'),
-    ('*', 'util.labels_preloaders'),
     ('util.preprocessors',     'Preprocessor'),
     ('util.preprocessors',     'GenericPreprocessor'),
     ('util.preprocessors',     'TimeseriesPreprocessor'),
