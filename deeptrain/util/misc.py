@@ -108,7 +108,7 @@ def _init_optimizer(model, class_weights=None, input_as_labels=False,
 
 def _make_plot_configs_from_metrics(self):
     """Makes default `plot_configs`, building on `configs._PLOT_CFG`; see
-    :func:`~deeptrain.visuals.get_history_fig`. Validates some configs
+    :meth:`~deeptrain.visuals.get_history_fig`. Validates some configs
     and tries to fill others.
 
     - Ensures every iterable config is of same `len()` as number of metrics in

@@ -43,7 +43,7 @@ MODEL_CFG = dict(
 )
 DATAGEN_CFG = dict(
     data_path=os.path.join(datadir, 'train'),
-    superbatch_dir=os.path.join(datadir, 'train'),
+    superbatch_path=os.path.join(datadir, 'train'),
     labels_path=os.path.join(datadir, 'train', 'labels.h5'),
     batch_size=batch_size,
     shuffle=True,

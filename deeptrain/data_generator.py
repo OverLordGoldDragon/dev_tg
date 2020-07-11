@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
-import h5py
 import random
 import numpy as np
 
 from pathlib import Path
 from copy import deepcopy
-from types import LambdaType
 
 from .util import Preprocessor, GenericPreprocessor, TimeseriesPreprocessor
-from .util import data_loaders
+from .util.data_loaders import DataLoader
 from .util.configs import _DATAGEN_CFG
 from .util.algorithms import ordered_shuffle
-from .util._backend import WARN, IMPORTS
+from .util._backend import WARN
 from .util._default_configs import _DEFAULT_DATAGEN_CFG
 
 
@@ -28,9 +26,9 @@ class DataGenerator():
             Number of samples to feed the model at once. Can differ from
             size of batches of loaded files; see "Dynamic batching".
         labels_path: str / None
-            Path to labels file. None requires `TrainGenerator.input_as_labels`
-            to be True, to feed `batch` as `labels` in
-            :meth:`TrainGenerator.get_data`.
+            Path to labels file. If None, will not load `labels`; can be used
+            with `TrainGenerator.input_as_labels = True`, feeding `batch` as
+            `labels` in :meth:`TrainGenerator.get_data` (e.g. autoencoders).
         preprocessor: None / custom object / str in ('timeseries',)
             Transforms `batch` and `labels` right before both are returned by
             :meth:`.get`. See :meth:`_set_preprocessor`.
@@ -50,22 +48,31 @@ class DataGenerator():
             If None, defaults to one of defined in :mod:`util.data_loaders`,
             as determined by :meth:`._infer_info`.
         labels_loader: None / function / str
-            Custom labels preloading function, with input signature `(self)`, or
-            name of a builtin loader in :mod:`util.data_loaders`, for loading
-            labels from `labels_path`. If None, will default to one of  defined in
-            :mod:`util.data_loaders`, based on `labels_path` file extension.
-        shuffle: # TODO, and others
-            pass
+            `data_loader`, but for labels.
         preload_labels: bool / None
             Whether to load all labels into `all_labels` at `__init__`. Defaults
             to True if `labels_path` is a file or a directory containing a
             single file.
+        shuffle: bool
+            If True, :meth:`reset_state` will shuffle `set_nums_to_process`;
+            the method is called by `_on_epoch_end` within
+            :meth:`TrainGenerator._train_postiter_processing` and
+            :meth:`TrainGenerator._val_postiter_processing`
+            (via :meth:`on_epoch_end`).
+        superbatch_path: str / None
+            Path to file or directory from which to load `superbatch`
+            (:meth:`preload_superbatch`); see "Control Flow".
+        set_nums: list[int] / None
+            Used to set `set_nums_original` and `set_nums_to_process`. If None,
+            will infer from `data_path`; see "Control Flow".
+        superbatch_set_nums: list[int] / None
+            set_nums to load into `superbatch`; see "Control Flow".
 
     **How it works**:
 
     Data is fed to :class:`TrainGenerator` via :class:`DataGenerator`. To work,
     data:
-        - must be in one directory
+        - must be in one directory (or one file with all data)
         - file extensions must be same (.npy, .h5, etc)
         - file names must be enumerated with a common name
           (data1.npy, data2.npy, ...)
@@ -90,6 +97,34 @@ class DataGenerator():
           as it's bound to fail if using shuffling, or if total number of
           samples isn't divisible by `batch_size`. Other problems may also arise.
 
+    **Control Flow**:
+
+        - `set_num`: index / Mapping key used to identify and get `batch` and
+          `labels` via :meth:`load_data` and :meth:`load_labels`. Ex: for
+          :meth:`DataLoader.numpy_loader`, which expects files shaped
+          `(batches, samples, *)`, it'd do `np.load(path)[set_num]`.
+        - `set_nums_to_process`: will pop `set_num` from this list until it's
+          empty; once empty, will set `all_data_exhausted=True`
+          (:meth:`update_state`).
+        - `set_nums_original`: will reset `set_nums_to_process` to this with
+          :meth:`reset_state`. It's either `set_nums` passed to `__init__`
+          or is inferred in :meth:`_set_set_nums` as all available `set_nums`
+          in `data_path` file / directory.
+        - `superbatch`: dict of `set_num`-`batch`es loaded persistently in memory
+          (RAM) as opposed to `batch`, which is overwritten. Once loaded, `batch`
+          can be drawn straight from `superbatch` if `set_num` is in it (i.e.
+          `superbatch_set_nums`).
+        - :meth:`get` returns `batch` and `labels` fed through
+          :meth:`Preprocessor.process`.
+        - :meth:`advance_batch` gets "next" `batch` and `labels`. "Next" is
+          determined by `set_num`, which is popped from `set_nums_to_process[0]`.
+        - `batch_exhausted`: signals :class:`TrainGenerator` that a batch was
+          consumed; this information is set via :meth:`update_state` per
+          `_on_iter_end` within :meth:`TrainGenerator._train_postiter_processing`
+          or :meth:`TrainGenerator._val_postiter_processing`.
+        - If using slices (`slices_per_batch is not None`), then `batch_exhausted`
+          is set to True only when `slice_idx == slices_per_batch - 1`.
+
     `__init__`:
 
     Instantiation. ("+" == if certain conditions are met)
@@ -102,8 +137,7 @@ class DataGenerator():
           overridden by `TrainGenerator` loading).
     """
     _BUILTINS = {'preprocessors': (GenericPreprocessor, TimeseriesPreprocessor),
-                 'loaders': {'numpy', 'numpy-memmap', 'numpy-lz4f',
-                             'hdf5', 'hdf5-dataset', 'csv'},
+                 'loaders': DataLoader._BUILTINS,
                  'extensions': {'.npy', '.h5', '.csv'}}
 
     def __init__(self, data_path,
@@ -113,32 +147,30 @@ class DataGenerator():
                  preprocessor_configs=None,
                  data_loader=None,
                  labels_loader=None,
-                 shuffle=False,
                  preload_labels=None,
-                 superbatch_dir=None,
+                 shuffle=False,
+                 superbatch_path=None,
                  set_nums=None,
                  superbatch_set_nums=None,
-                 data_loader_dtype='float32',
                  **kwargs):
         self.data_path=data_path
         self.batch_size=batch_size
         self.labels_path=labels_path
         self.preprocessor=preprocessor
         self.preprocessor_configs=preprocessor_configs or {}
-        self.data_loader=data_loader
-        self.labels_loader=labels_loader
-        self.shuffle=shuffle
         self.preload_labels=preload_labels
-        self.data_loader_dtype=data_loader_dtype
+        self.shuffle=shuffle
 
         if superbatch_set_nums == 'all':
-            self.superbatch_dir = data_path
+            if superbatch_path is not None:
+                print(WARN, "will override `superbatch_path` with `data_path` "
+                      "when `superbatch_set_nums == 'all'`")
+            self.superbatch_path = data_path
         else:
-            self.superbatch_dir = superbatch_dir
+            self.superbatch_path = superbatch_path
 
         self._init_and_validate_kwargs(kwargs)
-        self._infer_and_set_info(data_path, data_loader,
-                                 labels_path, labels_loader)
+        self._infer_and_set_info(data_loader, labels_loader)
 
         self._set_set_nums(set_nums, superbatch_set_nums)
         self._set_preprocessor(preprocessor, self.preprocessor_configs)
@@ -154,7 +186,7 @@ class DataGenerator():
 
     ###### MAIN METHODS #######################################################
     def get(self, skip_validation=False):
-        """Returns `(batch, labels)` fed to `preprocessor.process()`.
+        """Returns `(batch, labels)` fed to :meth:`Preprocessor.process`.
 
         skip_validation: bool
             - False (default): calls :meth:`_validate_batch`, which will
@@ -176,11 +208,11 @@ class DataGenerator():
                 - `< batch_size`: calls :meth:`advance_batch` with
                   `is_recursive = True`. With each such call, `batch` and `labels`
                   are extended (stacked) until matching `batch_size`.
-                - `> batch_size`, not integer multiple: raises exception.
+                - `> batch_size`, not integer multiple: raises `Exception`.
                 - `> batch_size`, is integer multiple: makes `_group_batch` and
                   `_group_labels`, which are used to set `batch` and `labels`.
 
-            - +If `set_nums_to_process` is empty, will raise Exception; it must
+            - +If `set_nums_to_process` is empty, will raise `Exception`; it must
               have been reset beforehand via e.g. :meth:`reset_state`. If it's
               not empty, sets `set_num` by popping from `set_nums_to_process`.
               (+: only if `_group_batch` is None)
@@ -247,20 +279,8 @@ class DataGenerator():
         self.slice_idx = None if self.slice_idx is None else 0
 
     ###### MAIN METHOD HELPERS ################################################
-    def load_data(self, set_num):
-        """Load and return `batch` data via `data_loader(set_num)`.
-        Used by :meth:`_get_next_batch` and :meth:`preload_superbatch`.
-        """
-        return self.data_loader(self, set_num, 'data')
-
-    def load_labels(self, set_num):
-        """Load and return `labels` data via `labels_loader(st_num)`.
-        Used by :meth:`_get_next_labels` and :meth:`preload_all_labels`.
-        """
-        return self.labels_loader(self, set_num, 'labels')
-
     def _get_next_batch(self, set_num=None, warn=True):
-        """Gets batch per `set_num`.
+        """Gets `batch` per `set_num`.
 
             - `set_num = None`: will use `self.set_num`.
             - `warn = False`: won't print warning on superbatch not being
@@ -295,11 +315,21 @@ class DataGenerator():
         return batch
 
     def _get_next_labels(self, set_num=None):
+        """Gets `labels` per `set_num`.
+
+            - `set_num = None`: will use `self.set_num`.
+            - If `_group_labels` is not None, will get `labels` from
+              `_group_labels`.
+            - If `set_num` is in `superbatch_set_nums`, will get `batch`
+              as `superbatch[set_num]` (if `superbatch` exists).
+            - By default, gets `labels` via :meth:`load_data`, if `labels_path`
+              is set - else, `labels=[]`.
+        """
         set_num = set_num or self.set_num
 
         if not self.labels_path:
             labels = []
-        elif self._group_batch is not None:
+        elif self._group_labels is not None:
             labels = self._labels_from_group_labels()
         elif set_num in self.all_labels:
             labels = self.all_labels[set_num]
@@ -364,8 +394,7 @@ class DataGenerator():
         self.batch_loaded = False
         self.set_nums_to_process = self.set_nums_original.copy()
 
-        if shuffle is None:
-            shuffle = self.shuffle
+        shuffle = shuffle or self.shuffle
         if shuffle:
             random.shuffle(self.set_nums_to_process)
             print('\nData set_nums shuffled\n')
@@ -402,35 +431,57 @@ class DataGenerator():
 
             - Sets `_group_batch_idx = 0`, and calls
               :meth:`_update_group_batch_state`.
+            - Doesn't affect `labels` if `labels_path` is falsy (e.g. None)
         """
-        def _maybe_shuffle(gb, lb):
-            if self.shuffle_group_samples:
-                gb, lb = ordered_shuffle(gb, lb)
-            elif self.shuffle_group_batches:
-                gb_shape, lb_shape = gb.shape, lb.shape
-                gb = gb.reshape(-1, self.batch_size, *gb_shape[1:])
-                lb = lb.reshape(-1, self.batch_size, *lb_shape[1:])
-                gb, lb = ordered_shuffle(gb, lb)
-                gb, lb = gb.reshape(*gb_shape), lb.reshape(*lb_shape)
-            return gb, lb
+        def _maybe_shuffle(gb, lb=None):
+            if lb is not None:
+                if self.shuffle_group_samples:
+                    shuffled = ordered_shuffle(gb, lb)
+                elif self.shuffle_group_batches:
+                    gb_shape, lb_shape = gb.shape, lb.shape
+                    gb = gb.reshape(-1, self.batch_size, *gb_shape[1:])
+                    lb = lb.reshape(-1, self.batch_size, *lb_shape[1:])
+                    gb, lb = ordered_shuffle(gb, lb)
+                    shuffled = gb.reshape(*gb_shape), lb.reshape(*lb_shape)
+                else:
+                    shuffled = gb, lb  # no shuffle
+            else:
+                if self.shuffle_group_samples:
+                    shuffled = ordered_shuffle(gb)
+                elif self.shuffle_group_batches:
+                    gb_shape = gb.shape
+                    gb = gb.reshape(-1, self.batch_size, *gb_shape[1:])
+                    gb = ordered_shuffle(gb)
+                    shuffled = gb.reshape(*gb_shape)
+                else:
+                    shuffled = gb  # no shuffle
+            return shuffled
 
         self._set_names = [f"{self.set_num}-{postfix}" for postfix in
                            "abcdefghijklmnopqrstuvwxyz"[:int(n_batches)]]
-        gb = np.asarray(self.batch)
-        lb = np.asarray(self.labels)
-        if len(gb) != len(lb):
-            raise Exception(("len(batch) != len(labels) ({} != {})"
-                            ).format(len(gb), len(lb)))
 
-        self.batch, self.labels = [], []  # free memory
-        gb, lb = _maybe_shuffle(gb, lb)
+        gb = np.asarray(self.batch)
+        if self.labels_path:
+            lb = np.asarray(self.labels)
+            if len(gb) != len(lb):
+                raise Exception(("len(batch) != len(labels) ({} != {})"
+                                ).format(len(gb), len(lb)))
+
+        self.batch = []  # free memory
+        if self.labels_path:
+            self.labels = []  # free memory
+            gb, lb = _maybe_shuffle(gb, lb)
+        else:
+            gb = _maybe_shuffle(gb)
 
         self._group_batch = gb
-        self._group_labels = lb
+        if self.labels_path:
+            self._group_labels = lb
         self._group_batch_idx = 0
 
         self.batch = self._batch_from_group_batch()
-        self.labels = self._labels_from_group_labels()
+        if self.labels_path:
+            self.labels = self._labels_from_group_labels()
         self._update_group_batch_state()
 
     ###### PROPERTIES #########################################################
@@ -482,48 +533,46 @@ class DataGenerator():
     def slice_idx(self, value):
         self.preprocessor.slice_idx = value
 
+    @property
+    def load_data(self):
+        """Load and return `batch` data via
+        :meth:`data_loaders.DataLoader.load_fn`.
+        Used by :meth:`_get_next_batch` and :meth:`preload_superbatch`.
+        """
+        return self.data_loader.load_fn
+
+    @load_data.setter
+    def load_data(self, loader):
+        self.data_loader.load_fn = loader
+
+    @property
+    def load_labels(self):  # TODO setter docs
+        """Load and return `labels` data via
+        :meth:`data_loaders.DataLoader.load_fn`.
+        Used by :meth:`_get_next_labels` and :meth:`preload_all_labels`.
+        """
+        return self.labels_loader.load_fn
+
+    @load_labels.setter
+    def load_labels(self, loader):
+        self.labels_loader.load_fn = loader
+
     ###### INIT METHODS #######################################################
-    # TODO remove the "set_hdf5_etc", and handle `data` & `labels` separately,
-    # passing in as arg which to handle.
-    #   - `labels_loader` should now be able to load anything that
-    #     `data_loader` can.
-    #   - However, loading by single file path still needs handling
-    #   - Then, maybe case for `batch` should also be handleable by file path?
-    #
-    # Naming:
-    #   - `superbatch`  & `superlabels`
-    #   - `all_batches` & `all_labels`
-    #   - `superbatch`  & `all_labels` [current]
-    #
-    # TODO update docs after changes
-    #   - advance_batch
-    #   - _infer_info
-    #   - data_loader
-    #   - labels_loader
-    #
-    # `_path` options:
-    #   - directory -> run full `_infer_info`
-    #       - one file   -> preload all
-    #       - many files -> don't preload
-    #   - file -> preload all
-    #
-    def _infer_info(self, path, loader):
+    def _infer_info(self, path):
         """Infers unspecified essential attributes from directory and contained
         files info:
 
-            - Checks that the data directory (`self.path`) isn't empty
+            - Checks that the data directory (`path`) isn't empty
               (files whose names start with `'.'` aren't counted)
-            - Retrieves data filenames and gets data extension (to most frequent
-              ext in dir, excl. "other path" from count if in same dir. "other
-              path" is `data_path` if `path == labels_path`, and vice versa.)
-            - Gets `loader` based on `ext`, if None; else, checks
-              whether it's one of builtins - if not, enforces it to be a callable.
+            - Retrieves data filepaths per `path` and gets data extension (to
+              most frequent ext in dir, excl. "other path" from count if in same
+              dir. "other path" is `data_path` if `path == labels_path`, and
+              vice versa.)
             - Gets `base_name` as longest common substring among files with
               `ext` extension
-            - Gets filepaths per `path` and filenames.
             - If `path` is path to a file, then `filepaths=[path]`.
-            - If `path` is None, returns `loader=None`, `base_name=None`,
-              `ext=None`, `filenames=[]`, `filepaths=[]`.
+            - If `path` is None, returns `base_name=None` `ext=None`,
+              `filepaths=[]`.
         """
         def _validate_directory(path):
             # not guaranteed to catch hidden files
@@ -532,16 +581,7 @@ class DataGenerator():
             if len(nonhidden_files_names) == 0:
                 raise Exception("`path` is empty (%s)" % path)
 
-        def _infer_loader(extension, filenames):
-            loader = {'.npy': 'numpy',
-                      '.h5': 'hdf5',
-                      '.csv': 'csv'}[extension]
-
-            if len(filenames) == 1:
-                loader += '-dataset'
-            return loader
-
-        def _get_base_name(extension, filenames):
+        def _get_base_name(filepaths):
             def _longest_common_substr(data):
                 # longest substring common to all filenames
                 substr = ''
@@ -552,16 +592,11 @@ class DataGenerator():
                       substr = ref[i:i + j]
                 return substr
 
-            filenames = [x.rstrip(extension) for x in filenames]
+            filenames = [Path(p).stem for p in filepaths]
             base_name = _longest_common_substr(filenames)
             return base_name
 
-        def _get_filepaths(path, filenames):
-            filepaths = [os.path.join(path, x) for x in filenames]
-            print("Discovered %s files with matching format" % len(filepaths))
-            return filepaths
-
-        def _get_filenames_and_ext(path):
+        def _get_filepaths_and_ext(path):
             def _infer_extension(path, other_path):
                 supported = DataGenerator._BUILTINS['extensions']
                 extensions = [p.suffix for p in Path(path).iterdir()
@@ -578,139 +613,74 @@ class DataGenerator():
                 return ext
 
             if not os.path.isdir(path):
-                filenames = [Path(path).name]
+                filepaths = [path]
                 ext = Path(path).suffix
+                print("Discovered dataset with matching format")
             else:
                 other_path = (self.labels_path if path == self.data_path else
                               self.data_path)
                 ext = _infer_extension(path, other_path)
-                filenames = [p.name for p in Path(path).iterdir()
+                filepaths = [str(p) for p in Path(path).iterdir()
                              if (p.suffix == ext and str(p) != other_path)]
-            return filenames, ext
+                print("Discovered %s files with matching format" % len(filepaths))
+            return filepaths, ext
 
         if path is None:
-            return dict(loader=None, base_name=None, ext=None,
-                        filenames=[], filepaths=[])
+            return dict(base_name=None, ext=None, filepaths=[])
         elif os.path.isdir(path):
             _validate_directory(path)
-        filenames, ext = _get_filenames_and_ext(path)
-
-        supported = DataGenerator._BUILTINS['loaders']
-        if loader is None:
-            loader = _infer_loader(ext, filenames)
-        elif (not isinstance(loader, LambdaType) and
-              loader.replace('-dataset', '') not in supported):
-            raise ValueError(("unsupported loader '{}'; must be a custom "
-                              "function, or one of {}").format(
-                                  loader, ', '.join(supported)))
-
-        base_name = _get_base_name(ext, filenames)
-        if os.path.isdir(path):
-            filepaths = _get_filepaths(path, filenames)
-        else:
+            filepaths, ext = _get_filepaths_and_ext(path)
+        else:  # isfile
             filepaths = [path]
+            ext = Path(path).suffix
 
-        return dict(loader=loader, base_name=base_name, ext=ext,
-                    filenames=filenames, filepaths=filepaths)
+        base_name = _get_base_name(filepaths)
+        return dict(base_name=base_name, ext=ext, filepaths=filepaths)
 
-    def _infer_and_set_info(self, data_path, data_loader, labels_path,
-                            labels_loader):
-        """Sets `data_loader`, `labels_loader` (:meth:`_set_loader`) and other
-        data & labels attributes based on `info` from :meth:`_infer_info`.
+    def _infer_and_set_info(self, data_loader, labels_loader):
+        """Sets `data_loader` and `labels_loader` (:class:`DataLoader`), using
+        info obtained from :meth:`_infer_info`.
 
-        If `info` contains only one filepath, will set `_data_dataset_path` /
-        `_labels_dataset_path` to the resulting filepath, and pick `_dataset`
-        variant of a loader.
+            - If `info` contains only one filepath, loader will operate with
+              `_is_dataset=True`.
+            - If `preload_labels` is None and `labels_loader._is_dataset`,
+              will set `preload_labels=True`.
         """
-        kw = {'data': dict(path=data_path, loader=data_loader),
-              'labels': dict(path=labels_path, loader=labels_loader)}
+        def _set_loaders(data_loader, labels_loader):
+            # set explicitly to index by linter
+            info = self._infer_info(self.data_path)
+            self.data_loader = DataLoader(self.data_path, data_loader,
+                                          dtype=self.data_dtype,
+                                          batch_shape=self.data_batch_shape,
+                                          **info)
+            info = self._infer_info(self.labels_path)
+            self.labels_loader = DataLoader(self.labels_path, labels_loader,
+                                            dtype=self.labels_dtype,
+                                            batch_shape=self.labels_batch_shape,
+                                            **info)
+        _set_loaders(data_loader, labels_loader)
 
-        for name in kw:
-            info = self._infer_info(**kw[name])
-            if len(info['filepaths']) == 1:
-                # safe to assume all data in one file, as "all data" can still
-                # be one batch
-                setattr(self, f"_{name}_dataset_path", info['filepaths'][0])
-            self._set_loader(name, info.pop('loader'))
-            for attr in info:
-                setattr(self, f"_{name}_{attr}", info[attr])
-
-        if self.preload_labels is None and len(self._labels_filepaths) == 1:
+        if self.preload_labels is None and self.labels_loader._is_dataset:
             self.preload_labels = True
-
-    def _set_loader(self, name, loader):
-        """Sets `data_loader` or `labels_loader`:
-
-            - `name` is in `('data', 'labels')`
-            - If `None` passed to `__init__`, will set as string in
-              :meth:`_infer_info` - else, will use whatever passed.
-            - If string, will match to a supported builtin.
-            - If a function, will set to the function.
-        """
-        def _validate_special_loaders(loader):
-            if 'numpy-lz4f' in loader:
-                if not IMPORTS['LZ4F']:
-                    raise ImportError("`lz4framed` must be imported for "
-                                      "`loader = 'numpy-lz4f'`")
-                if getattr(self, f"{name}_batch_shape") is None:
-                    raise ValueError("'numpy-lz4f' loader requires "
-                                     f"`{name}_batch_shape` attribute set")
-
-        supported = DataGenerator._BUILTINS['loaders']
-        if isinstance(loader, LambdaType) or loader is None:  # custom or None
-            setattr(self, f"{name}_loader", loader)
-            return
-        elif loader.replace('-dataset', '') not in supported:
-            raise ValueError(("unsupported loader '{}'; must be a custom "
-                              "function, or one of {}").format(
-                                  loader, ', '.join(supported)))
-        else:
-            _validate_special_loaders(loader)
-        loader = getattr(data_loaders, loader.replace('-', '_') + '_loader')
-        setattr(self, f"{name}_loader", loader)
 
     def _set_set_nums(self, set_nums, superbatch_set_nums):
         """Sets `set_nums_original`, `set_nums_to_process`, and
         `superbatch_set_nums`.
 
-            - Fetches `set_nums` from `data_path` or  `_data_dataset_path`,
-              depending on whether `'hdf5_dataset'` is in `data_loader`
-              function name.
+            - Fetches `set_nums` via :meth:`DataLoader._get_set_nums`
             - Sets `set_nums_to_process` and `set_nums_original`; if `set_nums`
-              weren't passed to `__init__`, sets to fetched ones
-              (see :func:`~deeptrain.util.data_loaders.hdf5_dataset_loader`).
+              weren't passed to `__init__`, sets to fetched ones.
             - If `set_nums` were passed, validates that they're a subset of
               fetched ones (i.e. can be seen by `data_loader`).
             - Sets `superbatch_set_nums`; if not passed to `__init__`,
               and `== 'all'`, sets to fetched ones. If passed, validates that
               they subset fetched ones.
+            - Does not validate set_nums from `labels_loader`'s perspective;
+              user is expected to supply a `labels` to each `batch` with common
+              `set_num`.
         """
-        def _get_set_nums_to_process():
-            def _set_nums_from_dir(_dir):
-                def _sort_ascending(ls):
-                    return list(map(str, sorted(map(int, ls))))
-
-                nums_from_dir = []
-                for filename in os.listdir(_dir):
-                    if (Path(filename).suffix == self._data_ext and
-                        self._data_base_name in filename):
-                        num = ''.join(x for x in Path(filename).stem.replace(
-                            self._data_base_name, '') if x.isdigit())
-                        nums_from_dir.append(num)
-                return _sort_ascending(nums_from_dir)
-
-            def _set_nums_from_hdf5_dataset(hdf5_dataset):
-                return [num for num in list(hdf5_dataset.keys())
-                        if (num.isdigit() or isinstance(num, (float, int)))]
-
-            if 'hdf5_dataset' in self.data_loader.__name__:
-                with h5py.File(self._data_dataset_path, 'r') as hdf5_dataset:
-                    return _set_nums_from_hdf5_dataset(hdf5_dataset)
-            else:
-                return _set_nums_from_dir(self.data_path)
-
         def _set_and_validate_set_nums(set_nums):
-            nums_to_process = _get_set_nums_to_process()
+            nums_to_process = self.data_loader._get_set_nums()
 
             if not set_nums:
                 self.set_nums_original   = nums_to_process.copy()
@@ -727,17 +697,17 @@ class DataGenerator():
                 self.set_nums_to_process = set_nums.copy()
 
         def _set_and_validate_superbatch_set_nums(superbatch_set_nums):
-            if superbatch_set_nums != 'all' and not self.superbatch_dir:
+            if superbatch_set_nums != 'all' and not self.superbatch_path:
                 if superbatch_set_nums:
                     print(WARN, "`superbatch_set_nums` will be ignored, "
-                          "since `superbatch_dir` is None")
+                          "since `superbatch_path` is None")
                 self.superbatch_set_nums = []
                 return
 
-            nums_to_process = _get_set_nums_to_process()
+            nums_to_process = self.data_loader._get_set_nums()
 
             if (superbatch_set_nums == 'all' or
-                (superbatch_set_nums is None and self.superbatch_dir)):
+                (superbatch_set_nums is None and self.superbatch_path)):
                 self.superbatch_set_nums = nums_to_process.copy()
             else:
                 if any(num not in nums_to_process for num in superbatch_set_nums):
@@ -782,7 +752,7 @@ class DataGenerator():
         def _set_superbatch_attrs():
             # get and set `superbatch` variant of data attributes:
             # loader, base_name, ext, filenames, filepaths
-            info = self._infer_info(self.superbatch_dir, self.data_loader)
+            info = self._infer_info(self.superbatch_path)
             for name in info:
                 alias = '_superbatch_' + name
                 if name in ('filenames', 'filepaths'):
@@ -817,6 +787,8 @@ class DataGenerator():
     def _init_and_validate_kwargs(self, kwargs):
         """Sets and validates `kwargs` passed to `__init__`.
 
+            - Ensures `data_path` is a file or a directory, and `labels_path`
+              is a file, directory, or None.
             - Ensures kwargs are functional (compares against names in
               :data:`~deeptrain.util._default_configs._DEFAULT_DATAGEN_CFG`.
             - Sets whichever names were passed with `kwargs`, and defaults
@@ -875,4 +847,4 @@ class DataGenerator():
             setattr(self, k, getattr(self, k, v))
 
         # used in saving & report generation
-        self._path_attrs = ['data_path', 'labels_path', 'superbatch_dir']
+        self._path_attrs = ['data_path', 'labels_path', 'superbatch_path']

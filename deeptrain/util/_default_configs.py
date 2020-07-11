@@ -127,7 +127,7 @@ _DEFAULT_TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
 
 _DEFAULT_DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                                   '_group_batch', '_group_labels']
-_DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_dir',
+_DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_path',
                                   'data_loader', 'set_nums_original',
                                   'set_nums_to_process', 'superbatch_set_nums']
 
@@ -162,7 +162,7 @@ _DEFAULT_ALIAS_TO_METRIC = {
 }
 
 def _DEFAULT_NAME_PROCESS_KEY_FN(key, alias, attrs):
-    """Used within :func:`deeptrain.util.logging.get_unique_model_name`.
+    """Used within :meth:`deeptrain.util.logging.get_unique_model_name`.
     """
     def _format_float(val, small_th=1e-2):
         def _format_small_float(val):
@@ -286,13 +286,13 @@ Parameters:
         classifier performance with extreme best thresholds (e.g. 0.99), which
         might do *worse* on larger validation sets.
     checkpoints_overwrite_duplicates: bool
-        Default value of `overwrite` in :func:`~deeptrain.util.saving.checkpoint`.
+        Default value of `overwrite` in :meth:`~deeptrain.util.saving.checkpoint`.
         Controls whether checkpoint will overwrite files if they have same name
         as current checkpoint's; if False, will make unique filenames by
         incrementing as '_v2', '_v3', etc.
     loss_weighted_slices_range: tuple[float, float]
         Passed as `weight_range` to
-        :func:`~deeptrain.util.training._get_weighted_sample_weight`. A linear
+        :meth:`~deeptrain.util.training._get_weighted_sample_weight`. A linear
         scaling of `sample_weight` when using slices. During training, this
         is used over `pred_weighted_slices_range`; during validation, uses latter.
     pred_weighted_slices_range: tuple[float, float]
@@ -302,23 +302,23 @@ Parameters:
     logs_use_full_model_name: bool
         Whether to use `model_name` or a minimal name containing number of
         validations done + best key metric, within
-        :func:`~deeptrain.util.saving.checkpoint`.
+        :meth:`~deeptrain.util.saving.checkpoint`.
     new_model_num: bool
-        Used within :func:`~deeptrain.util.logging.get_unique_model_name`.
+        Used within :meth:`~deeptrain.util.logging.get_unique_model_name`.
         If True, will set `model_num` to +1 the max number after `"M"` for
         directory names in `logs_dir`; e.g. if such a directory is
         `"M15__Classifier"`, will use `"M16"`, and set `model_num = 16`.
     dynamic_predict_threshold: float / None
         `predict_threshold` that is optimized during training to yield best
         `key_metric`. See
-        :func:`~deeptrain.util.training._set_predict_threshold`, which's called by
-        :func:`~deeptrain.util.training._get_val_history`, and
-        :func:`~deeptrain.util.training._get_best_subset_val_history`. If None,
+        :meth:`~deeptrain.util.training._set_predict_threshold`, which's called by
+        :meth:`~deeptrain.util.training._get_val_history`, and
+        :meth:`~deeptrain.util.training._get_best_subset_val_history`. If None,
         will only use `predict_threshold`.
     plot_first_pane_max_vals: int
         Maximum number of validation metrics to plot, as set by
-        :func:`~deeptrain.util.misc._make_plot_configs_from_metrics`, for
-        :func:`~deeptrain.visuals.get_history_fig`. This is a setting for the
+        :meth:`~deeptrain.util.misc._make_plot_configs_from_metrics`, for
+        :meth:`~deeptrain.visuals.get_history_fig`. This is a setting for the
         default config maker (first method), which plots all train metrics
         in first pane.
     _val_max_set_name_chars: int
@@ -330,7 +330,7 @@ Parameters:
         Same as `_val_max_set_name_chars`, but for train `_set_name`.
     predict_threshold: float
         Binary classifier prediction threshold, above which to classify as `'1'`,
-        used in :func:`~deeptrain.util.training._compute_metrics`.
+        used in :meth:`~deeptrain.util.training._compute_metrics`.
         If `dynamic_predict_threshold` and `dynamic_predict_threshold_min_max`
         are not None, it will be set equal to former within bounds of latter.
     best_subset_size: int >= 1 / None
@@ -338,7 +338,7 @@ Parameters:
         best validation performance, out of all validation batches (e.g. 5 of 10).
         Useful for model ensembling in specializing member models on different
         parts of data.
-        see :func:`~deeptrain.util.training._get_best_subset_val_history`.
+        see :meth:`~deeptrain.util.training._get_best_subset_val_history`.
     check_model_health: bool
         Whether to call :meth:`TrainGenerator.check_health` at the end of
         validation in :meth:`TrainGenerator._on_val_end`, which checks whether
@@ -346,19 +346,19 @@ Parameters:
     max_one_best_save: bool
         Whether to keep only one set of save files (model weights,
         `TrainGenerator` state, etc.) in `best_models_dir` when saving best model
-        via :func:`~deeptrain.util.saving._save_best_model`.
+        via :meth:`~deeptrain.util.saving._save_best_model`.
     max_checkpoints: int
         Maximum sets of checkpoint files (model weights, `TrainGenerator` state,
         etc.) to keep in `logdir`, when checkpointing via
-        :func:`~deeptrain.util.saving.checkpoint`.
+        :meth:`~deeptrain.util.saving.checkpoint`.
     report_fontpath: str
         Path to font file for font to use in saving report
-        (:func:`~deeptrain.util.logging.save_report`); defaults to consola,
+        (:meth:`~deeptrain.util.logging.save_report`); defaults to consola,
         which yields nice vertical & horizontal alignment.
     model_base_name: str
         Name between `"M{model_num}"` and autogenerated string from
         `model_configs`, as `"M{model_num}_{model_base_name}_*"`; see
-        :func:`~deeptrain.util.logging.get_unique_model_name`.
+        :meth:`~deeptrain.util.logging.get_unique_model_name`.
     final_fig_dir: str / None
         Path to directory where to save latest metric history using full
         `model_name`, at most one per `model_num`. If None, won't save such a
@@ -392,17 +392,17 @@ Parameters:
         in TF/Keras, DeepTrain uses the same names - else, they'll match function
         names in :mod:`deeptrain.metrics`.
     report_configs: dict
-        Dict specifying :func:`~deeptrain.util.logging.generate_report` behavior;
+        Dict specifying :meth:`~deeptrain.util.logging.generate_report` behavior;
         see the method for info.
     model_name_configs: dict
-        Dict specifying :func:`~deeptrain.util.logging.get_unique_model_name`
+        Dict specifying :meth:`~deeptrain.util.logging.get_unique_model_name`
         behavior; see the method for info. If `'best_key_metric'` is None,
         will default to `'__max'` if `max_is_best`, else `'__min'`, in
-        :func:`~deeptrain.util.misc._validate_traingen_configs`, within
+        :meth:`~deeptrain.util.misc._validate_traingen_configs`, within
         `_validate_model_name_configs`.
     name_process_key_fn: function
         Function used within
-        :func:`~deeptrain.util.logging.get_unique_model_name`;
+        :meth:`~deeptrain.util.logging.get_unique_model_name`;
         see the method for info.
     metric_printskip_configs: dict
         Names of train/val metrics (and their values) to omit in printing
@@ -420,6 +420,8 @@ _DEFAULT_DATAGEN_CFG = dict(
     shuffle_group_samples=False,
     data_batch_shape=None,
     labels_batch_shape=None,
+    data_dtype=None,
+    labels_dtype=None,
     loadskip_list=_DEFAULT_DATAGEN_LOADSKIP_LIST,
     saveskip_list=_DEFAULT_DATAGEN_SAVESKIP_LIST,
 )
@@ -432,12 +434,16 @@ internally and will raise an exception).
         See :meth:`DataGenerator._make_group_batch_and_labels`.
     shuffle_group_samples: bool
         See :meth:`DataGenerator._make_group_batch_and_labels`.
-    full_batch_shape: tuple[int]  # TODO
-        Predefined complete batch shape `(samples, *)` to be used by data
-        or labels loaders. Used by the builtin
-        :func:`~deeptrain.util.data_loaders.numpy_lz4f_loader`, which requires
-        this attribute to be set, that's validated within
-        :meth:`DataGenerator._set_data_loader`.
+    data_batch_shape: tuple[int]
+        Predefined complete batch shape `(batch_size, *)` (i.e. `(samples, *)`)
+        to be used by some loaders in :class:`DataLoader` (of `data_loader`).
+    labels_batch_shape: tuple[int]
+        `data_batch_shape`, but for `labels_loader`.
+    data_dtype: str / dtype
+        Used by some loaders in :class:`DataLoader` (of `data_loader`) to cast
+        loaded data to dtype.
+    labels_dtype: str / dtype
+        `data_dtype`, but for `labels_loader`.
     loadskip_list: list[str]
         List of `DataGenerator` attribute names to skip from loading. Mainly
         for attributes that should change between different train sessions,

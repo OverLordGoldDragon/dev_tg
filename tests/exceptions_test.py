@@ -76,14 +76,11 @@ def test_datagen():
         dg.set_nums_to_process = dg.set_nums_original.copy()
         pass_on_error(dg._set_set_nums, ['99', '100'], ['100', '101'])
         pass_on_error(dg._set_set_nums, ['1', '2'], ['100', '101'])
-        dg.superbatch_dir = None
+        dg.superbatch_path = None
         pass_on_error(dg._set_set_nums, ['1', '2'], ['1', '2'])
 
         dg._set_preprocessor(None, {})
         pass_on_error(dg._set_preprocessor, "x", {})
-
-        pass_on_error(dg._infer_info, dg.data_path, loader="x")
-        dg._infer_info(dg.data_path, loader="hdf5")
 
         C['datagen']['invalid_kwarg'] = 5
         pass_on_error(DataGenerator, **C['datagen'])

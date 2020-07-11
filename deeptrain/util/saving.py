@@ -87,7 +87,7 @@ def checkpoint(self, forced=False, overwrite=None):
             names by incrementing '_v2', '_v3', etc.
 
     Saves according to `temp_checkpoint_freq` and `unique_checkpoint_freq`.
-    See :meth:`._should_do`. See :func:`save` on how model and
+    See :meth:`._should_do`. See :meth:`save` on how model and
     `TrainGenerator` state are save.
 
     "Unique" checkpoint will generate save files with latest `best_key_metric`
@@ -209,8 +209,8 @@ def save(self, savepath=None):
         savepath: str / None
             File path to save to. If None, will set to
             `logdir` + `_temp_model__state.h5`. Internally, `savepath` is
-            passed meaningfully by :func:`checkpoint` and
-            :func:`_save_best_model`.
+            passed meaningfully by :meth:`checkpoint` and
+            :meth:`_save_best_model`.
 
     **Saving TrainGenerator state**:
 
@@ -233,7 +233,7 @@ def save(self, savepath=None):
 
     **Note**:
 
-    :func:`checkpoint` or :func:`_save_best_model`` called from within
+    :meth:`checkpoint` or :meth:`_save_best_model`` called from within
     :meth:`TrainGenerator._on_val_end` will set `_save_from_on_val_end=True`,
     which will then set validation flags so as to not repeat call to
     `_on_val_end` upon loading `TrainGenerator`.
@@ -302,7 +302,7 @@ def save(self, savepath=None):
 
 def _get_optimizer_state(self):
     """Get optimizer attributes to save, according to `optimizer_save_configs`;
-    helper method to :func:`save`.
+    helper method to :meth:`save`.
     """
     def _get_attrs_to_save(opt):
         cfg = self.optimizer_save_configs
@@ -372,7 +372,7 @@ def load(self, filepath=None, passed_args=None):
     `DataGenerator.preprocessor.loadskip_list` for `datagen` and `val_datagen`;
     any attribute *not* included in the lists will be loaded. `'model'` is
     always skipped from loading as part of pickled file, since it's
-    never saved via :func:`save`.
+    never saved via :meth:`save`.
 
     - If `loadskip_list == 'auto'` or falsy (e.g. None), will default it to
       `passed_args`.
@@ -514,8 +514,8 @@ def load(self, filepath=None, passed_args=None):
 
 def _load_optimizer_state(self):
     """Sets optimizer attributes from `self.optimizer_state`, according to
-    `optimizer_load_configs`; helper method to :func:`load`. Is called internally
-    by :func:`load`. `optimizer_state` is set to None to free memory afterwards.
+    `optimizer_load_configs`; helper method to :meth:`load`. Is called internally
+    by :meth:`load`. `optimizer_state` is set to None to free memory afterwards.
     """
     def _get_attrs_to_load(opt):
         cfg = self.optimizer_load_configs

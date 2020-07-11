@@ -41,7 +41,7 @@ DATAGEN_CFG = dict(
 )
 VAL_DATAGEN_CFG = dict(
     data_path=os.path.join(datadir, 'val'),
-    superbatch_dir=os.path.join(datadir, 'val'),
+    superbatch_path=os.path.join(datadir, 'val'),
     labels_path=os.path.join(datadir, 'val', 'labels.csv'),
     batch_size=batch_size,
     shuffle=False,

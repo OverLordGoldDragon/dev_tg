@@ -90,7 +90,7 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
     """Aggregates gradient norms over dataset, one iteration at a time. Useful
     for estimating value of gradient clipping, `clipnorm`, to use.
     Plots a histogram of gathered data when finished. Also see
-    :func:`compute_gradient_norm`.
+    :meth:`compute_gradient_norm`.
 
     Arguments:
         val: bool

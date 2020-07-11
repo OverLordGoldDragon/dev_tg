@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Data is fed to TrainGenerator via DataGenerator. To work, data:
-    - must be in one directory
+    - must be in one directory (or one file with all data)
     - file extensions must be same (.npy, .h5, etc)
     - file names must be enumerated with a common name (data1.npy, data2.npy, ...)
     - file batch size (# of samples, or dim 0 slices) should be same, but

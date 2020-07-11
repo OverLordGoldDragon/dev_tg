@@ -312,7 +312,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
       plot behavior (see "Builtin plot customs" below).
     - `plt_kw`: str, name of kwarg to pass directly to `plt.plot()`.
     - `value`: depends on key; see default `plot_configs` in
-      :data:`_DEFAULT_PLOT_CFG` and :func:`misc._make_plot_configs_from_metrics`.
+      :data:`_DEFAULT_PLOT_CFG` and :meth:`misc._make_plot_configs_from_metrics`.
 
     Only `'metrics'` and `'x_ticks'` keys are required for each dict - others
     have default values.
@@ -342,7 +342,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
     - A convenient option is to change `_PLOT_CFG` in `configs.py` and pass
       `plot_configs=None` to `TrainGenerator.__init__`; will internally call
       `cfg_fn`, which validates some configs and tries to fill what's missing.
-    - Above, `cfg_fn` == :func:`misc._make_plot_configs_from_metrics`
+    - Above, `cfg_fn` == :meth:`misc._make_plot_configs_from_metrics`
     """
     def _unpack_plot_kw(config):
         reserved_keys = ('metrics', 'x_ticks', 'vhlines',
@@ -465,7 +465,7 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
                   max_is_best=True, axis=None, vhlines={'v': None, 'h': None},
                   ylims=(0, 2), legend_kw=None, key_metric='loss',
                   metric_name_to_alias_fn=None):
-    """Plots metrics according to inputs passed by :func:`get_history_fig`."""
+    """Plots metrics according to inputs passed by :meth:`get_history_fig`."""
     def _plot_vhlines(vhlines, ax):
         def non_iterable(x):
             return not isinstance(x, (list, tuple, np.ndarray))

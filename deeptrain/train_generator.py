@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
-## TODO
-"""- deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
+"""# TODO
+   - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - examples/callbacks
    - examples/visuals
    - configurable error / warn levels (e.g. save fail)
-   - make .save() account for end of validation?
    - profile advanced.py validation w/ 'predict'
    - check how properties (epoch) work in loadskip_list
    - check if 'adam' -> 'nadam' fails
-   - non-AE labels that cannot be loaded all at once
-       - `labels.extend(_get_next_labels())`?
-   - per previous bullet, move `input_as_labels` to DataGenerator?
-   - DataGenerator: infer `batch_size`, default=None?
+
+   # todo later
    - MetaTrainer
+
+   # todo maybe
+   - DataGenerator: infer `batch_size`, default=None?
 """
 
 """TODO-docs:
@@ -75,16 +75,16 @@ class TrainGenerator(TraingenUtils):
         logs_dir: str / None
             Path to directory where to generate log directories, that include
             TrainGenerator state, state report, model data, and others; see
-            :func:`~deeptrain.util.saving.checkpoint`. If `None`, will not
+            :meth:`~deeptrain.util.saving.checkpoint`. If `None`, will not
             checkpoint - but model saving still possible via `best_models_dir`.
         best_models_dir: str / None
             Path to directory where to save best model. "Best" means having new
             highest (`max_is_best==True`) or lowest (`max_is_best==False`)
             entry in `key_metric_history`.
-            See :func:`~deeptrain.util.saving._save_best_model`.
+            See :meth:`~deeptrain.util.saving._save_best_model`.
         loadpath: str / None
             Path to .h5 file containing TrainGenerator state to load (postfixed
-            `'__state.h5'` by default). See :func:`~deeptrain.util.saving.load`.
+            `'__state.h5'` by default). See :meth:`~deeptrain.util.saving.load`.
         callbacks: dict[str: function] /\
         :class:`~deeptrain.callbacks.TraingenCallback` / None
             Functions to apply at various stages, including training, validation,
@@ -99,7 +99,7 @@ class TrainGenerator(TraingenUtils):
         key_metric: str
             Name of metric to track for saving best model; will store in
             `key_metric_history`.
-            See :func:`~deeptrain.util.saving._save_best_model`.
+            See :meth:`~deeptrain.util.saving._save_best_model`.
         key_metric_fn: function / None
             Custom function to compute key metric; overrides `key_metric` if
             not None.
@@ -117,7 +117,7 @@ class TrainGenerator(TraingenUtils):
             Feed model input also to its output. Ex: autoencoders.
         max_is_best: bool
             Whether to consider greater `key_metric` as better in saving best
-            model. See :func:`~deeptrain.util.saving._save_best_model`.
+            model. See :meth:`~deeptrain.util.saving._save_best_model`.
         val_freq: None / dict[str: int], str in {'iter', 'batch', 'epoch', 'val'}
             How frequently to validate. `{'epoch': 1}` -> every epoch;
             `{'iter': 24}` -> every 24 train iterations. Only one key-value
@@ -163,12 +163,12 @@ class TrainGenerator(TraingenUtils):
             in original folder). Overrides `logs_dir`.
         optimizer_save_configs: dict / None
             Dict specifying which optimizer attributes to include or exclude
-            when saving. See :func:`~deeptrain.util.saving.save`.
+            when saving. See :meth:`~deeptrain.util.saving.save`.
         optimizer_load_configs: dict / None
             Dict specifying which optimizer attributes to include or exclude
-            when loading. See :func:`~deeptrain.util.saving.load`.
+            when loading. See :meth:`~deeptrain.util.saving.load`.
         plot_configs: dict / None
-            Dict specifying :func:`~deeptrain.visuals.get_history_fig` behavior.
+            Dict specifying :meth:`~deeptrain.visuals.get_history_fig` behavior.
             See :data:`~deeptrain.util._default_configs._DEFAULT_PLOT_CFG`, and
             :meth:`~deeptrain.util.misc._make_plot_configs_from_metrics`.
         model_configs: dict / None
@@ -209,7 +209,7 @@ class TrainGenerator(TraingenUtils):
         - +Preloads train & validation data (before a call to :meth:`train`
           is made).
         - +Applies initial callbacks
-        - +Logs initial state (:func:`~deeptrain.util.logging._log_init_state`)
+        - +Logs initial state (:meth:`~deeptrain.util.logging._log_init_state`)
         - Captures and saves all arguments passed to `__init__`
         - Instantiates misc internal parameters to predefiend values (may be
           overridden by loading).
@@ -1043,7 +1043,7 @@ class TrainGenerator(TraingenUtils):
         if available."""
         for dg_name in ('datagen', 'val_datagen'):
             dg = getattr(self, dg_name)
-            if dg.superbatch_set_nums or dg.superbatch_dir:
+            if dg.superbatch_set_nums or dg.superbatch_path:
                 dg.preload_superbatch()
             if from_load:
                 dg.batch_loaded = False  # load() might've set to True

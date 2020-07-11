@@ -125,7 +125,7 @@ TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
 
 DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                          '_group_batch', '_group_labels']
-DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_dir',
+DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_path',
                          'data_loader', 'set_nums_original',
                          'set_nums_to_process', 'superbatch_set_nums']
 
@@ -276,6 +276,8 @@ _DATAGEN_CFG = dict(
     shuffle_group_samples=False,
     data_batch_shape=None,
     labels_batch_shape=None,
+    data_dtype=None,
+    labels_dtype=None,
     loadskip_list=DATAGEN_LOADSKIP_LIST,
     saveskip_list=DATAGEN_SAVESKIP_LIST,
 )

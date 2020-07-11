@@ -19,7 +19,6 @@ from copy import deepcopy
 from backend import BASEDIR, tempdir, notify, _get_test_names
 from deeptrain.util.misc import pass_on_error
 from deeptrain.util.algorithms import ordered_shuffle
-from deeptrain.util import data_loaders
 from deeptrain.util import TimeseriesPreprocessor
 from deeptrain import DataGenerator
 
@@ -39,7 +38,7 @@ tests_done = {}
 @notify(tests_done)
 def test_advance_batch():
     C = deepcopy(DATAGEN_CFG)
-    C['superbatch_dir'] = os.path.join(datadir, 'image', 'train')
+    C['superbatch_path'] = os.path.join(datadir, 'image', 'train')
     dg = DataGenerator(**C)
     dg.advance_batch()
 
@@ -60,7 +59,7 @@ def test_advance_batch():
 def test_shuffle():
     C = deepcopy(DATAGEN_CFG)
     C['shuffle_group_batches'] = True
-    C['superbatch_dir'] = os.path.join(datadir, 'image', 'train')
+    C['superbatch_path'] = os.path.join(datadir, 'image', 'train')
     C['batch_size'] = 64
     dg = DataGenerator(**C)
     dg.preload_superbatch()
@@ -76,24 +75,19 @@ def test_kwargs():
 
 
 @notify(tests_done)
-def test_data_loaders():
+def test_data_loader():
     def _test_auto_hdf5(C):
         dg = DataGenerator(**C)
         dg.advance_batch()
 
     def _test_hdf5(C):
-        C['data_loader'] = data_loaders.hdf5_loader
+        C['data_loader'] = 'hdf5'
         dg = DataGenerator(**C)
         dg.advance_batch()
 
     def _test_exceptions(C):
         C['data_loader'] = 'invalid_loader'
         pass_on_error(DataGenerator, **C)
-
-        C['data_loader'] = None
-        dg = DataGenerator(**C)
-        pass_on_error(dg._set_loader, 'invalid_loader')
-
 
     C = deepcopy(DATAGEN_CFG)
     C['data_path'] = os.path.join(datadir, 'timeseries_split', 'train')
@@ -108,19 +102,13 @@ def test_data_loaders():
 
 @notify(tests_done)
 def test_labels_loaders():
-    def _test_no_preloader():
+    def _test_no_loader():
         C = deepcopy(DATAGEN_CFG)
         C['labels_loader'] = None
         C['labels_path'] = None
         DataGenerator(**C)
 
-    def _test_hdf5_preloader():
-        C = deepcopy(DATAGEN_CFG)
-        C['labels_loader'] = data_loaders.hdf5_dataset_loader
-        DataGenerator(**C)
-
-    _test_no_preloader()
-    _test_hdf5_preloader()
+    _test_no_loader()
 
 
 @notify(tests_done)

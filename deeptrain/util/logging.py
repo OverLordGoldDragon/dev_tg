@@ -15,7 +15,7 @@ from ._backend import NOTE, WARN, Image, ImageDraw, ImageFont
 def save_report(self, savepath=None):
     """Saves model, `TrainGenerator`, `'datagen'`, and `'val_datagen'`
     attributes and values as an image-text, text generated with
-    :func:`generate_report`.
+    :meth:`generate_report`.
 
     Text font is set from `TrainGenerator.report_fontpath`, which defaults
     to a programming-style *consolas* for consistent vertical and horizontal

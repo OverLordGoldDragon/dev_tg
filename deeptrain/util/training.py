@@ -355,7 +355,7 @@ def _compute_metric(data, metric_name=None, metric_fn=None):
 
 def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
     """Computes metrics from labels, predictions, and sample weights, via
-    :func:`_compute_metric`.
+    :meth:`_compute_metric`.
 
     Iterates over metric names in `val_metrics`:
 
@@ -367,7 +367,7 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
         - `name in custom_metrics`: computes metric with `custom_metrics[name]`
           function.
         - `name` none of the above: passes name and `model.loss` to
-          :func:`_compute_metric`.
+          :meth:`_compute_metric`.
 
     Ensures computed metrics are scalars (numbers, instead of lists, tuples, etc).
     """
@@ -450,9 +450,9 @@ def _transform_eval_data(self, labels_all, preds_all, sample_weight_all,
         - Stanardize labels and preds shapes to the expected
           `(batches, *model.output_shape)`, or
           `(batches, slices, *model.output_shape)` if slices are used.
-          See :func:`_validate_data_shapes`.
+          See :meth:`_validate_data_shapes`.
         - Standardize `sample_weight` and `class_labels` shapes.
-          See :func:`_validate_class_data_shapes`.
+          See :meth:`_validate_class_data_shapes`.
         - Unroll data into samples (merge batches, slices, and samples dims).
           See :func:`_unroll_into_samples`.
     """
@@ -575,9 +575,9 @@ def _validate_data_shapes(self, data, val=True,
             :meth:`.validate` when processing individual batch-slices.
             `slice_idx` is None :meth:`._on_val_end`.
         validate_last_dims_match_outs_shape: bool
-            See :func:`_validate_class_data_shapes`.
+            See :meth:`_validate_class_data_shapes`.
         validate_equal_shapes: bool
-            See :func:`_validate_class_data_shapes`.
+            See :meth:`_validate_class_data_shapes`.
     """
     def _validate_batch_size(data, outs_shape):
         batch_size = outs_shape[0]
@@ -651,7 +651,7 @@ def _validate_data_shapes(self, data, val=True,
 
 def _validate_class_data_shapes(self, data, val=True, validate_n_slices=False):
     """Standardize `sample_weight` and `class_labels` data. Same as
-    :func:`_validate_data_shapes`, except skips two validations:
+    :meth:`_validate_data_shapes`, except skips two validations:
 
         - `_validate_last_dims_match_outs_shape`; for `class_labels`, model
           output shapes can be same as input shapes as with autoencoders,
