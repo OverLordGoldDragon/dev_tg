@@ -39,6 +39,22 @@ class DataLoader():
 
     **Builtin loaders**: see :data:`_BUILTINS`
 
+    **Custom loaders**:
+
+    Simplest option is to inherit `DataLoader` and override :meth:`_get_loader`
+    to return the custom loader; :class:`DataGenerator` will handle the rest.
+    Fully custom ones require:
+
+        - `__init__` with same input signature as `DataLoader.__init__`.
+        - `load_fn` method with `(self, set_num)` input signature, loading data
+          from a directory / file
+        - `_get_loader` method with `(self, loader)` input signature, returning
+          the custom loader function
+        - `_path` method with `(self, set_num)` input signature, returning
+          path to file to load
+        - `_get_set_nums` method
+        - `_is_dataset` attribute
+
     **Modes of operation**:
 
         - *Directory*: one `batch`/`labels` per file. Filename includes `set_num`
@@ -89,6 +105,9 @@ class DataLoader():
 
     @load_fn.setter
     def load_fn(self, loader):
+        self._load_fn = self._get_loader(loader)
+
+    def _get_loader(self, loader):
         def _validate_special_loaders(loader):
             if 'numpy-lz4f' in loader:
                 if not IMPORTS['LZ4F']:
@@ -99,7 +118,10 @@ class DataLoader():
                                      f"`batch_shape` attribute set")
 
         supported = DataLoader._BUILTINS
-        if isinstance(loader, LambdaType) or loader is None:  # custom or None
+        if isinstance(loader, LambdaType):  # custom
+            setattr(self, loader.__name__, loader.__get__(self))
+            loader = getattr(self, loader.__name__)
+        elif loader is None:
             pass
         elif loader not in supported:
             raise ValueError(("unsupported loader '{}'; must be a custom "
@@ -108,7 +130,7 @@ class DataLoader():
         else:
             _validate_special_loaders(loader)
             loader = getattr(self, loader.replace('-', '_') + '_loader')
-        self._load_fn = loader
+        return loader
 
     def _init_loader(self, loader, path, ext):
         if path is None:

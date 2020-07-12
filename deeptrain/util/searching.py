@@ -5,7 +5,7 @@ Useful for e.g. tuning a classifier's prediction threshold on validation data,
 or tracking classifier calibration.
 """
 # -*- coding: utf-8 -*-
-from .. import metrics
+from deeptrain import metrics
 from .misc import argspec
 import numpy as np
 

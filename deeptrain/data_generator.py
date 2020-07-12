@@ -41,13 +41,18 @@ class DataGenerator():
             Kwargs to pass to `preprocessor` in case it's None, str, or an
             uninstantiated custom object. Ignored if `preprocessor` is
             instantiated.
-        data_loader: None / function
-            Custom data loading function, with input signature `(self, set_num)`,
-            loading data from directory, based on `set_num` (not explicitly
-            required; only returning data in expected format is required).
-            If None, defaults to one of defined in :mod:`util.data_loaders`,
-            as determined by :meth:`._infer_info`.
-        labels_loader: None / function / str
+        data_loader: None / function / :class:`DataLoader`
+            Object for loading data from directory / file.
+
+                - function: passed as `loader` to `DataLoader.__init__` in
+                  :meth:`_infer_and_set_info`; input signature: `(self, set_num)`
+                - :class:`DataLoader` instance: will set `data_loader` directly
+                - Class subclassing :class:`DataLoader` (uninstantiated):
+                  will instantiate with attrs from :meth:`_infer_info` & others
+                - None: defaults to one of defined in :mod:`util.data_loaders`,
+                  as determined by :meth:`_infer_info`
+
+        labels_loader: None / function / :class:`DataLoader`
             `data_loader`, but for labels.
         preload_labels: bool / None
             Whether to load all labels into `all_labels` at `__init__`. Defaults
@@ -546,7 +551,7 @@ class DataGenerator():
         self.data_loader.load_fn = loader
 
     @property
-    def load_labels(self):  # TODO setter docs
+    def load_labels(self):
         """Load and return `labels` data via
         :meth:`data_loaders.DataLoader.load_fn`.
         Used by :meth:`_get_next_labels` and :meth:`preload_all_labels`.
@@ -645,19 +650,49 @@ class DataGenerator():
               `_is_dataset=True`.
             - If `preload_labels` is None and `labels_loader._is_dataset`,
               will set `preload_labels=True`.
+
+        `data_loader` / `labels_loader` are:
+
+            - function: passed as `loader` to `DataLoader.__init__`;
+              input signature: `(self, set_num)`
+            - :class:`DataLoader` instance: will set `data_loader` directly
+            - Class subclassing :class:`DataLoader` (uninstantiated):
+              will instantiate with attrs from :meth:`_infer_info` & others
+            - None: defaults to one of defined in :mod:`util.data_loaders`,
+              as determined by :meth:`_infer_info`
         """
         def _set_loaders(data_loader, labels_loader):
             # set explicitly to index by linter
-            info = self._infer_info(self.data_path)
-            self.data_loader = DataLoader(self.data_path, data_loader,
-                                          dtype=self.data_dtype,
-                                          batch_shape=self.data_batch_shape,
-                                          **info)
-            info = self._infer_info(self.labels_path)
-            self.labels_loader = DataLoader(self.labels_path, labels_loader,
-                                            dtype=self.labels_dtype,
-                                            batch_shape=self.labels_batch_shape,
-                                            **info)
+            if isinstance(data_loader, DataLoader):
+                self.data_loader = data_loader
+            else:
+                kw = dict(path=self.data_path, loader=data_loader,
+                          dtype=self.data_dtype,
+                          batch_shape=self.data_batch_shape,
+                          **self._infer_info(self.data_path))
+                if isinstance(data_loader, type):
+                    if not issubclass(data_loader, DataLoader):
+                        raise TypeError("`data_loader` class must subclass "
+                                        "`DataLoader`")
+                    self.data_loader = data_loader(**kw)
+                else:  # function / None
+                    self.data_loader = DataLoader(**kw)
+
+            if isinstance(labels_loader, DataLoader):
+                self.labels_loader = labels_loader
+            else:
+                kw = dict(path=self.labels_path, loader=labels_loader,
+                          dtype=self.labels_dtype,
+                          batch_shape=self.labels_batch_shape,
+                          **self._infer_info(self.labels_path))
+                if isinstance(labels_loader, type):
+                    if not issubclass(labels_loader, DataLoader):
+                        raise TypeError("`labels_loader` class must subclass "
+                                        "`DataLoader`")
+                    self.labels_loader = labels_loader(**kw)
+                else:  # function / None
+                    self.labels_loader = DataLoader(**kw)
+
         _set_loaders(data_loader, labels_loader)
 
         if self.preload_labels is None and self.labels_loader._is_dataset:

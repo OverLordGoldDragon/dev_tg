@@ -6,8 +6,6 @@
    - Saving & loading
    - Variable-layer model building
 """
-import matplotlib
-matplotlib.use('template')
 import os
 from tensorflow.keras.layers import Input, Conv2D, UpSampling2D, Dropout
 from tensorflow.keras.layers import BatchNormalization, Activation

@@ -2,6 +2,7 @@
 import numpy as np
 
 from see_rnn import weight_loss
+from deeptrain.backend.model_utils import model_loss_name
 from .searching import find_best_predict_threshold, find_best_subset
 from .searching import find_best_subset_from_history
 from ._backend import NOTE, WARN
@@ -338,7 +339,7 @@ def _get_api_metric_name(name, loss_name, alias_to_metric_name_fn=None):
     return api_name
 
 
-def _compute_metric(data, metric_name=None, metric_fn=None):
+def _compute_metric(self, data, metric_name=None, metric_fn=None):
     """Compute metric given labels, preds, and sample weights or prediction
     threshold where applicable - and metric name or function.
     """
@@ -347,7 +348,12 @@ def _compute_metric(data, metric_name=None, metric_fn=None):
             del data[name]
 
     if metric_name is not None:
-        metric_fn = getattr(metric_fns, metric_name)
+        metric_name = self._alias_to_metric_name(metric_name)
+        if metric_name in self.custom_metrics:
+            metric_fn = self.custom_metrics[metric_name]
+        else:
+            metric_fn = getattr(metric_fns, metric_name)
+
     _del_if_not_in_metric_fn('pred_threshold', data, metric_fn)
     _del_if_not_in_metric_fn('sample_weight', data, metric_fn)
     return metric_fn(**data)
@@ -397,19 +403,17 @@ def _compute_metrics(self, labels_all_norm, preds_all_norm, sample_weight_all):
                     pred_threshold=self.predict_threshold)
 
         if name == 'loss':
-            api_name = _get_api_metric_name('loss', self.model.loss,
+            api_name = _get_api_metric_name('loss', model_loss_name(self.model),
                                             self._alias_to_metric_name)
-            metrics[name] = _compute_metric(data, metric_name=api_name)
+            metrics[name] = self._compute_metric(data, metric_name=api_name)
             metrics[name] += weight_loss(self.model)
         elif name == self.key_metric:
-            metrics[name] = _compute_metric(data, metric_fn=self.key_metric_fn)
-        elif name in self.custom_metrics:
-            metrics[name] = _compute_metric(data,
-                                            metric_fn=self.custom_metrics[name])
+            metrics[name] = self._compute_metric(data,
+                                                 metric_fn=self.key_metric_fn)
         else:
-            api_name = _get_api_metric_name(name, self.model.loss,
+            api_name = _get_api_metric_name(name, model_loss_name(self.model),
                                             self._alias_to_metric_name)
-            metrics[name] = _compute_metric(data, metric_name=api_name)
+            metrics[name] = self._compute_metric(data, metric_name=api_name)
 
     metrics = _ensure_scalar_metrics(metrics)
     return metrics

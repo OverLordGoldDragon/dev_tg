@@ -145,7 +145,7 @@ def notify(tests_done):
     return wrap
 
 
-#### Default TrainGenerator, DataGenerator, model configs #####################
+#### Reusable TrainGenerator, DataGenerator, model configs #####################
 batch_size = 128
 width, height = 28, 28
 channels = 1
@@ -364,6 +364,6 @@ class TraingenDummy():
 
 
 for name in ('_transform_eval_data', '_validate_data_shapes',
-             '_validate_class_data_shapes', '_compute_metrics',
+             '_validate_class_data_shapes', '_compute_metric', '_compute_metrics',
              '_weighted_normalize_preds'):
     setattr(TraingenDummy, name, getattr(util.training, name))

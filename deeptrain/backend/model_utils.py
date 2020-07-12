@@ -1,4 +1,5 @@
-from . import K, TF_KERAS, TF_EAGER, TF_2
+from types import LambdaType
+from . import TF_KERAS, TF_EAGER, TF_2
 
 
 def get_model_metrics(model):
@@ -17,6 +18,17 @@ def get_model_metrics(model):
     return ['loss', *metrics] if metrics else ['loss']
 
 
+def model_loss_name(model):
+    if not hasattr(model, 'loss'):
+        raise AttributeError("`model` has no attribute 'loss'; did you run "
+                             "`model.compile()`?")
+    loss = model.loss
+    if isinstance(loss, str):
+        return loss
+    elif isinstance(loss, LambdaType):
+        return loss.__name__
+    else:
+        raise Exception("unable to get name of `model` loss")
 
 # TF2 tf.keras Eager (Graph is same)
 """

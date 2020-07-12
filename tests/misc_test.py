@@ -10,12 +10,14 @@ if sys.path[0] != filedir:
     sys.path.insert(0, filedir)
 
 import pytest
+import numpy as np
 
 from pathlib import Path
 from time import time
 from copy import deepcopy
 
-from backend import CL_CONFIGS, BASEDIR, tempdir, notify, make_classifier
+from backend import K, CL_CONFIGS, AE_CONFIGS, BASEDIR, tempdir, notify
+from backend import make_classifier, make_autoencoder
 from backend import _init_session, _do_test_load, _get_test_names
 from deeptrain.util.logging import _log_init_state
 from deeptrain.util.misc import pass_on_error
@@ -37,9 +39,9 @@ CONFIGS['traingen']['logs_use_full_model_name'] = False
 
 classifier = make_classifier(**CONFIGS['model'])
 
-def init_session(C, weights_path=None, loadpath=None, model=None):
+def init_session(C, weights_path=None, loadpath=None, model=None, model_fn=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
-                         model=model, model_fn=make_classifier)
+                         model=model, model_fn=model_fn or make_classifier)
 ###############################################################################
 
 @notify(tests_done)
@@ -189,6 +191,37 @@ def test_reset_validation():
         assert vdg.set_nums_original   == val_set_nums_original
         assert vdg.set_nums_to_process == val_set_nums_original
         tg.validate(restart=True)
+
+
+@notify(tests_done)
+def test_customs():
+    from deeptrain.metrics import _standardize, _weighted_loss
+
+    def mean_L_error(y_true, y_pred, sample_weight=1):
+        L = 1.5  # configurable
+        y_true, y_pred, sample_weight = _standardize(y_true, y_pred,
+                                                     sample_weight)
+        return _weighted_loss(np.mean(np.abs(y_true - y_pred) ** L, axis=-1),
+                              sample_weight)
+
+    def mLe(y_true, y_pred):
+        L = 1.5  # configurable
+        return K.mean(K.pow(K.abs(y_true - y_pred), L), axis=-1)
+
+    def numpy_loader(self, set_num):
+        # allow_pickle is irrelevant here, just for demo
+        return np.load(self._path(set_num), allow_pickle=True)
+
+
+    C = deepcopy(AE_CONFIGS)
+    C['model']['loss'] = mLe
+    C['datagen']['data_loader'] = numpy_loader
+    C['traingen']['custom_metrics'] = {'mLe': mean_L_error}
+
+    with tempdir(C['traingen']['logs_dir']), \
+        tempdir(C['traingen']['best_models_dir']):
+        tg = init_session(C, model_fn=make_autoencoder)
+        tg.train()
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

@@ -93,9 +93,7 @@ TRAINGEN_SAVESKIP_LIST = [
     'metric_to_alias',
     'alias_to_metric',
     'name_process_key_fn',
-    'fit_fn',
-    'eval_fn',
-    '_fit_fn',
+    '_fit_fn',  # 'fit_fn' & other properties don't show up in `vars(self)`
     '_eval_fn',
 
     '_labels',

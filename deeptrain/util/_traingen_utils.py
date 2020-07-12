@@ -25,6 +25,7 @@ class TraingenUtils():
     _set_predict_threshold       = training._set_predict_threshold
     _get_val_history             = training._get_val_history
     _get_best_subset_val_history = training._get_best_subset_val_history
+    _compute_metric              = training._compute_metric
     _compute_metrics             = training._compute_metrics
     _transform_eval_data         = training._transform_eval_data
     _weighted_normalize_preds    = training._weighted_normalize_preds

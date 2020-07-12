@@ -94,9 +94,7 @@ _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
     'metric_to_alias',
     'alias_to_metric',
     'name_process_key_fn',
-    'fit_fn',  # TODO excl. since class properties can't be removed from instance?
-    'eval_fn',
-    '_fit_fn',
+    '_fit_fn',  # 'fit_fn' & other properties don't show up in `vars(self)`
     '_eval_fn',
 
     '_labels',
@@ -339,6 +337,12 @@ Parameters:
         Useful for model ensembling in specializing member models on different
         parts of data.
         see :meth:`~deeptrain.util.training._get_best_subset_val_history`.
+
+            - If not None, `val_datagen` cannot have `shuffle_group_samples`
+              attribute set, since samples must remain in original batches (
+              tracked by respective `set_num`s) for resulting "best subset"
+              `set_num`s to map to actual samples.
+
     check_model_health: bool
         Whether to call :meth:`TrainGenerator.check_health` at the end of
         validation in :meth:`TrainGenerator._on_val_end`, which checks whether

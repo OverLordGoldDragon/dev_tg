@@ -217,6 +217,30 @@ def _validate_traingen_configs(self):
     """Ensures various attributes are properly configured, and attempts correction
     where possible.
     """
+    def _validate_key_metric_fn():
+        if self.key_metric_fn is None and 'predict' in self._eval_fn_name:
+            from deeptrain import metrics as metrics_fns
+            from .training import _get_api_metric_name
+
+            if not isinstance(self.custom_metrics, dict):
+                raise TypeError("`custom_metrics` must be a dict")
+
+            loss_name = model_utils.model_loss_name(self.model)
+            if self.key_metric == 'loss' and loss_name in self.custom_metrics:
+                self.key_metric = model_utils.model_loss_name(self.model)
+
+            if self.key_metric not in self.custom_metrics:
+                km_name = _get_api_metric_name(self.key_metric,
+                                               self.model.loss,
+                                               self._alias_to_metric_name)
+                # if None, will catch in `_validate_traingen_configs`
+                self.key_metric_fn = getattr(metrics_fns, km_name, None)
+            else:
+                self.key_metric_fn = self.custom_metrics[self.key_metric]
+        elif self.key_metric_fn is not None and 'evaluate' in self._eval_fn_name:
+            print(NOTE, "`key_metric_fn` is unsued with 'evaluate' in "
+                  "`eval_fn.__name__`")
+
     def _validate_metrics():
         def _validate(metric, failmsg):
             if metric == 'accuracy':
@@ -236,7 +260,7 @@ def _validate_traingen_configs(self):
             if self.val_metrics is None or vm_and_eval:
                 if vm_and_eval:
                     print(WARN, "will override `val_metrics` with model metrics "
-                          "for `eval_fn_name == 'evaluate'`")
+                          "for 'evaluate' in `eval_fn.__name__`")
                 self.val_metrics = model_metrics.copy()
             elif '*' in self.val_metrics:
                 for metric in model_metrics:
@@ -256,12 +280,12 @@ def _validate_traingen_configs(self):
                 getattr(self, name)[i] = self._alias_to_metric_name(maybe_alias)
         self.key_metric = self._alias_to_metric_name(self.key_metric)
 
-        if 'evaluate' in self._eval_fn_name:
-            basemsg = ("must be in one of metrics returned by model, "
-                       "when using 'evaluate' in `eval_fn.__name__`. "
-                       "(model returns: %s)" % ', '.join(model_metrics))
-            if self.key_metric not in model_metrics:
-                raise ValueError(f"key_metric {self.key_metric} " + basemsg)
+        if ('evaluate' in self._eval_fn_name and
+            self.key_metric not in model_metrics):
+            raise ValueError(f"key_metric {self.key_metric} must be in one of"
+                             "metrics returned by model, when using 'evaluate' "
+                             "in `eval_fn.__name__`. (model returns: %s)"
+                             % ', '.join(model_metrics))
 
         # 'loss' must be in val_metrics, and as first item in list
         if 'loss' not in self.val_metrics:
@@ -270,22 +294,24 @@ def _validate_traingen_configs(self):
             self.val_metrics.pop(self.val_metrics.index('loss'))
             self.val_metrics.insert(0, 'loss')
 
-        if self.key_metric not in self.val_metrics:
+        loss_name = model_utils.model_loss_name(self.model)
+        if (self.key_metric not in self.val_metrics and
+            self.key_metric != loss_name):
             self.val_metrics.append(self.key_metric)
 
         if 'predict' in self._eval_fn_name:
             for metric in self.val_metrics:
                 if metric == 'loss':
-                    metric = self.model.loss
+                    metric = loss_name
                 _validate(metric, failmsg=("'{0}' metric is not supported; add "
                                            "a function to `custom_metrics` as "
                                            "'{0}': func.").format(metric))
-            _validate(self.model.loss, failmsg=(
+            _validate(loss_name, failmsg=(
                 "'{0}' loss is not supported w/ `eval_fn_name = 'predict'`; "
                 "add a function to `custom_metrics` as '{0}': func, or set "
-                "`eval_fn_name = 'evaluate'`.").format(self.model.loss))
+                "`eval_fn_name = 'evaluate'`.").format(loss_name))
 
-            km = self.key_metric if self.key_metric != 'loss' else self.model.loss
+            km = self.key_metric if self.key_metric != 'loss' else loss_name
             if self.key_metric_fn is None:
                 _validate(km, failmsg=(f"`key_metric = '{km}'` is not supported; "
                                        "set `key_metric_fn = func`."))
@@ -371,7 +397,10 @@ def _validate_traingen_configs(self):
 
         if self.val_datagen.shuffle_group_samples:
             raise ValueError("`val_datagen` cannot use `shuffle_group_"
-                             "samples` with `best_subset_size`")  # TODO why?
+                             "samples` with `best_subset_size`, as samples must "
+                             "remain in original batches (tracked by respective "
+                             '`set_num`s) for resulting "best subset" `set_num`s '
+                             "to map to actual samples.")
 
     def _validate_dynamic_predict_threshold_min_max():
         if self.dynamic_predict_threshold_min_max is None:

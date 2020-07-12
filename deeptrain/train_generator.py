@@ -5,9 +5,8 @@
    - Handle KeyboardInterrupt - with, finally?
    - examples/callbacks
    - examples/visuals
+   - examples/customs  # all customs
    - configurable error / warn levels (e.g. save fail)
-   - profile advanced.py validation w/ 'predict'
-   - check how properties (epoch) work in loadskip_list
    - check if 'adam' -> 'nadam' fails
 
    # todo later
@@ -46,10 +45,8 @@ from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.configs  import _TRAINGEN_CFG
 from .util._traingen_utils import TraingenUtils
 from .util.logging  import _log_init_state
-from .util.training import _get_api_metric_name
 from .util.misc     import pass_on_error, capture_args, argspec
 from .introspection import print_dead_weights, print_nan_weights
-from .              import metrics as metrics_fns
 from .callbacks     import TraingenCallback
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 from .backend import model_utils
@@ -99,20 +96,29 @@ class TrainGenerator(TraingenUtils):
         key_metric: str
             Name of metric to track for saving best model; will store in
             `key_metric_history`.
-            See :meth:`~deeptrain.util.saving._save_best_model`.
+            See :meth:`~deeptrain.util.saving._save_best_model.
         key_metric_fn: function / None
             Custom function to compute key metric; overrides `key_metric` if
             not None.
         val_metrics: list[str] / None
-            Names of metrics to track during validation. Is overridden by
-            model metrics (`model.compile(metrics=...)`)
-            if `'predict' not in `eval_fn.__name__`. If `'loss'` is not included,
-            will prepend.
+            Names of metrics to track during validation.
+
+                - If `'predict'` is not in `eval_fn.__name__`, is overridden by
+                  model metrics (`model.compile(metrics=...)`)
+                - If `'loss'` is not included, will prepend.
+                - If `'*'` is included, will insert model metrics at its
+                  position and pop `'*'`. Ex: `[*, 'f1_score']` ->
+                  `['loss', 'accuracy', 'f1_score']`.
         custom_metrics: dict[str: function]
             Name-function pairs of custom functions to use for gathering metrics.
             Functions must obey `(y_true, y_pred)` input signature for first two
             arguments. They may additionally supply `sample_weight` and
             `pred_threshold`, which will be detected and used automatically.
+
+                - Note: if using a custom metric in `model.compile(loss=tf_fn)`,
+                  name in `custom_metrics` must be function's code name, i.e.
+                  `{tf_fn.__name__: fn}` (where `fn` is e.g. numpy version).
+
         input_as_labels: bool
             Feed model input also to its output. Ex: autoencoders.
         max_is_best: bool
@@ -877,14 +883,14 @@ class TrainGenerator(TraingenUtils):
 
         if not hasattr(self, '_cb_alias'):
             self._cb_alias = {'train:iter':  'on_train_iter_end',
-                             'train:batch': 'on_train_batch_end',
-                             'train:epoch': 'on_train_epoch_end',
-                             'val:iter':    'on_val_iter_end',
-                             'val:batch':   'on_val_batch_end',
-                             'val:epoch':   'on_val_epoch_end',
-                             'val_end':     'on_val_end',
-                             'save':        'on_save',
-                             'load':        'on_load'}
+                              'train:batch': 'on_train_batch_end',
+                              'train:epoch': 'on_train_epoch_end',
+                              'val:iter':    'on_val_iter_end',
+                              'val:batch':   'on_val_batch_end',
+                              'val:epoch':   'on_val_epoch_end',
+                              'val_end':     'on_val_end',
+                              'save':        'on_save',
+                              'load':        'on_load'}
 
         for cb in self.callbacks:
             if isinstance(cb, TraingenCallback):
@@ -1087,20 +1093,8 @@ class TrainGenerator(TraingenUtils):
             for attribute in class_kwargs:
                 setattr(self, attribute, class_kwargs[attribute])
 
-        def _maybe_set_key_metric_fn():
-            if 'predict' in self._eval_fn_name and self.key_metric_fn is None:
-                if self.key_metric not in self.custom_metrics:
-                    km_name = _get_api_metric_name(self.key_metric,
-                                                   self.model.loss,
-                                                   self._alias_to_metric_name)
-                    # if None, will catch in `_validate_traingen_configs`
-                    self.key_metric_fn = getattr(metrics_fns, km_name, None)
-                else:
-                    self.key_metric_fn = self.custom_metrics[self.key_metric]
-
         _validate_kwarg_names(kwargs)
         _set_kwargs(kwargs)
-        _maybe_set_key_metric_fn()
         self._validate_traingen_configs()
 
     def _init_class_vars(self):
