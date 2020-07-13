@@ -4,13 +4,14 @@
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - examples/callbacks
-   - examples/visuals
-   - examples/customs  # all customs
+   - examples/introspection
+       - also show inspecting useful TrainGenerator & DataGenerator attrs
    - configurable error / warn levels (e.g. save fail)
    - check if 'adam' -> 'nadam' fails
 
    # todo later
    - MetaTrainer
+   - examples/visuals
 
    # todo maybe
    - DataGenerator: infer `batch_size`, default=None?

@@ -227,9 +227,8 @@ def _validate_traingen_configs(self):
 
             loss_name = model_utils.model_loss_name(self.model)
             if self.key_metric == 'loss' and loss_name in self.custom_metrics:
-                self.key_metric = model_utils.model_loss_name(self.model)
-
-            if self.key_metric not in self.custom_metrics:
+                self.key_metric_fn = self.custom_metrics[loss_name]
+            elif self.key_metric not in self.custom_metrics:
                 km_name = _get_api_metric_name(self.key_metric,
                                                self.model.loss,
                                                self._alias_to_metric_name)

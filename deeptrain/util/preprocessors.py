@@ -18,6 +18,7 @@ class Preprocessor(metaclass=ABCMeta):
         cls.batch_exhausted = False
         cls.slices_per_batch = None
         cls.slice_idx = None
+        cls.loadskip_list = []
         return object.__new__(cls)
 
     @abstractmethod
@@ -28,19 +29,19 @@ class Preprocessor(metaclass=ABCMeta):
         """
         pass
 
-    @abstractmethod
     def update_state(self):
-        """Required to implement; must set `batch_exhausted` and `batch_loaded`
-        attributes to True or False.
+        """Optional to implement; must involve setting `batch_exhausted` and
+        `batch_loaded` attributes to True or False.
         """
-        pass
+        self.reset_state()
 
     def reset_state(self):
         """Optional to implement. Can be used to reset attributes specific
         to the preprocessor.
         Is called within :meth:`DataGenerator.reset_state`.
         """
-        pass
+        self.batch_exhausted = True
+        self.batch_loaded = False
 
     def on_epoch_end(self, epoch):
         """Optional to implement. Can be used to do things at end of epoch.
@@ -80,8 +81,8 @@ class TimeseriesPreprocessor(Preprocessor):
 
     **Examples**:
 
-    Each window in `windows` is from calling :meth:`._next_window`; changing
-    `start` & `end` requires calling :meth:`.update_state`.
+    Each window in `windows` is from calling :meth:`_next_window`; changing
+    `start` & `end` requires calling :meth:`update_state`.
 
     >>> batch.shape == (32, 100, 4)
     ...
@@ -209,12 +210,3 @@ class GenericPreprocessor(Preprocessor):
     def process(self, batch, labels):
         """Return `batch` and `labels` as-is."""
         return batch, labels
-
-    def reset_state(self):
-        """Set `batch_exhausted = True`, `batch_loaded = False`."""
-        self.batch_exhausted = True
-        self.batch_loaded = False
-
-    def update_state(self):
-        """Call :meth:`.reset_state`."""
-        self.reset_state()
