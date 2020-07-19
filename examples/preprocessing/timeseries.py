@@ -34,8 +34,8 @@ if __name__ == '__main__':
     x_test,  y_test  = make_data(batch_shape, n_batches // 2)
 
     kw = dict(batch_size=save_batch_size, overwrite=overwrite)
-    data_to_hdf5(join(basedir, "train", "data.h5"),   data=x_train, **kw)
-    data_to_hdf5(join(basedir, "val",   "data.h5"),   data=x_test,  **kw)
+    data_to_hdf5(join(basedir, "train", "data.h5"), data=x_train, **kw)
+    data_to_hdf5(join(basedir, "val",   "data.h5"), data=x_test,  **kw)
 
     if labels_format == 'h5':
         data_to_hdf5(join(basedir, "train", "labels.h5"), data=y_train, **kw)

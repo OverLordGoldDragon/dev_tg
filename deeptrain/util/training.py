@@ -179,7 +179,7 @@ def _get_weighted_sample_weight(self, class_labels_all, val=False,
 
 def _set_predict_threshold(self, predict_threshold, for_current_iter=False):
     """Set `predict_threshold` and maybe `dynamic_predict_threshold`."""
-    if not for_current_iter:
+    if not for_current_iter and self.dynamic_predict_threshold is not None:
         self.dynamic_predict_threshold = predict_threshold
     self.predict_threshold = predict_threshold
 
@@ -201,10 +201,16 @@ def _get_val_history(self, for_current_iter=False):
                 self.val_temp_history.items()}
 
     def _find_and_set_predict_threshold():
+        if (self.dynamic_predict_threshold_min_max is None or
+            self.dynamic_predict_threshold is None):
+            search_min_max = (self.predict_threshold, self.predict_threshold)
+        else:
+            search_min_max = self.dynamic_predict_threshold_min_max
+
         pred_threshold = find_best_predict_threshold(
             labels_all_norm, preds_all_norm, self.key_metric_fn,
             search_interval=.01,
-            search_min_max=self.dynamic_predict_threshold_min_max)
+            search_min_max=search_min_max)
         self._set_predict_threshold(pred_threshold, for_current_iter)
 
     def _unpack_and_transform_data(for_current_iter):
@@ -227,8 +233,7 @@ def _get_val_history(self, for_current_iter=False):
     (labels_all_norm, preds_all_norm, sample_weight_all, class_labels_all
      ) = _unpack_and_transform_data(for_current_iter)
 
-    if (self.dynamic_predict_threshold_min_max is not None and
-        self.dynamic_predict_threshold is not None):
+    if self.dynamic_predict_threshold is not None:
         _find_and_set_predict_threshold()
 
     return self._compute_metrics(labels_all_norm, preds_all_norm,
@@ -309,8 +314,7 @@ def _get_best_subset_val_history(self):
     elif 'predict' in self._eval_fn_name:
         d = _unpack_and_transform_data()
         best_subset_idxs, pred_threshold = _find_best_subset_from_preds(d)
-        if (self.dynamic_predict_threshold_min_max is not None and
-            self.dynamic_predict_threshold is not None):
+        if self.dynamic_predict_threshold is not None:
             self._set_predict_threshold(pred_threshold)
     else:
         raise ValueError("unknown `eval_fn_name`: %s" % self._eval_fn_name)

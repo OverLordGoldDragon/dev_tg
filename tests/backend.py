@@ -330,6 +330,7 @@ class TraingenDummy():
         self.best_subset_size = None
         self.pred_weighted_slices_range = None
         self.predict_threshold = .5
+        self.dynamic_predict_threshold = .5
         self.dynamic_predict_threshold_min_max = None
         self.loss_weighted_slices_range = None
         self.pred_weighted_slices_range = None
@@ -365,5 +366,5 @@ class TraingenDummy():
 
 for name in ('_transform_eval_data', '_validate_data_shapes',
              '_validate_class_data_shapes', '_compute_metric', '_compute_metrics',
-             '_weighted_normalize_preds'):
+             '_set_predict_threshold', '_weighted_normalize_preds'):
     setattr(TraingenDummy, name, getattr(util.training, name))

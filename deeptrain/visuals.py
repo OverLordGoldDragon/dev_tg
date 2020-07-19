@@ -10,7 +10,8 @@ def binary_preds_per_iteration(_labels_cache, _preds_cache):
     """Plots binary preds vs. labels in a heatmap, separated by batches,
     grouped by slices.
 
-    To be used with sigmoid outputs (1 unit).
+    To be used with sigmoid outputs (1 unit). Both inputs are to be shaped
+    `(batches, slices, samples, *)`.
 
     Arguments:
         _labels_cache: list[np.ndarray]
@@ -21,26 +22,34 @@ def binary_preds_per_iteration(_labels_cache, _preds_cache):
             List of predictions cached during training/validation; see docs
             on `_labels_cache`.
     """
-    for batch_idx, label in enumerate(_labels_cache):
-        preds_per_batch = len(_preds_cache[batch_idx])
+    N = len(_labels_cache)
+    lc = np.asarray(_labels_cache)
+    pc = np.asarray(_preds_cache)
+    if lc.shape[-1] == 1:
+        lc = lc.squeeze(axis=-1)
+    if pc.shape[-1] == 1:
+        pc = pc.squeeze(axis=-1)
+    N, n, *_ = lc.shape
 
-        f, axes = plt.subplots(
-            preds_per_batch + 1, 1,
-            gridspec_kw={'height_ratios': [2] + [1]*preds_per_batch})
-        f.set_size_inches(14, 0.75)
+    fig, axes = plt.subplots(N, 1, figsize=(12, N * (n / 6) ** .5))
+    for ax in axes:
+        ax.set_axis_off()
 
-        label_2d = np.atleast_2d(np.asarray(label).T[:, 0])
-        axes[0].imshow(label_2d, cmap='bwr')
-        axes[0].set_axis_off()
-        axes[0].axis('tight')
+    # rows = batches
+    # arr_rows = rows of plotted arrays for each subplot
+    # arr_cols = columns of plotted arrays for each subplot
+    for l, p, ax in zip(lc, pc, axes.flat):
+        # show labels on top w/ double height for emphasis
+        l = np.vstack([l[:1], l[:1]])
+        # plot [labels, preds] stacked, (arr_rows, arr_cols) = (slices, samples)
+        lp = np.vstack([l, p])
 
-        for pred_idx, y_preds in enumerate(_preds_cache[batch_idx]):
-            preds_2d = np.atleast_2d(np.asarray(y_preds).T)
-            axes[pred_idx + 1].imshow(preds_2d, cmap='bwr', vmin=0, vmax=1)
-            axes[pred_idx + 1].set_axis_off()
-            axes[pred_idx + 1].axis('tight')
+        ax.imshow(lp, cmap='bwr')
+        ax.set_axis_off()
+        ax.axis('tight')
 
-        plt.show()
+    plt.subplots_adjust(bottom=0, top=1, left=0, right=1, wspace=0, hspace=.3)
+    plt.show()
 
 
 def binary_preds_distribution(_labels_cache, _preds_cache, pred_th):

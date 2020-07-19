@@ -78,7 +78,7 @@ class TraingenCallback():
         """Called by `TrainGenerator.__init__()`, passing in `self`
         (`TrainGenerator` instance).
         """
-        raise NotImplementedError
+        self.tg = traingen  # not required but is a likely default
 
     def on_train_iter_end(self, stage=None):
         """Called by `_on_iter_end`,
@@ -259,6 +259,9 @@ class RandomSeedSetter(TraingenCallback):
     def on_load(self, stage=None):
         self.set_seeds(increment=1)
 
+    def init_with_traingen(self, traingen=None):
+        pass  # don't need TrainGenerator
+
 
 class VizAE2D(TraingenCallback):
     """Image AutoEncoder reconstruction visualizer.
@@ -269,9 +272,6 @@ class VizAE2D(TraingenCallback):
     def __init__(self, n_images=8, save_images=False):
         self.n_images=n_images
         self.save_images=save_images
-
-    def init_with_traingen(self, traingen):
-        self.tg=traingen
 
     def on_val_end(self, stage=None):
         self.viz()

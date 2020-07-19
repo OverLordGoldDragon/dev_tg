@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-import inspect
 # ensure `tests` directory path is on top of Python's module search
-filedir = os.path.dirname(inspect.stack()[0][1])
-if sys.path[0] != filedir:
-    if filedir in sys.path:
-        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
-    sys.path.insert(0, filedir)
+filedir = os.path.dirname(__file__)
+sys.path.insert(0, filedir)
+while filedir in sys.path[1:]:
+    sys.path.pop(sys.path.index(filedir))  # avoid duplication
 
 import pytest
 
@@ -56,9 +54,6 @@ TRAINGEN_CFG = dict(
     best_models_dir=os.path.join(BASEDIR, 'tests', '_outputs', '_models'),
     best_subset_size=3,
     model_configs=MODEL_CFG,
-    callbacks={'val_end': [infer_train_hist_cb,
-                           binary_preds_per_iteration_cb,
-                           binary_preds_distribution_cb]},
 )
 
 CONFIGS = {'model': MODEL_CFG, 'datagen': DATAGEN_CFG,
@@ -103,15 +98,19 @@ def test_predict():
     C = deepcopy(CONFIGS)
     with tempdir(C['traingen']['logs_dir']), \
         tempdir(C['traingen']['best_models_dir']):
-        C['traingen'].update(dict(eval_fn='predict',
-                                  key_metric='f1_score',
-                                  val_metrics=('loss', 'tnr', 'tpr'),
-                                  plot_first_pane_max_vals=1,
-                                  metric_printskip_configs={'val': 'f1_score'},
-                                  dynamic_predict_threshold_min_max=(.35, .95),
-                                  class_weights={0: 1, 1: 5},
-                                  iter_verbosity=2,
-                                  ))
+        C['traingen'].update(dict(
+            eval_fn='predict',
+            key_metric='f1_score',
+            val_metrics=('loss', 'tnr', 'tpr'),
+            plot_first_pane_max_vals=1,
+            metric_printskip_configs={'val': 'f1_score'},
+            dynamic_predict_threshold_min_max=(.35, .95),
+            class_weights={0: 1, 1: 5},
+            iter_verbosity=2,
+            callbacks={'val_end': [infer_train_hist_cb,
+                                   binary_preds_per_iteration_cb,
+                                   binary_preds_distribution_cb]},
+        ))
         tg = init_session(C, model=model)
         tg.train()
         _test_load(tg, C)

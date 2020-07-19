@@ -15,7 +15,8 @@ except:
 
 def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
                  shuffle=False, compression='lzf', dtype=None,
-                 load_fn=None, overwrite=None, verbose=1):
+                 load_fn=None, oversample_remainder=True, batches_dim0=False,
+                 overwrite=None, verbose=1):
     """Convert data to hdf5-group (.h5) format, in `batch_size` sample sets.
 
     Arguments:
@@ -25,13 +26,25 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
             Number of samples (dim0 slices) to save per file.
         loaddir: str
             Absolute path to directory from which to load data.
+        data: np.ndarray / list[np.ndarray]
+            Shape: `(samples, *)` or `(batches, samples, *)` (must use
+            `batches_dim0=True`. With former, if `len(data) == 320` and
+            `batch_size == 32`, will make a 10-set .h5 file.
+        shuffle: bool
+            Whether to shuffle samples (dim0 slices).
         compression: str
             Compression type to use. kwarg to `h5py.File().create_dataset()`.
         dtype: str / np.dtype
             Savefile dtype; kwarg to `.create_dataset()`.
             Defaults to data's dtype.
         load_fn: function / callable
-            Used on supported paths [1]_ in `loaddir` to load data.
+            Used on supported paths (.npy) in `loaddir` to load data.
+        oversample_remainder: bool. Relevant only when passing `data`.
+            - True -> randomly draw (remainer - batch_size) samples to fill
+              incomplete batch.
+            - False -> drop remainder samples.
+        batches_dim0: bool
+            Assume shapes - True: `(batches, samples, *)`; False: `(samples, *)`.
         overwrite: bool / None
             If `savepath` file exists,
 
@@ -44,16 +57,10 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
 
     **Notes**:
 
-    - `data`, or loaded data, is assumed to have samples along dim 0, so
-      if `len(data) == 320` and `batch_size == 32`, will make a
-      10-set h5 file.
     - If supplying `loaddir` instead of `data`, will iteratively load files
-      with supported format [1]_. `len()` of loaded file must be an integer
+      with supported format (.npy). `len()` of loaded file must be an integer
       fraction multiple of `batch_size`, <= 1. So `batch_size == 32` and
       `len() == 16` works, but `len() == 48` or `len() == 24` doesn't.
-
-    .. [1] .npy
-
     """
     def _validate_args(savepath, loaddir, data, load_fn):
         def _validate_extensions(loaddir):
@@ -85,9 +92,22 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
 
         return savepath
 
+    def _process_remainder(remainder, data, oversample_remainder, batch_size):
+        action = "will" if oversample_remainder else "will not"
+        print(("{} remainder samples for `batch_size={}`; {} oversample"
+               ).format(int(remainder), batch_size, action))
+
+        if oversample_remainder:
+            to_oversample = batch_size - remainder
+            idxs = np.random.randint(0, len(data), to_oversample)
+            data = np.vstack([data, data[idxs]])
+        else:
+            data = data[:-remainder]
+        return data
+
     def _get_data_source(loaddir, data, batch_size, compression, shuffle):
-        source = data if data is not None else [
-            str(x) for x in Path(loaddir).iterdir() if not x.is_dir()]
+        source = (data if data is not None else
+                  [str(x) for x in Path(loaddir).iterdir() if not x.is_dir()])
         if shuffle:
             np.random.shuffle(source)
 
@@ -141,6 +161,15 @@ def data_to_hdf5(savepath, batch_size, loaddir=None, data=None,
         return set_num - 1
 
     savepath = _validate_args(savepath, loaddir, data, load_fn)
+
+    if not batches_dim0 and data is not None:
+        remainder = len(data) % batch_size
+        if remainder != 0:
+            data = _process_remainder(remainder, data, oversample_remainder,
+                                      batch_size)
+        n_batches = len(data) // batch_size
+        data = data.reshape(n_batches, batch_size, *data.shape[1:])
+
     source = _get_data_source(loaddir, data, batch_size, compression, shuffle)
 
     with h5py.File(savepath, mode='w', libver='latest') as hdf5_file:
@@ -210,8 +239,8 @@ def numpy_data_to_numpy_sets(data, labels, savedir=None, batch_size=32,
             Data to batch along `labels` & save.
         labels: np.ndarray
             Labels to batch along `data` and save.
-        savedir: str
-            Directory in which to save processed data.
+        savedir: str / None
+            Directory in which to save processed data. If None, won't save.
         batch_size: int
             Number of samples (dim0 slices) to form a 'set' with
         data_basename: str
@@ -230,6 +259,9 @@ def numpy_data_to_numpy_sets(data, labels, savedir=None, batch_size=32,
 
         verbose: bool
             Whether to print preprocessing progress.
+
+    Returns:
+        data, labels: processed `data` & `labels`.
     """
     def _process_remainder(remainder, data, labels, oversample_remainder,
                            batch_size):
@@ -241,12 +273,35 @@ def numpy_data_to_numpy_sets(data, labels, savedir=None, batch_size=32,
             to_oversample = batch_size - remainder
             idxs = np.random.randint(0, len(data), to_oversample)
             data = np.vstack([data, data[idxs]])
-            labels = labels if labels.ndim > 1 else np.expand_dims(labels, 1)
             labels = np.vstack([labels, labels[idxs]])
         else:
             data = data[:-remainder]
             labels = labels[:-remainder]
         return data, labels
+
+    def _save(data, labels, savedir, verbose):
+        labels_path = os.path.join(savedir, "labels.h5")
+        labels_hdf5 = h5py.File(labels_path, mode='w', libver='latest')
+
+        for set_num, (x, y) in enumerate(zip(data, labels)):
+            set_num = str(set_num + 1)
+            name = "{}__{}.npy".format(data_basename, set_num)
+            savepath = os.path.join(savedir, name)
+
+            _validate_savepath(savepath, overwrite)
+            np.save(savepath, x)
+
+            labels_hdf5.create_dataset(set_num, data=y, dtype=data.dtype)
+            if verbose:
+                print("[{}/{}] {}-sample batch {} processed & saved".format(
+                    set_num, len(data), batch_size, name))
+
+        labels_hdf5.close()
+        if verbose:
+            print("{} label sets saved to {}".format(len(data), labels_path))
+
+    if labels.ndim == 1:
+        labels = np.expand_dims(labels, 1)
 
     remainder = len(data) % batch_size
     if remainder != 0:
@@ -266,25 +321,9 @@ def numpy_data_to_numpy_sets(data, labels, savedir=None, batch_size=32,
     data = data.reshape(int(n_batches), batch_size, *data.shape[1:])
     labels = labels.reshape(int(n_batches), batch_size, *labels.shape[1:])
 
-    labels_path = os.path.join(savedir, "labels.h5")
-    labels_hdf5 = h5py.File(labels_path, mode='w', libver='latest')
-
-    for set_num, (x, y) in enumerate(zip(data, labels)):
-        set_num = str(set_num + 1)
-        name = "{}__{}.npy".format(data_basename, set_num)
-        savepath = os.path.join(savedir, name)
-
-        _validate_savepath(savepath, overwrite)
-        np.save(savepath, x)
-
-        labels_hdf5.create_dataset(set_num, data=y, dtype=data.dtype)
-        if verbose:
-            print("[{}/{}] {}-sample batch {} processed & saved".format(
-                set_num, len(data), batch_size, name))
-
-    labels_hdf5.close()
-    if verbose:
-        print("{} label sets saved to {}".format(len(data), labels_path))
+    if savedir is not None:
+        _save(data, labels, savedir, verbose)
+    return data, labels
 
 
 def numpy2D_to_csv(data, savepath=None, batch_size=None, columns=None,
@@ -293,7 +332,7 @@ def numpy2D_to_csv(data, savepath=None, batch_size=None, columns=None,
 
     Arguments:
         data: np.ndarray
-            Data to save.
+            Data to save, shaped `(batches, samples)`.
         savepath: str
             Path to where save to file.
         batch_size: int

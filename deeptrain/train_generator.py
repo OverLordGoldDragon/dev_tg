@@ -3,11 +3,11 @@
    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
-   - examples/callbacks
-   - examples/introspection
-       - also show inspecting useful TrainGenerator & DataGenerator attrs
+   - timeseries example
    - configurable error / warn levels (e.g. save fail)
    - check if 'adam' -> 'nadam' fails
+   - `is_interrupted` to check if call to `train` / `validate` was interrupted
+     and may resume with unfinished steps
 
    # todo later
    - MetaTrainer
@@ -125,6 +125,7 @@ class TrainGenerator(TraingenUtils):
         max_is_best: bool
             Whether to consider greater `key_metric` as better in saving best
             model. See :meth:`~deeptrain.util.saving._save_best_model`.
+            If None, defaults to False if `key_metric=='loss'`, else True.
         val_freq: None / dict[str: int], str in {'iter', 'batch', 'epoch', 'val'}
             How frequently to validate. `{'epoch': 1}` -> every epoch;
             `{'iter': 24}` -> every 24 train iterations. Only one key-value
@@ -273,8 +274,7 @@ class TrainGenerator(TraingenUtils):
         self.custom_metrics=custom_metrics or {}
         self.input_as_labels=input_as_labels
         if max_is_best is None:
-            value = False if self.key_metric == 'loss' else True
-            self.max_is_best = value
+            self.max_is_best = False if self.key_metric == 'loss' else True
         else:
             self.max_is_best = max_is_best
 
@@ -345,7 +345,7 @@ class TrainGenerator(TraingenUtils):
               without changing any attributes.
             - *Avoid*: during `_train_postiter_processing`, where `fit_fn` is
               applied and weights are updated - but metrics aren't stored, and
-              `_has_postiter_processed=False`, restarting the loop without
+              `_train_postiter_processed=False`, restarting the loop without
               recording progress.
             - Best bet is during :meth:`validate`, as `get_data` may be too brief.
         """
@@ -357,19 +357,19 @@ class TrainGenerator(TraingenUtils):
                         'batch_size': len(x), 'verbose': 0}
 
         while self.epoch < self.epochs:
-            if not self._has_trained:
-                if self._has_postiter_processed:
+            if not self._train_loop_done:
+                if self._train_postiter_processed:
                     x, y, sample_weight = self.get_data(val=False)
                     sw = sample_weight if self.class_weights else None
                     if self.iter_verbosity:
                         self._print_iter_progress()
                     ins = _get_inputs(x, y, sw)
                     self._metrics_cached = self.fit_fn(**ins)
-                    # `_metrics_cached` for interrupts
+                    # `_metrics_cached` in case of interrupt
 
-                self._has_postiter_processed = False
+                self._train_postiter_processed = False
                 self._train_postiter_processing(self._metrics_cached)
-                self._has_postiter_processed = True
+                self._train_postiter_processed = True
             else:
                 self.validate()
                 self.train()
@@ -409,12 +409,12 @@ class TrainGenerator(TraingenUtils):
 
         if restart:
             self.reset_validation()
-        print("\n\nValidating..." if not self._has_validated else
+        print("\n\nValidating..." if not self._val_loop_done else
               "\n\nFinishing post-val processing...")
 
-        while not self._has_validated:
+        while not self._val_loop_done:
             data = {}
-            if self._val_has_postiter_processed:
+            if self._val_postiter_processed:
                 x, self._y_true, self._val_sw = self.get_data(val=True)
                 sw = self._val_sw if self.val_class_weights else None
                 if self.iter_verbosity:
@@ -424,11 +424,11 @@ class TrainGenerator(TraingenUtils):
                 data['metrics'] = self.eval_fn(**ins)
                 data['batch_size'] = len(x)
 
-            self._val_has_postiter_processed = False
+            self._val_postiter_processed = False
             self._val_postiter_processing(record_progress, **data)
-            self._val_has_postiter_processed = True
+            self._val_postiter_processed = True
 
-        if self._has_validated:
+        if self._val_loop_done:
             self._on_val_end(record_progress, clear_cache)
 
     ###### MAIN METHOD HELPERS ################################################
@@ -445,7 +445,7 @@ class TrainGenerator(TraingenUtils):
             self._apply_callbacks(stage='train:iter')
 
         def _on_batch_end():
-            self._train_has_notified_of_new_batch = False
+            self._train_new_batch_notified = False
 
             self._batches_fit += 1
             self._train_x_ticks.append(self._batches_fit)
@@ -487,9 +487,9 @@ class TrainGenerator(TraingenUtils):
             _on_epoch_end()
 
         if _should_validate():
-            self._has_postiter_processed = True  # in case val is interrupted
-            self._has_trained = True
-            self._has_validated = False
+            self._train_postiter_processed = True  # in case val is interrupted
+            self._train_loop_done = True
+            self._val_loop_done = False
             self.validate()
 
     def _val_postiter_processing(self, record_progress=True, metrics=None,
@@ -537,7 +537,7 @@ class TrainGenerator(TraingenUtils):
                 self._print_val_progress()
             if update:
                 self._update_val_history()
-            self._val_has_notified_of_new_batch = False
+            self._val_new_batch_notified = False
 
             if self.reset_statefuls:
                 self.model.reset_states()
@@ -547,8 +547,8 @@ class TrainGenerator(TraingenUtils):
 
         def _on_epoch_end():
             self.val_epoch = self.val_datagen.on_epoch_end()
-            self._has_validated = True
             self._apply_callbacks(stage='val:epoch')
+            self._val_loop_done = True
 
         _on_iter_end(metrics, batch_size)
         if self.val_datagen.batch_exhausted:
@@ -568,8 +568,8 @@ class TrainGenerator(TraingenUtils):
             - Apply callbacks
             - Check model health
             - Validate `batch_size` (always)
-            - Reset validation flags: `_inferred_batch_size`, `_has_validated`,
-              `_has_trained` (always)
+            - Reset validation flags: `_inferred_batch_size`, `_val_loop_done`,
+              `_train_loop_done` (always)
         """
         def _record_progress():
             self._times_validated += 1
@@ -628,8 +628,8 @@ class TrainGenerator(TraingenUtils):
             self.check_health()
 
         self._inferred_batch_size = None  # reset
-        self._has_validated = False
-        self._has_trained = False
+        self._val_loop_done = False
+        self._train_loop_done = False
 
     def get_data(self, val=False):
         """Get train (`val=False`) or validation (`val=True`) data from
@@ -682,9 +682,9 @@ class TrainGenerator(TraingenUtils):
 
         if reset_val_flags:
             self._inferred_batch_size = None
-            self._has_validated = False
-            self._has_trained = False
-            self._val_has_postiter_processed = True
+            self._val_loop_done = False
+            self._train_loop_done = False
+            self._val_postiter_processed = True
 
     def reset_validation(self):
         """Used to restart validation (e.g. in case interrupted); calls
@@ -819,18 +819,18 @@ class TrainGenerator(TraingenUtils):
     def _print_iter_progress(self, val=False):
         """Called within :meth:`train` and :meth:`validate`."""
         if val:
-            if not self._val_has_notified_of_new_batch:
+            if not self._val_new_batch_notified:
                 pad = self._val_max_set_name_chars + 3
                 padded_num_txt = (self._val_set_name + "...").ljust(pad)
                 print(end="Validating set %s" % padded_num_txt)
-                self._val_has_notified_of_new_batch = True
+                self._val_new_batch_notified = True
             return
 
-        if not self._train_has_notified_of_new_batch:
+        if not self._train_new_batch_notified:
             pad = self._max_set_name_chars + 3
             padded_num_txt = (self._set_name + "...").ljust(pad)
             print(end="\nFitting set %s" % padded_num_txt)
-            self._train_has_notified_of_new_batch = True
+            self._train_new_batch_notified = True
         if self.iter_verbosity >= 2:
             print(end='.')
 
@@ -1116,12 +1116,12 @@ class TrainGenerator(TraingenUtils):
         self._batches_validated=0
         self._fit_iters=0
         self._val_iters=0
-        self._has_trained=False
-        self._has_validated=False
-        self._has_postiter_processed=True
-        self._val_has_postiter_processed=True
-        self._train_has_notified_of_new_batch=False
-        self._val_has_notified_of_new_batch=False
+        self._train_loop_done=False
+        self._val_loop_done=False
+        self._train_postiter_processed=True
+        self._val_postiter_processed=True
+        self._train_new_batch_notified=False
+        self._val_new_batch_notified=False
         self._inferred_batch_size=None
         self._save_from_on_val_end=False
 

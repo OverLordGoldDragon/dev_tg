@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-import inspect
 # ensure `tests` directory path is on top of Python's module search
-filedir = os.path.dirname(inspect.stack()[0][1])
-if sys.path[0] != filedir:
-    if filedir in sys.path:
-        sys.path.pop(sys.path.index(filedir))  # avoid dudplication
-    sys.path.insert(0, filedir)
+filedir = os.path.dirname(__file__)
+sys.path.insert(0, filedir)
+while filedir in sys.path[1:]:
+    sys.path.pop(sys.path.index(filedir))  # avoid duplication
 
 import pytest
 
@@ -77,7 +75,7 @@ def test_main(monkeypatch):
 
         tg = init_session(C, model=classifier)
         tg.train()
-        tg._has_trained = True
+        tg._train_loop_done = True
         tg.train()
 
         tg.plot_configs[0]['vhlines']['v'] = 'invalid_vlines'

@@ -38,6 +38,8 @@ class TraingenUtils():
     gradient_norm_over_dataset = introspection.gradient_norm_over_dataset
     gradient_sum_over_dataset  = introspection.gradient_sum_over_dataset
     _gather_over_dataset       = introspection._gather_over_dataset
+    interrupt_status           = introspection.interrupt_status
+    info                       = introspection.info
 
     _make_plot_configs_from_metrics = misc._make_plot_configs_from_metrics
     _validate_traingen_configs      = misc._validate_traingen_configs

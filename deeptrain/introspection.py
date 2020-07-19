@@ -141,7 +141,7 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
 
     def _print_results(grad_norms, batches_processed, iters_processed, val):
         dg_name = 'val_datagen' if val else 'datagen'
-        print(("\nGRADIENT L2-NORM (AVG, MAX) = ({:.2f}, {:.2f}), computed over "
+        print(("\nGRADIENT L2-NORM (AVG, MAX) = ({:.3f}, {:.3f}), computed over "
         	   "{} batches, {} {} updates").format(
         		   grad_norms.mean(), grad_norms.max(), batches_processed,
         		   iters_processed, dg_name))
@@ -473,3 +473,92 @@ def _validate_sample_weight(model, sample_weight):
               "`train_on_batch` w/ `sample_weight`")
         return None
     return sample_weight
+
+
+def interrupt_status(self) -> (bool, bool):
+    """Prints whether `TrainGenerator` was interrupted (e.g. `KeyboardInterrupt`,
+    or via exception) during :meth:`train` and :meth:`validate`. Returns
+    bools (True for interrupted, else False) for each, as (train, val).
+
+    Not foolproof; user can set flags manually or via callbacks. For further
+    assurance, check `temp_history`, `val_temp_history`, and cache attributes
+    (e.g. `_preds_cache`) which are cleared at end of :meth:`validate` by default;
+    this method checks only flags: `_train_loop_done`, `train_postiter_processed`,
+    `_val_loop_done`, `_val_postiter_processed`.
+    """
+    def _train_status():
+        trained = True
+        if not self._train_postiter_processed:
+            trained = False
+            if not self._train_loop_done:
+                print("Incomplete or not called `_train_postiter_processing()` "
+                      "within `train()`.")
+            else:
+                print("Improbable state; `_train_postiter_processed=True` is set "
+                      "right before (and only before) `_train_loop_done=True`, "
+                      "yet former is False.")
+        return trained
+
+    def _val_status():
+        validated = True
+        if self._val_loop_done:
+            validated = False
+            if not self._train_loop_done:
+                print("NOTE: validating with `_train_loop_done==False`; OK if "
+                      "`validate()` was called manually, else something went "
+                      "wrong.")
+            if self._val_postiter_processed:
+                print("Incomplete or not called `_on_val_end()` within "
+                      "`validate()`.")
+            else:
+                print("Improbable state; `_val_loop_done=True` is immediately "
+                      "followed by `_val_postiter_processed=True`, yet latter is "
+                      "False. Possibly inappropriate attribute setting by "
+                      "callbacks.")
+        elif not self._val_postiter_processed:
+            validated = False
+            print("Interrupted during validation loop within `validate()`; "
+                  "incomplete or not called `_val_postiter_processing()`.")
+        return validated
+
+    trained = _train_status()
+    validated = _val_status()
+
+    if trained and validated:
+        print("No interrupts detected.")
+    elif trained:
+        print("Interrupted: train[no], validation[yes].")
+    elif validated:
+        print("Interrupted: train[yes], validation[no].")
+    else:
+        print("Both train and validation were interrupted.")
+
+    flags = ('_train_loop_done', '_train_postiter_processed',
+             '_val_loop_done', '_val_postiter_processed')
+    print(("\nFlags checked:" + "\n\t{} = {}" * len(flags)).format(
+        *[x for f in flags for x in (f.ljust(max(map(len, flags))),
+                                     getattr(self, f))]))
+    return (not trained, not validated)
+
+
+def info(self):
+    """Prints various useful TrainGenerator & DataGenerator attributes,
+    and interrupt status."""
+    print("Epochs: %s/%s" % (self.epoch, self.epochs))
+    train_total = len(self.datagen.set_nums_original)
+    val_total   = len(self.val_datagen.set_nums_original)
+    print("Train batches fit: %s/%s (in current epoch)\n"
+          % (train_total - len(self.datagen.set_nums_to_process), train_total) +
+          "Val   batches fit: %s/%s (in current validation)"
+          % (val_total - len(self.val_datagen.set_nums_to_process), val_total)
+          )
+    print('-' * 80)
+
+    print(("Best model directory: %s\n" % self.best_models_dir +
+           "Checkpoint directory: %s\n" % self.logdir +
+           "Load path: %s\n"            % self.loadpath +
+           "Model full name: %s"        % self.model_name
+           ))
+    print('-' * 80)
+
+    self.interrupt_status()

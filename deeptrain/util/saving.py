@@ -281,8 +281,8 @@ def save(self, savepath=None):
     if self._save_from_on_val_end:
         # mark end of validation so loaded model won't repeat _on_val_end
         self._inferred_batch_size = None
-        self._has_validated = False
-        self._has_trained = False
+        self._val_loop_done = False
+        self._train_loop_done = False
         self._save_from_on_val_end = False
 
     skiplist = self.saveskip_list + ['model']  # do not pickle model
