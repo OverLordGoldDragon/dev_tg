@@ -299,6 +299,8 @@ class ModelDummy():
         self.output_shape = (8, 1)
         self.input_shape = (8, 16, 2)
 
+        self._compile_metrics = None
+
     def _standardize_user_data(self, *args, **kwargs):
         pass
 
@@ -335,19 +337,37 @@ class TraingenDummy():
         self.loss_weighted_slices_range = None
         self.pred_weighted_slices_range = None
 
+        self.train_metrics = []
         self.val_metrics = []
         self._sw_cache = []
-        self.custom_metrics = []
+        self.custom_metrics = {}
 
         self.logs_dir = os.path.join(BASEDIR, 'tests', '_outputs', '_logs')
         self.best_models_dir = os.path.join(BASEDIR, 'tests', '_outputs',
                                             '_models')
         self.model_configs = None
-        self.model_name_configs = None
+        self.model_name_configs = {}
         self.new_model_num = False
         self.model_base_name = 'M'
         self.name_process_key_fn = util.configs.NAME_PROCESS_KEY_FN
         self.alias_to_metric = util._default_configs._DEFAULT_ALIAS_TO_METRIC
+
+        self.optimizer_save_configs = None
+        self.optimizer_load_configs = None
+        self.metric_printskip_configs = {}
+        self.model_save_kw = None
+        self.model_save_weights_kw = None
+        self.val_freq = {'epoch': 1}
+        self.plot_history_freq = {'epoch': 1}
+        self.unique_checkpoint_freq = {'epoch': 1}
+        self.temp_checkpoint_freq = {'epoch': 1}
+        self.callbacks = {}
+
+        self.input_as_labels = False
+        self.loadskip_list = None
+        self.saveskip_list = None
+        self.plot_configs = None
+        self.plot_first_pane_max_vals = 2
 
     def set_shapes(self, batch_size, label_dim):
         self.batch_size = batch_size

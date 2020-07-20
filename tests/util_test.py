@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-# ensure `tests` directory path is on top of Python's module search
+from pathlib import Path
+# ensure `tests` & package directory paths are on top of Python's module search
 filedir = os.path.dirname(__file__)
+sys.path.insert(0, str(Path(filedir).parent))
 sys.path.insert(0, filedir)
 while filedir in sys.path[1:]:
     sys.path.pop(sys.path.index(filedir))  # avoid duplication
@@ -24,10 +26,10 @@ from deeptrain.util import logging
 from deeptrain.util import training
 from deeptrain.util import configs
 from deeptrain.util import _default_configs
-from deeptrain.util.misc import pass_on_error
+from deeptrain.util.misc import pass_on_error, _validate_traingen_configs
 from deeptrain import metrics
 from deeptrain import preprocessing
-from tests import _methods_dummy
+from tests import _methods_dummy  # <- need package directory on top for this
 
 
 tests_done = {}
@@ -302,6 +304,64 @@ def test_preprocessing(monkeypatch):
 
     _test_numpy2D_to_csv(datadir)
     shutil.rmtree(datadir)
+
+
+@notify(tests_done)
+def test_validate_traingen_configs():
+    def _validate_key_metric_fn(tg):
+        tg.custom_metrics = 1
+        tg.key_metric_fn = None
+        tg._eval_fn_name = 'predict'
+        pass_on_error(_validate_traingen_configs, tg)
+
+        tg.key_metric_fn = 1
+        tg._eval_fn_name = 'evaluate'
+        pass_on_error(_validate_traingen_configs, tg)
+
+    def _validate_metrics(tg):
+        tg.val_metrics = ['acc', 'loss']
+        pass_on_error(_validate_traingen_configs, tg)
+
+        tg.key_metric_fn = None
+        tg.custom_metrics = {}
+        tg._eval_fn_name = 'predict'
+        pass_on_error(_validate_traingen_configs, tg)
+
+    def _validate_best_subset_size(tg):
+        tg.best_subset_size = 'a'
+        pass_on_error(_validate_traingen_configs, tg)
+
+        tg.best_subset_size = 0
+        pass_on_error(_validate_traingen_configs, tg)
+
+    def _validate_dynamic_predict_threshold_min_max(tg):
+        tg.val_metrics = ['loss']
+        tg.key_metric = 'loss'
+        tg.key_metric_fn = None
+        tg.dynamic_predict_threshold_min_max = (.3, .8)
+        pass_on_error(_validate_traingen_configs, tg)
+
+    def _validate_or_make_plot_configs(tg):
+        tg.plot_configs = {'1': {}}
+        pass_on_error(_validate_traingen_configs, tg)
+
+    def _validate_model_save_kw(tg):
+        tg.model_save_kw = None
+        tg.model_save_weights_kw = None
+        pass_on_error(_validate_traingen_configs, tg)
+
+    def _validate_freq_configs(tg):
+        tg.val_freq = 1
+        pass_on_error(_validate_traingen_configs, tg)
+
+        tg.val_freq = {'epoch': 1, 'batch': 2}
+        pass_on_error(_validate_traingen_configs, tg)
+
+    loc_names = list(locals())
+    for name in loc_names:
+        if name.startswith('_validate_'):
+            tg = TraingenDummy()
+            locals()[name](tg)
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

@@ -26,7 +26,7 @@ del CONFIGS['traingen']['best_models_dir']  # unused
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
-                         model=model, model_fn=make_autoencoder)
+                          model=model, model_fn=make_autoencoder)
 
 _tg = init_session(CONFIGS)  # save time on redundant re-init's
 _tg.train()
@@ -80,8 +80,29 @@ def test_grads_fn():
 
 
 @notify(tests_done)
-def test_info():
+def test_info_and_interrupt_status():
     _tg.info()
+
+    _tg._train_postiter_processed = False
+    _tg._train_loop_done = True
+    _tg.interrupt_status()
+
+    _tg._train_loop_done = False
+    _tg.interrupt_status()
+
+    _tg._val_loop_done = True
+    _tg._train_loop_done = False
+    _tg.interrupt_status()
+
+    _tg._train_loop_done = True
+    _tg._val_postiter_processed = True
+    _tg.interrupt_status()
+
+    _tg._val_postiter_processed = False
+    _tg.interrupt_status()
+
+    _tg._val_loop_done = False
+    _tg.interrupt_status()
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

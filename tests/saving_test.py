@@ -110,6 +110,38 @@ def _validate_save_load(tg, C):
 
 
 @notify(tests_done)
+def test_warnings_and_exceptions():
+    def _test_get_optimizer_state():
+        C = deepcopy(CONFIGS)
+        with tempdir(C['traingen']['logs_dir']), \
+            tempdir(C['traingen']['best_models_dir']):
+            tg = init_session(C, model=classifier)
+
+            tg.optimizer_save_configs = {'exclude': ['updates']}
+            tg._get_optimizer_state()
+
+            tg.optimizer_save_configs = {'include': ['updates']}
+            tg._get_optimizer_state()
+
+    def _test_load_optimizer_state():
+        C = deepcopy(CONFIGS)
+        with tempdir(C['traingen']['logs_dir']), \
+            tempdir(C['traingen']['best_models_dir']):
+            tg = init_session(C, model=classifier)
+
+            tg.optimizer_state = {}
+            tg.optimizer_load_configs = {'exclude': ['updates']}
+            tg._load_optimizer_state()
+
+            tg.optimizer_state = {}
+            tg.optimizer_load_configs = {'include': ['updates']}
+            tg._load_optimizer_state()
+
+    _test_get_optimizer_state()
+    _test_load_optimizer_state()
+
+
+@notify(tests_done)
 def test_resumer_session_restart():
     """Ensures TrainGenerator can work with `model` recompiled on-the-fly,
     and load correctly from __init__.

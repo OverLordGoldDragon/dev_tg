@@ -17,6 +17,7 @@ from backend import BASEDIR, tempdir, notify, make_classifier
 from backend import _init_session, _do_test_load, _get_test_names
 from backend import CL_CONFIGS
 from see_rnn import get_weights, features_2D
+from deeptrain.util.misc import pass_on_error
 from deeptrain.callbacks import TraingenCallback, TraingenLogger
 from deeptrain.callbacks import RandomSeedSetter
 from deeptrain.callbacks import make_layer_hists_cb
@@ -123,7 +124,7 @@ def test_main():
         tempdir(C['traingen']['best_models_dir']), \
             tempdir(logger_savedir):
         callbacks = [_make_logger_cb(), _make_2Dviz_cb(), *layer_hists_cbs,
-                     seed_setter]
+                      seed_setter]
         C['traingen']['callbacks'] = callbacks
 
         tg = init_session(C)
@@ -157,6 +158,29 @@ def test_traingen_logger():
         C['traingen']['callbacks'] = callbacks
         tg = init_session(C)
         tg.train()
+
+
+@notify(tests_done)
+def test_random_seed_setter():
+    RandomSeedSetter(seeds=1)
+    RandomSeedSetter({'random': 1, 'numpy': 2, 'tf-graph': 3, 'tf-global': 4})
+    pass_on_error(RandomSeedSetter, {'random': 1})
+    pass_on_error(RandomSeedSetter, seeds=1.)
+
+    rss = RandomSeedSetter(freq={
+        'train:iter': 1, 'train:batch': 1, 'train:epoch': 1,
+        'val:iter': 1,   'val:batch': 1,   'val:epoch': 1,
+        'val_end': 1, 'save': 1, 'load': 1})
+    rss.on_train_iter_end('train:iter')
+    rss.on_train_batch_end('train:batch')
+    rss.on_train_epoch_end('train:epoch')
+    rss.on_val_iter_end('val:iter')
+    rss.on_val_batch_end('val:batch')
+    rss.on_val_epoch_end('val:epoch')
+    rss.on_val_end('val_end')
+    rss.on_save('save')
+    rss.on_load('load')
+    assert all(s == 9 for s in rss.seeds.values())
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

@@ -157,24 +157,29 @@ class RandomSeedSetter(TraingenCallback):
     """
     def __init__(self, seeds=None, freq={'train:epoch': 2}):
         super().__init__()
-        names = ('random', 'numpy', 'tf-graph', 'tf-global')
+        names = ['random', 'numpy', 'tf-graph', 'tf-global']
 
         if seeds is None:
             self.seeds = {name: 0 for name in names}
         elif isinstance(seeds, int):
             self.seeds = {name: seeds for name in names}
-        elif not isinstance(seeds, dict):
-            raise ValueError("`seeds` must be int or dict, got %s" % seeds)
-        else:
+        elif isinstance(seeds, dict):
+            if not all(n in seeds for n in names):
+                raise ValueError("required keys missing; got %s, need %s" %
+                                 (list(seeds), names))
             self.seeds = seeds
+        else:
+            raise ValueError("`seeds` must be int or dict, got %s" % seeds)
         self.freq = freq
+        self._seeds_orig = self.seeds.copy()
 
     def set_seeds(self, increment=0, seeds=None, reset_graph=False, verbose=1):
-        """Sets seeds. `increment` will add to each of `self.seeds`. If `seeds`
-        is not None, will override `increment`.
+        """Sets seeds. `increment` will add to each of `self.seeds` and update it.
+        If `seeds` is not None, will override `increment`.
         """
         if seeds is None:
             seeds = {k: v + increment for k, v in self.seeds.items()}
+            self.seeds = seeds
         self._set_seeds(seeds, reset_graph, verbose)
 
     @classmethod

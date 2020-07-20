@@ -322,7 +322,7 @@ def _get_optimizer_state(self):
                     attrs.append(attr)
                 elif attr in vars(opt):
                     print(WARN, ("'{}' optimizer attribute cannot be "
-                                 "pickled; skipping"))
+                                 "pickled; skipping").format(attr))
                 else:
                     print(WARN, ("'{}' attribute not found in optimizer; "
                                  "skipping").format(attr))
@@ -543,8 +543,8 @@ def _load_optimizer_state(self):
             setattr(opt, name, value)
 
     _init_optimizer(self.model, self.class_weights,
-                          input_as_labels=self.input_as_labels,
-                          alias_to_metric_name_fn=self._alias_to_metric_name)
+                    input_as_labels=self.input_as_labels,
+                    alias_to_metric_name_fn=self._alias_to_metric_name)
     if 'weights' in self.optimizer_state:
         self.model.optimizer.set_weights(self.optimizer_state['weights'])
 

@@ -281,7 +281,7 @@ def _validate_traingen_configs(self):
 
         if ('evaluate' in self._eval_fn_name and
             self.key_metric not in model_metrics):
-            raise ValueError(f"key_metric {self.key_metric} must be in one of"
+            raise ValueError(f"key_metric {self.key_metric} must be in one of "
                              "metrics returned by model, when using 'evaluate' "
                              "in `eval_fn.__name__`. (model returns: %s)"
                              % ', '.join(model_metrics))
@@ -309,11 +309,6 @@ def _validate_traingen_configs(self):
                 "'{0}' loss is not supported w/ `eval_fn_name = 'predict'`; "
                 "add a function to `custom_metrics` as '{0}': func, or set "
                 "`eval_fn_name = 'evaluate'`.").format(loss_name))
-
-            km = self.key_metric if self.key_metric != 'loss' else loss_name
-            if self.key_metric_fn is None:
-                _validate(km, failmsg=(f"`key_metric = '{km}'` is not supported; "
-                                       "set `key_metric_fn = func`."))
 
         if self.max_is_best and self.key_metric == 'loss':
             print(NOTE + "`max_is_best = True` and `key_metric = 'loss'`"
@@ -404,10 +399,6 @@ def _validate_traingen_configs(self):
     def _validate_dynamic_predict_threshold_min_max():
         if self.dynamic_predict_threshold_min_max is None:
             return
-        if self.key_metric_fn is None:
-            raise ValueError("`key_metric_fn=None` (possibly per 'predict' "
-                             "not in `eval_fn_name`); cannot use "
-                             "`dynamic_predict_threshold_min_max`")
         elif 'pred_threshold' not in argspec(self.key_metric_fn):
             raise ValueError("`pred_threshold` parameter missing from "
                              "`key_metric_fn`; cannot use "
@@ -423,10 +414,6 @@ def _validate_traingen_configs(self):
                                       ).format(', '.join(required)))
         else:
             self.plot_configs = _make_plot_configs_from_metrics(self)
-        if not all(('metrics' in cfg and 'x_ticks' in cfg)
-                   for cfg in self.plot_configs):
-            raise ValueError("all dicts in `plot_configs` must include "
-                             "'metrics', 'x_ticks'")
 
     def _validate_metric_printskip_configs():
         for name, cfg in self.metric_printskip_configs.items():
@@ -483,8 +470,8 @@ def _validate_traingen_configs(self):
                     kw.pop('save_format', None)
                 else:
                     # don't raise on 'h5' since it still yields desired behavior
-                    raise ValueError(f"`keras` does not support "
-                                     "`save_format` kwarg")
+                    raise ValueError("`keras` does not support `save_format` "
+                                     "kwarg")
 
         if self.model_save_kw is None:
             self.model_save_kw = {'include_optimizer': True}
@@ -506,7 +493,7 @@ def _validate_traingen_configs(self):
                 raise TypeError(f"{name} must be dict or None (got: {attr})")
             if isinstance(attr, dict) and len(attr) > 1:
                 raise ValueError(f"{name} supports up to one key-value pair "
-                                 "(got: {attr})")
+                                 f"(got: {attr})")
 
     def _validate_model_name_configs():
         if self.model_name_configs.get('best_key_metric', None) is None:
