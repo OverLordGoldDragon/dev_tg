@@ -97,7 +97,7 @@ class TrainGenerator(TraingenUtils):
         key_metric: str
             Name of metric to track for saving best model; will store in
             `key_metric_history`.
-            See :meth:`~deeptrain.util.saving._save_best_model.
+            See :meth:`~deeptrain.util.saving._save_best_model`.
         key_metric_fn: function / None
             Custom function to compute key metric; overrides `key_metric` if
             not None.

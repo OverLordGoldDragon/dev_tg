@@ -61,6 +61,7 @@ def compute_gradient_norm(self, input_data, labels, sample_weight=None,
     if exceeding. These L2 norms can be obtained using
     `norm_fn=(np.sqrt, np.square)` with `scope == 'local'` and `mode='weights'`.
     See:
+
         - `tensorflow.python.keras.optimizer_v2.optimizer_v2._clip_gradients`
         - `keras.optimizers.clip_norm`
         - `tensorflow.python.ops.clip_ops.clip_by_norm`

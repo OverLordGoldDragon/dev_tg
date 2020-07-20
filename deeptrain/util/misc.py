@@ -69,7 +69,7 @@ def get_module_methods(module):
 
 def capture_args(fn):
     """Capture bound method arguments without changing its input signature.
-    Method must have a **kwargs to append captured arguments to.
+    Method must have a `**kwargs` to append captured arguments to.
 
     Non-literal types and objects will be converted to their string representation
     (or `__qualname__` or `__name__` if they possess it).

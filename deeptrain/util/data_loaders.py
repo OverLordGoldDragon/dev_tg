@@ -20,7 +20,7 @@ class DataLoader():
             (`labels_path` if `path == data_path`, and vice versa), then uses
             Dataset mode of operation (see below) - else directory.
         loader: str / function / None
-            Name of builtin function, or a custom function, with input
+            Name of builtin function, or a custom function with input
             signature `(self, set_num)`. Loads data from directory, or
             dataset file if `_is_dataset`. If None, defaults to a builtin
             as determined by :meth:`load_fn` setter.
@@ -71,7 +71,7 @@ class DataLoader():
 
     def __init__(self, path, loader, dtype=None, batch_shape=None, base_name=None,
                  ext=None, filepaths=None):
-        self._validate_args(path, filepaths)
+        filepaths = self._validate_args(path, filepaths)
         self.path=path
         self.dtype=dtype
         self.batch_shape=batch_shape
@@ -115,7 +115,7 @@ class DataLoader():
                                       "`loader = 'numpy-lz4f'`")
                 if self.batch_shape is None:
                     raise ValueError("'numpy-lz4f' loader requires "
-                                     f"`batch_shape` attribute set")
+                                     "`batch_shape` attribute set")
 
         supported = DataLoader._BUILTINS
         if isinstance(loader, LambdaType):  # custom
@@ -150,7 +150,7 @@ class DataLoader():
     def numpy_loader(self, set_num):
         """For numpy arrays (.npy)."""
         if self._is_dataset:
-            return np.load(self.path)[set_num]
+            return np.load(self.path)[int(set_num)]
         return np.load(self._path(set_num))
 
     def hdf5_loader(self, set_num):
@@ -158,9 +158,10 @@ class DataLoader():
         in :class:`DataGenerator` must contain more than one non-labels '.h5' file
         to default to this loader.
         """
-        with h5py.File(self._path(set_num), 'r') as hdf5_file:
-            if self._is_dataset:
+        if self._is_dataset:
+            with h5py.File(self.path, 'r') as hdf5_file:
                 return hdf5_file[str(set_num)][:]
+        with h5py.File(self._path(set_num), 'r') as hdf5_file:
             a_key = list(hdf5_file.keys())[0]  # only one should be present
             return hdf5_file[a_key][:]
 
@@ -224,7 +225,7 @@ class DataLoader():
             elif name.startswith('csv'):
                 return list(pd.read_csv(self.path).keys())
             else:
-                raise Exception("unknown load_fn: %" % self.load_fn)
+                raise Exception("unknown load_fn: %s" % self.load_fn)
 
         if self._is_dataset:
             return _from_dataset()
@@ -233,6 +234,12 @@ class DataLoader():
     def _validate_args(self, path, filepaths):
         if not (path is None or os.path.isfile(path) or os.path.isdir(path)):
             raise ValueError("`path` must be a file, a directory, or None")
-        if not all(os.path.isfile(p) for p in filepaths):
+        if filepaths is None:
+            if not os.path.isfile(path):
+                raise Exception("if `filepaths` is not passed in, `path` must be "
+                                "path to file to set `filepaths` to")
+            filepaths = [path]
+        elif not all(os.path.isfile(p) for p in filepaths):
             raise Exception("all entries in `filepaths` must be paths to "
                             "files; got:\n%s" % '\n'.join(filepaths))
+        return filepaths

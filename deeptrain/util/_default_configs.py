@@ -336,11 +336,11 @@ Parameters:
         best validation performance, out of all validation batches (e.g. 5 of 10).
         Useful for model ensembling in specializing member models on different
         parts of data.
-        see :meth:`~deeptrain.util.training._get_best_subset_val_history`.
+        See :meth:`~deeptrain.util.training._get_best_subset_val_history`.
 
             - If not None, `val_datagen` cannot have `shuffle_group_samples`
-              attribute set, since samples must remain in original batches (
-              tracked by respective `set_num`s) for resulting "best subset"
+              attribute set, since samples must remain in original batches
+              (tracked by respective `set_num`s) for resulting "best subset"
               `set_num`s to map to actual samples.
 
     check_model_health: bool

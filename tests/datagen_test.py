@@ -18,6 +18,7 @@ from backend import BASEDIR, tempdir, notify, _get_test_names
 from deeptrain.util.misc import pass_on_error
 from deeptrain.util.algorithms import ordered_shuffle
 from deeptrain.util import TimeseriesPreprocessor
+from deeptrain.util.data_loaders import DataLoader
 from deeptrain import DataGenerator
 
 
@@ -125,7 +126,7 @@ def test_preprocessors():
             pp.start_increment = 5
             # shouldn't be able to set with start_increments = None
             assert False, ("shouldn't be able to set `start_increment`"
-                           "with `start_increments == None`")
+                            "with `start_increments == None`")
         except ValueError:
             pass
 
@@ -199,6 +200,89 @@ def test_infer_info():
 
     _test_empty_data_path()
     _test_no_supported_file_ext()
+
+
+@notify(tests_done)
+def test_warnings_and_exceptions():
+    def _test_init():
+        C = deepcopy(DATAGEN_CFG)
+        C['superbatch_set_nums'] = 'all'
+        C['superbatch_path'] = 'x'
+        pass_on_error(DataGenerator, **C)
+
+        C = deepcopy(DATAGEN_CFG)
+        C['labels_path'] = 1
+        pass_on_error(DataGenerator, **C)
+
+        C['data_path'] = 1
+        pass_on_error(DataGenerator, **C)
+
+    def _test_misc():
+        C = deepcopy(DATAGEN_CFG)
+        dg = DataGenerator(**C)
+        dg.superbatch = {'1': 1, '2': 2}
+        dg.superbatch_set_nums = ['3']
+        pass_on_error(dg._get_next_batch, set_num='3', warn=True)
+
+        dg.all_labels = {}
+        pass_on_error(dg._get_next_labels, set_num='3')
+
+        pass_on_error(setattr, dg, 'load_data', 1)
+        pass_on_error(setattr, dg, 'load_labels', 1)
+
+        with tempdir() as dirpath:
+            path = os.path.join(dirpath, "arr.npy")
+            np.save(path, np.array([1]))
+            C = deepcopy(DATAGEN_CFG)
+            C['labels_path'] = None
+            C['data_path'] = path
+            pass_on_error(DataGenerator, **C)
+
+    def _test_make_group_batch_and_labels():
+        C = deepcopy(DATAGEN_CFG)
+        dg = DataGenerator(**C)
+
+        dg.batch = np.random.randn(128, 10)
+        dg.labels = np.random.randn(129, 10)
+        pass_on_error(dg._make_group_batch_and_labels, n_batches=2)
+
+        dg.shuffle_group_samples = True
+        dg.labels = dg.batch.copy()
+        dg._make_group_batch_and_labels(n_batches=2)
+
+        dg.labels_path = None
+        dg._make_group_batch_and_labels(n_batches=2)
+
+        dg.shuffle_group_batches = True
+        dg.shuffle_group_samples = False
+        dg._make_group_batch_and_labels(n_batches=2)
+
+    def _test_infer_and_set_info():
+        C = deepcopy(DATAGEN_CFG)
+        with tempdir() as dirpath:
+            path = os.path.join(dirpath, "arr.npy")
+            np.save(path, np.array([1]))
+            C['labels_path'] = None
+            C['data_loader'] = DataLoader(path, loader='numpy')
+            DataGenerator(**C)
+
+            C['labels_loader'] = DataLoader(path, loader='numpy')
+            DataGenerator(**C)
+
+        C['data_loader'] = DataGenerator
+        pass_on_error(DataGenerator, **C)
+
+        C['labels_loader'] = None
+        C['data_loader'] = DataLoader
+        DataGenerator(**C)
+
+        C['labels_loader'] = DataGenerator
+        pass_on_error(DataGenerator, **C)
+
+    _test_init()
+    _test_misc()
+    _test_make_group_batch_and_labels()
+    _test_infer_and_set_info()
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

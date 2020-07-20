@@ -90,10 +90,10 @@ def find_best_subset(labels_all, preds_all, metric_fn, search_interval=.01,
 
     Arguments:
         labels_all: list[np.ndarray]
-            Labels in (batches, samples, *) format, as arranged within
-            :module:`deeptrain.util.training`.
+            Labels in `(batches, samples, *)` format, as arranged within
+            :mod:`deeptrain.util.training`.
         preds_all: list[np.ndarray]
-            Labels in (batches, samples, *) format, same as `labels_all`.
+            Labels in `(batches, samples, *)` format, same as `labels_all`.
         metric_fn: function
             Metric function with input signature
             `(labels, preds, predict_threshold)`.

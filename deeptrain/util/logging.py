@@ -290,6 +290,7 @@ def get_unique_model_name(self, set_model_num=True):
     is a description of the default function,
     :func:`~deeptrain.util._default_configs._DEFAULT_NAME_PROCESS_KEY_FN`,
     but custom implementations are supported:
+
         - `key`: name of attribute (and its value) to encode. Can get attribute
           of `TrainGenerator` object via `'.'`, e.g. `'datagen.batch_size'`.
         - `alias`: replaces `key` if not None

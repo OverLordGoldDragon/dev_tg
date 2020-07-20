@@ -63,14 +63,6 @@ deeptrain.util.experimental module
    :undoc-members:
    :show-inheritance:
 
-deeptrain.util.labels\_preloaders module
-----------------------------------------
-
-.. automodule:: deeptrain.util.labels_preloaders
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 deeptrain.util.logging module
 -----------------------------
 

@@ -77,6 +77,7 @@ class DataGenerator():
 
     Data is fed to :class:`TrainGenerator` via :class:`DataGenerator`. To work,
     data:
+
         - must be in one directory (or one file with all data)
         - file extensions must be same (.npy, .h5, etc)
         - file names must be enumerated with a common name
@@ -452,11 +453,12 @@ class DataGenerator():
                     shuffled = gb, lb  # no shuffle
             else:
                 if self.shuffle_group_samples:
-                    shuffled = ordered_shuffle(gb)
+                    np.random.shuffle(gb)
+                    shuffled = gb
                 elif self.shuffle_group_batches:
                     gb_shape = gb.shape
                     gb = gb.reshape(-1, self.batch_size, *gb_shape[1:])
-                    gb = ordered_shuffle(gb)
+                    np.random.shuffle(gb)
                     shuffled = gb.reshape(*gb_shape)
                 else:
                     shuffled = gb  # no shuffle
@@ -475,6 +477,7 @@ class DataGenerator():
         self.batch = []  # free memory
         if self.labels_path:
             self.labels = []  # free memory
+
             gb, lb = _maybe_shuffle(gb, lb)
         else:
             gb = _maybe_shuffle(gb)
@@ -617,17 +620,11 @@ class DataGenerator():
                           "`path`; only", ext, "will be used ")
                 return ext
 
-            if not os.path.isdir(path):
-                filepaths = [path]
-                ext = Path(path).suffix
-                print("Discovered dataset with matching format")
-            else:
-                other_path = (self.labels_path if path == self.data_path else
-                              self.data_path)
-                ext = _infer_extension(path, other_path)
-                filepaths = [str(p) for p in Path(path).iterdir()
-                             if (p.suffix == ext and str(p) != other_path)]
-                print("Discovered %s files with matching format" % len(filepaths))
+            other_path = (self.labels_path if path == self.data_path else
+                          self.data_path)
+            ext = _infer_extension(path, other_path)
+            filepaths = [str(p) for p in Path(path).iterdir()
+                         if (p.suffix == ext and str(p) != other_path)]
             return filepaths, ext
 
         if path is None:
@@ -635,7 +632,9 @@ class DataGenerator():
         elif os.path.isdir(path):
             _validate_directory(path)
             filepaths, ext = _get_filepaths_and_ext(path)
+            print("Discovered %s files with matching format" % len(filepaths))
         else:  # isfile
+            print("Discovered dataset with matching format")
             filepaths = [path]
             ext = Path(path).suffix
 
@@ -666,32 +665,32 @@ class DataGenerator():
             if isinstance(data_loader, DataLoader):
                 self.data_loader = data_loader
             else:
-                kw = dict(path=self.data_path, loader=data_loader,
+                kw = dict(path=self.data_path,
                           dtype=self.data_dtype,
                           batch_shape=self.data_batch_shape,
                           **self._infer_info(self.data_path))
                 if isinstance(data_loader, type):
                     if not issubclass(data_loader, DataLoader):
                         raise TypeError("`data_loader` class must subclass "
-                                        "`DataLoader`")
-                    self.data_loader = data_loader(**kw)
+                                        "`DataLoader` (got %s)" % data_loader)
+                    self.data_loader = data_loader(loader=None, **kw)
                 else:  # function / None
-                    self.data_loader = DataLoader(**kw)
+                    self.data_loader = DataLoader(loader=data_loader, **kw)
 
             if isinstance(labels_loader, DataLoader):
                 self.labels_loader = labels_loader
             else:
-                kw = dict(path=self.labels_path, loader=labels_loader,
+                kw = dict(path=self.labels_path,
                           dtype=self.labels_dtype,
                           batch_shape=self.labels_batch_shape,
                           **self._infer_info(self.labels_path))
                 if isinstance(labels_loader, type):
                     if not issubclass(labels_loader, DataLoader):
                         raise TypeError("`labels_loader` class must subclass "
-                                        "`DataLoader`")
-                    self.labels_loader = labels_loader(**kw)
+                                        "`DataLoader` (got %s)" % labels_loader)
+                    self.labels_loader = labels_loader(loader=None, **kw)
                 else:  # function / None
-                    self.labels_loader = DataLoader(**kw)
+                    self.labels_loader = DataLoader(loader=labels_loader, **kw)
 
         _set_loaders(data_loader, labels_loader)
 
