@@ -1,3 +1,28 @@
+import os
+
+def _get_scales():
+    s = os.environ.get('SCALEFIG', '1')
+    os.environ['SCALEFIG'] = s
+    if ',' in s:
+        w_scale, h_scale = map(float, s.strip('[()]').split(','))
+    else:
+        w_scale, h_scale = float(s), float(s)
+    return w_scale, h_scale
+
+def scalefig(fig):
+    """Used internally to scale figures according to env var 'SCALEFIG'.
+
+    os.environ['SCALEFIG'] can be an int, float, tuple, list, or bracketless
+    tuple, but must be a string: '1', '1.1', '(1, 1.1)', '1,1.1'.
+    """
+    w, h = fig.get_size_inches()
+    w_scale, h_scale = _get_scales()  # refresh in case env var changed
+    fig.set_size_inches(w * w_scale, h * h_scale)
+
+# get at base package level (deeptrain) to set for see_rnn
+_get_scales()
+
+##############################################################################
 from . import train_generator
 from . import data_generator
 from . import metrics
@@ -23,3 +48,20 @@ def set_seeds(seeds=None, reset_graph=False, verbose=1):
 
 
 __version__ = '0.01'
+
+##############################################################################
+def append_examples_dir_to_sys_path():
+    """Enables utils.py to be imported for examples."""
+    import inspect
+    from pathlib import Path
+    pkgdir = Path(inspect.stack()[0][1]).parents[1]
+    exdir = Path(pkgdir, "examples")
+    if not exdir.is_dir():
+        raise Exception("`examples` directory isn't on same level as deeptrain "
+                        "(%s)" % exdir)
+
+    utilsdir = str(Path(str(exdir), "dir"))
+    import sys
+    sys.path.insert(0, utilsdir)
+    while utilsdir in sys.path[1:]:
+        sys.path.pop(sys.path.index(utilsdir))  # avoid duplication

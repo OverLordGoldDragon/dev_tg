@@ -9,6 +9,7 @@ from see_rnn import get_layer
 from see_rnn.inspect_gen import _make_grads_fn, _get_grads_eager
 from see_rnn.utils import _get_params
 from .util._backend import K, WARN, TF_KERAS
+from . import scalefig
 
 
 def compute_gradient_norm(self, input_data, labels, sample_weight=None,
@@ -151,6 +152,7 @@ def gradient_norm_over_dataset(self, val=False, learning_phase=0, mode='weights'
         bins = min(600, len(grad_norms))
         plt.hist(grad_norms.ravel(), bins=bins)
         plt.gcf().set_size_inches(9 * w, 4 * h)
+        scalefig(plt.gcf())
         plt.show()
 
     def _compute_gradient_norm_stat(model, x, y, sw):

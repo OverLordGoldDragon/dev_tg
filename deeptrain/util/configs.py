@@ -9,6 +9,7 @@ from .algorithms import builtin_or_npscalar
 
 
 PLOT_CFG = [
+{'figsize': (12, 7)},
 {
  'metrics': None,
  'x_ticks': None,
@@ -77,7 +78,8 @@ REPORT_CFG = {
             ['batch', 'group_batch', 'labels', 'all_labels',
              'batch_loaded', 'batch_exhausted', 'set_num', 'set_name',
              '_set_names', 'set_nums_original', 'set_nums_to_process',
-             'superbatch_set_nums', 'data_loader', 'data_path', 'labels_path',
+             'superbatch_set_nums', 'data_loader', 'data_path',
+             'labels_loader', 'labels_path',
              'saveskip_list', 'loadskip_list', '_path_attrs', 'preprocessor',
              '*_ATTRS', '*superbatch', '*_filepaths', '*_filenames']
         },

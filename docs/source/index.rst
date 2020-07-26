@@ -8,8 +8,8 @@ Welcome to DeepTrain's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
+   Why DeepTrain? <why_deeptrain>
 
 
 Indices and tables

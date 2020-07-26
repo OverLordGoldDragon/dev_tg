@@ -2,20 +2,13 @@
 """This example assumes you've read `advanced.py`, and covers:
     - Creating custom callbacks
 """
-import os
-os.environ['TF_KERAS'] = '0'
-import sys
-from pathlib import Path
-filedir = str(Path(__file__).parents[1])
-sys.path.insert(0, filedir)
-while filedir in sys.path[1:]:
-    sys.path.pop(sys.path.index(filedir))  # avoid duplication
-
-import matplotlib.pyplot as plt
-
+import deeptrain
+deeptrain.append_examples_dir_to_sys_path()
 from utils import make_classifier, init_session, img_labels_paths
 from utils import CL_CONFIGS as C
 from deeptrain.callbacks import TraingenCallback
+
+import matplotlib.pyplot as plt
 
 #%%#
 # We can use two types of callbacks: objects (instances of TraingenCallback),

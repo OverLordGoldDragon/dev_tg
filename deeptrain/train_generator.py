@@ -8,8 +8,10 @@
    - check if 'adam' -> 'nadam' fails
    - `is_interrupted` to check if call to `train` / `validate` was interrupted
      and may resume with unfinished steps
+   - See RNN os.environ['TF_KERAS'] default to '1'
+   - `timeseries` example, explain visuals
 
-   # todo later
+   # TODO later
    - MetaTrainer
    - examples/visuals
 
@@ -376,7 +378,8 @@ class TrainGenerator(TraingenUtils):
 
         print("Training has concluded.")
 
-    def validate(self, record_progress=True, clear_cache=True, restart=False):
+    def validate(self, record_progress=True, clear_cache=True, restart=False,
+                 use_callbacks=True):
         """Validation loop.
 
             - Fetches data from `get_data`
@@ -388,6 +391,21 @@ class TrainGenerator(TraingenUtils):
               and store them in `val_history`
             - Applies `'val_end'` and maybe `('val_end': 'train:epoch')` callbacks
             - If `restart`, calls :meth:`reset_validation`.
+
+        **Arguments**:
+            record_progress: bool
+                If False, won't update `val_history`, `_val_iters`,
+                `_batches_validated`.
+            clear_cache: bool
+                If False, won't call :meth:`clear_cache`; useful for keeping
+                preds & labels acquired during validation.
+            restart: bool
+                If True, will call :meth:`reset_valiation` before validation loop
+                to reset validation attributes; useful for starting afresh (e.g.
+                if interrupted).
+            use_callbacks: bool
+                If False, won't call :meth:`apply_callbacks`
+                or :meth:`plot_history`.
 
         **Interruption:**
 
@@ -425,11 +443,11 @@ class TrainGenerator(TraingenUtils):
                 data['batch_size'] = len(x)
 
             self._val_postiter_processed = False
-            self._val_postiter_processing(record_progress, **data)
+            self._val_postiter_processing(record_progress, use_callbacks, **data)
             self._val_postiter_processed = True
 
         if self._val_loop_done:
-            self._on_val_end(record_progress, clear_cache)
+            self._on_val_end(record_progress, use_callbacks, clear_cache)
 
     ###### MAIN METHOD HELPERS ################################################
     def _train_postiter_processing(self, metrics):
@@ -453,7 +471,8 @@ class TrainGenerator(TraingenUtils):
             self._set_name_cache.append(self._set_name)
             try:
                 self._update_train_history()
-                self._print_train_progress()
+                if self.iter_verbosity >= 1:
+                    self._print_train_progress()
             except Exception as e:
                 # might happen due to incomplete loaded data for updating history
                 print(WARN, "could not update and print progress"
@@ -465,7 +484,7 @@ class TrainGenerator(TraingenUtils):
                     print('RNNs reset ', end='')
             self._apply_callbacks(stage='train:batch')
 
-        def _on_epoch_end(val=False):
+        def _on_epoch_end():
             self.temp_history = deepcopy(self._temp_history_empty)
             self.epoch = self.datagen.on_epoch_end()
 
@@ -492,8 +511,8 @@ class TrainGenerator(TraingenUtils):
             self._val_loop_done = False
             self.validate()
 
-    def _val_postiter_processing(self, record_progress=True, metrics=None,
-                                 batch_size=None):
+    def _val_postiter_processing(self, record_progress=True, use_callbacks=True,
+                                 metrics=None, batch_size=None):
         """Procedures done after every validation iteration. Unless marked
         "always", are conditional and may skip.
 
@@ -514,7 +533,8 @@ class TrainGenerator(TraingenUtils):
             elif 'evaluate' in self._eval_fn_name:
                 self._update_temp_history(metrics, val=True)
 
-            self._val_iters += 1
+            if record_progress:
+                self._val_iters += 1
 
             if self.batch_size is None:
                 if self._inferred_batch_size is None:
@@ -526,28 +546,31 @@ class TrainGenerator(TraingenUtils):
                 self._update_val_iter_cache()
             self.val_datagen.update_state()
 
-            self._apply_callbacks(stage='val:iter')
+            if use_callbacks:
+                self._apply_callbacks(stage='val:iter')
 
         def _on_batch_end():
-            self._batches_validated += 1
+            if record_progress:
+                self._batches_validated += 1
             self._val_set_name_cache.append(self._val_set_name)
 
-            update = record_progress and self.val_datagen.all_data_exhausted
             if self.iter_verbosity >= 1:
                 self._print_val_progress()
-            if update:
-                self._update_val_history()
             self._val_new_batch_notified = False
 
             if self.reset_statefuls:
                 self.model.reset_states()
                 if self.iter_verbosity >= 1:
                     print('RNNs reset', end=' ')
-            self._apply_callbacks(stage='val:batch')
+            if use_callbacks:
+                self._apply_callbacks(stage='val:batch')
 
         def _on_epoch_end():
+            if record_progress:
+                self._update_val_history()
             self.val_epoch = self.val_datagen.on_epoch_end()
-            self._apply_callbacks(stage='val:epoch')
+            if use_callbacks:
+                self._apply_callbacks(stage='val:epoch')
             self._val_loop_done = True
 
         _on_iter_end(metrics, batch_size)
@@ -557,7 +580,7 @@ class TrainGenerator(TraingenUtils):
             _on_epoch_end()
 
 
-    def _on_val_end(self, record_progress, clear_cache):
+    def _on_val_end(self, record_progress, use_callbacks, clear_cache):
         """Procedures done after :meth:`~validate`. Unless marked "always", are
         conditional and may skip. List not exhaustive.
 
@@ -612,15 +635,16 @@ class TrainGenerator(TraingenUtils):
         if record_progress:
             _record_progress()
 
-        if self._should_do(self.plot_history_freq):
+        if self._should_do(self.plot_history_freq) and use_callbacks:
             pass_on_error(self.plot_history, update_fig=record_progress,
                           errmsg=(WARN + " model history could not be "
                                   "plotted; skipping..."))
 
-        if self.datagen.all_data_exhausted:
-            self._apply_callbacks(stage=('val_end', 'train:epoch'))
-        else:
-            self._apply_callbacks(stage='val_end')
+        if use_callbacks:
+            if self.datagen.all_data_exhausted:
+                self._apply_callbacks(stage=('val_end', 'train:epoch'))
+            else:
+                self._apply_callbacks(stage='val_end')
 
         if clear_cache:
             self.clear_cache()
@@ -824,13 +848,12 @@ class TrainGenerator(TraingenUtils):
                 padded_num_txt = (self._val_set_name + "...").ljust(pad)
                 print(end="Validating set %s" % padded_num_txt)
                 self._val_new_batch_notified = True
-            return
-
-        if not self._train_new_batch_notified:
-            pad = self._max_set_name_chars + 3
-            padded_num_txt = (self._set_name + "...").ljust(pad)
-            print(end="\nFitting set %s" % padded_num_txt)
-            self._train_new_batch_notified = True
+        else:
+            if not self._train_new_batch_notified:
+                pad = self._max_set_name_chars + 3
+                padded_num_txt = (self._set_name + "...").ljust(pad)
+                print(end="\nFitting set %s" % padded_num_txt)
+                self._train_new_batch_notified = True
         if self.iter_verbosity >= 2:
             print(end='.')
 

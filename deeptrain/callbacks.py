@@ -284,7 +284,7 @@ class VizAE2D(TraingenCallback):
     def viz(self):
         data = self.get_data()
         fig, axes = features_2D(data, n_rows=2, cmap='hot', h=.5, w=1.1,
-                                title_mode=False, show_xy_ticks=0, tight=True,
+                                title=False, show_xy_ticks=0, tight=True,
                                 borderwidth=2, bordercolor='white')
         if self.save_images:
             # stream to directory

@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
-"""TODO: make basic, advanced examples, then skip all the configs setup
-& make_model redefinition and just jump into callbacks as in tests?
-(and add note to reader to see basic/advanced first)
-
-The minimal essentials for DeepTrain are:
+"""The minimal essentials for DeepTrain are:
     - compiled model
-    - directory to checkpoint to
-    - directory to load data & labels from (with a particular structure; see
-      examples/preprocessing/mnist.py with which this example's data was made)
+    - data directory
+This example covers these and a bit more to keep truer to standard use.
 """
-
-#### Imports #################################################################
 import os
 from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Flatten, Activation

@@ -3,14 +3,8 @@
    - Inspecting useful internal TrainGenerator & DataGenerator attributes
    - Inspecting train / validation interruptions
 """
-# ensure `examples` directory path is on top of Python's module search
-import sys
-from pathlib import Path
-filedir = str(Path(__file__).parents[1])
-sys.path.insert(0, filedir)
-while filedir in sys.path[1:]:
-    sys.path.pop(sys.path.index(filedir))  # avoid duplication
-
+import deeptrain
+deeptrain.append_examples_dir_to_sys_path()
 from utils import make_autoencoder, init_session
 from utils import AE_CONFIGS as C
 #%%#
@@ -29,7 +23,10 @@ vdg = tg.val_datagen
 #%%# Train
 tg.train()
 
-#%%# We can view an object's attributes and methods with `vars` and `dir`
+#%%# We can see which arguments were passed to TrainGnerator
+print(tg._passed_args)
+# some objects stored as string to allow pickling
+#%%# View an object's attributes and methods with `vars` and `dir`
 show_attributes(tg)
 #%%
 show_methods(tg)

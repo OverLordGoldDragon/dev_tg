@@ -77,6 +77,8 @@ VAL_DATAGEN_CFG = dict(
 # unique_checkpoint_freq: how often to checkpoint   (default: every epoch)
 # model_save_kw: kwargs passed to `model.save()`. Exclude optimizer since
 #     we'll save its (and model's) weights separately to load later.
+# model_name_configs: set which model attributes to include in automatic
+#     name generation, and their (shortened) aliases
 TRAINGEN_CFG = dict(
     epochs=6,
     logs_dir=os.path.join('dir', 'outputs', 'logs'),
@@ -101,7 +103,7 @@ dg    = DataGenerator(**DATAGEN_CFG)
 vdg   = DataGenerator(**VAL_DATAGEN_CFG)
 tg    = TrainGenerator(model, dg, vdg, **TRAINGEN_CFG)
 
-# do save optimizer weights & attrs to load later
+# save optimizer weights & attrs to load later
 tg.saveskip_list.pop(tg.saveskip_list.index('optimizer_state'))
 #%%# Train ##################################################################
 tg.train()
@@ -150,7 +152,7 @@ tg.train()
 #%%#################
 cwd = os.getcwd()
 print("Checkpoints can be found in", os.path.join(cwd, tg.logdir))
-print("Best model can be found in", os.path.join(cwd, tg.best_models_dir))
+print("Best model can be found in",  os.path.join(cwd, tg.best_models_dir))
 print("AE progress can be found in", os.path.join(cwd, tg.logdir, 'misc'))
 #%%#################
 """If comparing overall train time with that of simly model.fit, DeepTrain

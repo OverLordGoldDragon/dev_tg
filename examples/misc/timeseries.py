@@ -6,18 +6,14 @@
     - Using class weights to handle imbalance
 """
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 os.environ['TF_KERAS'] = '1'
-import sys
-from pathlib import Path
-filedir = str(Path(Path(__file__).parents[1], "dir"))
-sys.path.insert(0, filedir)
-while filedir in sys.path[1:]:
-    sys.path.pop(sys.path.index(filedir))  # avoid duplication
 
-from utils import make_timeseries_classifier, init_session
+import deeptrain
+deeptrain.append_examples_dir_to_sys_path()
 from utils import TS_CONFIGS as C
+from utils import init_session, make_timeseries_classifier
 from see_rnn import features_1D, rnn_histogram, rnn_heatmap
+
 #%%# Dataset info #############################################################
 # PTB Diagnostic ECG Database - https://www.kaggle.com/shayanfazeli/heartbeat
 # Number of samples: 14552
@@ -46,7 +42,7 @@ C['model']['batch_shape'] = (batch_size, window_size, 1)
 #              i.e. class-1 acc & class-2 acc
 # plot_first_pane_max_vals: plot only validation loss in first plot window,
 # the rest on second, to avoid clutter and keep losses together
-# class_weights: "normal" is the mino
+# class_weights: "normal" is the minority class; 3x more "abnormal" samples
 # others: see utils.py
 C['traingen'].update(dict(
     eval_fn='predict',

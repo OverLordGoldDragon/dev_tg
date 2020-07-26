@@ -5,24 +5,19 @@
     - Visualization, data gathering, and random seed setting callbacks
 """
 import os
-os.environ['TF_KERAS'] = '0'
 import sys
-from pathlib import Path
-filedir = str(Path(Path(__file__).parents[1], "dir"))
-sys.path.insert(0, filedir)
-while filedir in sys.path[1:]:
-    sys.path.pop(sys.path.index(filedir))  # avoid duplication
+import deeptrain
+deeptrain.append_examples_dir_to_sys_path()
+logger_savedir = os.path.join(sys.path[0], "outputs", "logger")
 
 from utils import make_classifier, init_session, img_labels_paths
 from utils import CL_CONFIGS as C
 from see_rnn import features_2D
+
 from deeptrain.callbacks import TraingenCallback, TraingenLogger
 from deeptrain.callbacks import RandomSeedSetter
 from deeptrain.callbacks import make_layer_hists_cb
 
-#%%# CONFIGURE TESTING #######################################################
-batch_size, width, height, channels = C['model']['batch_shape']
-logger_savedir = os.path.join(filedir, "outputs", "logger")
 #%%#
 # TraingenLogger gathers data throughout training: weights, outputs, and
 # gradients of model layers. We inherit the base class and override
@@ -65,7 +60,7 @@ class Viz2D(TraingenCallback):
 
     def viz(self):
         data = self._get_data()
-        features_2D(data, tight=True, title_mode=False, cmap='hot',
+        features_2D(data, tight=True, title=False, cmap='hot',
                     norm=None, show_xy_ticks=[0, 0], w=1.1, h=.55, n_rows=4)
 
     def _get_data(self):

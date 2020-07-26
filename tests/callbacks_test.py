@@ -81,7 +81,7 @@ def _make_2Dviz_cb():
 
         def viz(self):
             data = self._get_data()
-            features_2D(data, tight=True, title_mode=False, cmap='hot',
+            features_2D(data, tight=True, title=False, cmap='hot',
                         norm=None, show_xy_ticks=[0,0], w=1.1, h=.55, n_rows=4)
 
         def _get_data(self):

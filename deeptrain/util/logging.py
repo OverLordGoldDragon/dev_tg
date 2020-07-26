@@ -371,6 +371,26 @@ def get_unique_model_name(self, set_model_num=True):
     return model_name
 
 
+def get_last_log(self, name, best=False):
+    """Returns latest savefile path from `logdir` (`best=False`) or
+    `best_models_dir` (`best=True`).
+
+    `name` is one of: `'report', 'state', 'weights', 'history'`.
+    """
+    if name not in {'report', 'state', 'weights', 'history'}:
+        raise ValueError("input must be one of 'report', 'state', 'weights', "
+                         "'history'.")
+
+    _dir = self.best_models_dir if best else self.logdir
+    paths = [p for p in Path(_dir).iterdir()
+             if (p.is_file() and p.stem.endswith('__' + name))]
+    if len(paths) == 0:
+        raise Exception(f"no {name} files found in {_dir}")
+
+    paths.sort(key=os.path.getmtime, reverse=True)  # newest first
+    return paths[0]
+
+
 def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                     to_exclude=[], verbose=0):
     """Extract `self.__dict__` key-value pairs as string, ignoring funcs/methods

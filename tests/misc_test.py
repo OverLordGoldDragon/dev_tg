@@ -82,6 +82,8 @@ def test_main(monkeypatch):
         pass_on_error(tg.get_history_fig)
         tg.clear_cache(reset_val_flags=True)
         tg._should_do({}, forced=True)
+        tg.get_last_log('report', best=False)
+        tg.get_last_log('report', best=True)
 
         monkeypatch.setattr('builtins.input', lambda x: 'y')
         tg.destroy(confirm=False)

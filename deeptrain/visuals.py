@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 
 from see_rnn import get_weights, get_outputs, get_gradients
 from see_rnn import features_hist
+from . import scalefig
 
 
-def binary_preds_per_iteration(_labels_cache, _preds_cache):
+def binary_preds_per_iteration(_labels_cache, _preds_cache, w=1, h=1):
     """Plots binary preds vs. labels in a heatmap, separated by batches,
     grouped by slices.
 
@@ -21,6 +22,8 @@ def binary_preds_per_iteration(_labels_cache, _preds_cache):
         _preds_cache: list[np.ndarray]
             List of predictions cached during training/validation; see docs
             on `_labels_cache`.
+        w, h: float
+            Scale figure width & height, respectively.
     """
     N = len(_labels_cache)
     lc = np.asarray(_labels_cache)
@@ -31,7 +34,7 @@ def binary_preds_per_iteration(_labels_cache, _preds_cache):
         pc = pc.squeeze(axis=-1)
     N, n, *_ = lc.shape
 
-    fig, axes = plt.subplots(N, 1, figsize=(12, N * (n / 6) ** .5))
+    fig, axes = plt.subplots(N, 1, figsize=(12 * w, N * (n / 6) ** .5))
     for ax in axes:
         ax.set_axis_off()
 
@@ -49,10 +52,11 @@ def binary_preds_per_iteration(_labels_cache, _preds_cache):
         ax.axis('tight')
 
     plt.subplots_adjust(bottom=0, top=1, left=0, right=1, wspace=0, hspace=.3)
+    scalefig(fig)
     plt.show()
 
 
-def binary_preds_distribution(_labels_cache, _preds_cache, pred_th):
+def binary_preds_distribution(_labels_cache, _preds_cache, pred_th, w=1, h=1):
     """Plots binary preds in a scatter plot, labeling dots according to
     their labels, and showing `pred_th` as a vertical line. Positive class (1)
     is labeled red, negative (0) blue; a red dot far left (close to 0) is
@@ -70,6 +74,8 @@ def binary_preds_distribution(_labels_cache, _preds_cache, pred_th):
             on `_labels_cache`.
         pred_th: float
             Predict threshold (e.g. 0.5), plotted as a vertical line.
+        w, h: float
+            Scale figure width & height, respectively.
     """
     def _get_pred_colors(labels_f):
         labels_f = np.expand_dims(labels_f, -1)
@@ -78,26 +84,38 @@ def binary_preds_distribution(_labels_cache, _preds_cache, pred_th):
         blue = np.array([0, 0, 1] * N).reshape(N, 3)
         return labels_f * red + (1 - labels_f) * blue
 
-    def _make_alignment_array(labels_f, n_lines=10):
+    def _make_alignment_array(labels_f):
         N = len(labels_f)
-        k = N / n_lines
+        # estimate appropriate number of rows for the dots
+        if N > 5000:
+            n_rows = 24
+        elif N > 3000:
+            n_rows = 16
+        else:
+            n_rows = 10
+
+        k = N / n_rows
+        # decrement until is integer
         while not k.is_integer():
-            n_lines -= 1
-            k = N / n_lines
-        return np.array(list(range(n_lines)) * int(k))
+            n_rows -= 1
+            k = N / n_rows
+        return np.array(list(range(n_rows)) * int(k))
 
     def _plot(preds_f, pred_th, alignment_arr, colors):
-        _, ax = plt.subplots(1, 1, figsize=(13, 4))
+        height = 4 if len(preds_f) < 5000 else 6
+        fig, ax = plt.subplots(1, 1, figsize=(13 * w, height * h))
         ax.axvline(pred_th, color='black', linewidth=4)
         ax.scatter(preds_f, alignment_arr, c=colors)
         ax.set_yticks([])
         ax.set_xlim(-.02, 1.02)
+
+        scalefig(fig)
         plt.show()
 
     preds_flat = np.asarray(_preds_cache).ravel()
     labels_flat = np.asarray(_labels_cache).ravel()
     colors = _get_pred_colors(labels_flat)
-    alignment_arr = _make_alignment_array(labels_flat, n_lines=10)
+    alignment_arr = _make_alignment_array(labels_flat)
 
     _plot(preds_flat, pred_th, alignment_arr, colors)
 
@@ -134,8 +152,8 @@ def infer_train_hist(model, input_data, layer=None, keep_borders=True,
     layer = layer or model.layers[-1]
     outs = [get_outputs(model, '', input_data, layer, learning_phase=0),
             get_outputs(model, '', input_data, layer, learning_phase=1)]
-    _, axes = plt.subplots(2, 1, sharex=True, sharey=True,
-                           figsize=(13 * w, 6 * h))
+    fig, axes = plt.subplots(2, 1, sharex=True, sharey=True,
+                             figsize=(13 * w, 6 * h))
 
     for i, (ax, out) in enumerate(zip(axes.flat, outs)):
         out = np.asarray(out).ravel()
@@ -149,6 +167,8 @@ def infer_train_hist(model, input_data, layer=None, keep_borders=True,
             ax.axvline(vline, color='r', linewidth=2)
         _xlims = xlims or (out.min(), out.max())
         ax.set_xlim(*_xlims)
+
+    scalefig(fig)
     plt.show()
 
 
@@ -259,23 +279,30 @@ def viz_roc_auc(y_true, y_pred):
     """Plots the Receiver Operator Characteristic curve."""
     def _compute_roc_auc(y_true, y_pred):
         i_x = [(i, x) for (i, x) in enumerate(y_pred)]
+        # order preds descending
         i_xs = list(sorted(i_x, key=lambda x: x[1], reverse=True))
         idxs = [d[0] for d in i_xs]
+        # get preds & labels at positions of descending predictions
         xs = y_pred[idxs]
         ys = y_true[idxs]
 
-        p_inv = 1 / ys.sum()
-        n_inv = 1 / (len(ys) - ys.sum())
+        p_inc = 1 / ys.sum()              # 1-class increment
+        n_inc = 1 / (len(ys) - ys.sum())  # 0-class increment
+        # points array to fill, shaped [num_points, (x, y)]
         pts = np.zeros((len(ys) + 1, 2))
 
+        # fill (x_i, y_i) for i = 0, ..., num_points - 1
         for i, (x, y) in enumerate(zip(xs, ys)):
-            inc = p_inv if y == 1 else n_inv
             if y == 1:
-                pts[i + 1] = [pts[i][0], pts[i][1] + inc]
+                # x_i = x_{i-1}
+                # y_i = y_{i-1} + p_inc
+                pts[i + 1] = [pts[i][0], pts[i][1] + p_inc]
             else:
-                pts[i + 1] = [pts[i][0] + inc, pts[i][1]]
+                # x_i = x_{i-1} + n_inc
+                # y_i = y_{i-1}
+                pts[i + 1] = [pts[i][0] + n_inc, pts[i][1]]
 
-        score = np.trapz(pts[:, 1], pts[:, 0])
+        score = np.trapz(pts[:, 1], pts[:, 0])  # trapezoid rule integral
         return pts, score
 
     def _plot(pts, score):
@@ -286,6 +313,8 @@ def viz_roc_auc(y_true, y_pred):
         plt.xlabel("1 - specificity", **kw)
         plt.ylabel("sensitivity", **kw)
         plt.gcf().set_size_inches(6, 6)
+
+        scalefig(plt.gcf())
         plt.show()
 
     # standardize
@@ -310,12 +339,14 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     `plot_configs` is structured as follows:
 
-    >>> [{reserved_name: value,
+    >>> [subplot_kw,
+    ...  {reserved_name: value,
     ...   plt_kw: value},
     ...  {reserved_name: value,
     ...   plt_kw: value},
     ...  ...]
 
+    - `subplot_kw`: dict, passed to `plt.subplots()`; must be first item in list
     - `reserved_name`: str, one of `('metrics', 'x_ticks', 'vhlines',
       'mark_best_cfg', 'ylims', 'legend_kw')`. Used to configure supported custom
       plot behavior (see "Builtin plot customs" below).
@@ -438,14 +469,15 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     if plot_configs is None:
         plot_configs = self.plot_configs
-    if not all(('metrics' in cfg and 'x_ticks' in cfg) for cfg in plot_configs):
-        raise ValueError("all dicts in `plot_configs` must include 'metrics', "
-                         "'x_ticks'")
+    if not all(('metrics' in cfg and 'x_ticks' in cfg)
+               for cfg in plot_configs[1:]):
+        raise ValueError("all dicts in `plot_configs[1:]` must include "
+                         "'metrics', 'x_ticks'")
 
-    fig, axes = plt.subplots(len(plot_configs), 1)
+    fig, axes = plt.subplots(len(plot_configs[1:]), 1, **plot_configs[0])
     axes = np.atleast_1d(axes)
 
-    for config, axis in zip(plot_configs, axes):
+    for config, axis in zip(plot_configs[1:], axes):
         _equalize_metric_names(config)
         x_ticks, metrics, mark_best_idx = _unpack_ticks_and_metrics(config)
         x_ticks = _equalize_ticks_range(x_ticks, metrics)
@@ -466,6 +498,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     subplot_scaler = .5 * len(axes)
     fig.set_size_inches(14 * w, 11 * h * subplot_scaler)
+    scalefig(fig)
     plt.close(fig)
     return fig
 

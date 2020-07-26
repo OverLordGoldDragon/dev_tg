@@ -1,20 +1,14 @@
 # -*- coding: utf-8 -*-
 """This example assumes you've read `advanced.py`, and covers:
-   - Setting custom loss and metrics
-   - Setting custom data loader
+   - Inspecting gradients per layer
+   - Estimating good values of gradient clipping threshold
 """
-# ensure `examples` directory path is on top of Python's module search
-import sys
-from pathlib import Path
-filedir = str(Path(Path(__file__).parents[1], "dir"))
-sys.path.insert(0, filedir)
-while filedir in sys.path[1:]:
-    sys.path.pop(sys.path.index(filedir))  # avoid duplication
-
-import numpy as np
-
+import deeptrain
+deeptrain.append_examples_dir_to_sys_path()
 from utils import make_autoencoder, init_session
 from utils import AE_CONFIGS as C
+
+import numpy as np
 from tensorflow.keras.optimizers import Adam
 
 #%%# Configure training #######################################################

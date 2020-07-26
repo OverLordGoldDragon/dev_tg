@@ -3,14 +3,8 @@
    - Setting custom loss and metrics
    - Setting custom data loader and preprocessor
 """
-# ensure `examples` directory path is on top of Python's module search
-import sys
-from pathlib import Path
-filedir = str(Path(__file__).parents[1])
-sys.path.insert(0, filedir)
-while filedir in sys.path[1:]:
-    sys.path.pop(sys.path.index(filedir)) # avoid duplication
-
+import deeptrain
+deeptrain.append_examples_dir_to_sys_path()
 from utils import make_autoencoder, init_session
 from utils import AE_CONFIGS as C
 

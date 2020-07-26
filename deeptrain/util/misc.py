@@ -159,7 +159,6 @@ def _make_plot_configs_from_metrics(self):
             cfg.extend([cfg[-1]] * (n - len(cfg)))
         return cfg
 
-    plot_configs = []
     n_train = len(self.train_metrics)
     n_val = len(self.val_metrics)
 
@@ -170,9 +169,10 @@ def _make_plot_configs_from_metrics(self):
     colors = _make_colors()
     mark_best_cfg = {'val': self.key_metric,
                      'max_is_best': self.max_is_best}
-
     _PLOT_CFG = deepcopy(PLOT_CFG)  # ensure module dict remains unchanged
-    CFG = _PLOT_CFG[0]
+    CFG = _PLOT_CFG[1]
+
+    plot_configs = [{'figsize': (12, 7)}]  # plt.subplot() kwargs
     plot_configs.append({
         'metrics':
             CFG['metrics'] or {'train': self.train_metrics,
@@ -195,7 +195,7 @@ def _make_plot_configs_from_metrics(self):
     #### dedicate separate pane to remainder val_metrics ######################
     n_val_p2 = n_val - n_val_p1
 
-    CFG = _PLOT_CFG[1]
+    CFG = _PLOT_CFG[2]
     plot_configs.append({
         'metrics':
             CFG['metrics'] or {'val': self.val_metrics[n_val_p1:]},
@@ -405,15 +405,24 @@ def _validate_traingen_configs(self):
                              "`dynamic_predict_threshold_min_max`")
 
     def _validate_or_make_plot_configs():
+        default = self._make_plot_configs_from_metrics()
         if self.plot_configs is not None:
-            cfg = self.plot_configs
-            required = ('metrics', 'x_ticks')
-            for pane_cfg in cfg:
-                if not all(name in pane_cfg for name in required):
-                    raise ValueError(("plot pane configs must contain {}"
-                                      ).format(', '.join(required)))
+            configs = self.plot_configs
+            if (not isinstance(configs, list) or
+                not all(isinstance(cfg, dict) for cfg in configs)):
+                raise TypeError("`plot_configs` must be a list of dicts, got:\n"
+                                + configs)
+
+            # insert defaults where keys are absent
+            for i in range(len(default)):
+                if i >= len(configs):  # add missing container
+                    configs.append({})
+                for name in default[i]:
+                    if name not in configs[i]:
+                        configs[i][name] = default[i][name]
+            self.plot_configs = configs
         else:
-            self.plot_configs = _make_plot_configs_from_metrics(self)
+            self.plot_configs = default
 
     def _validate_metric_printskip_configs():
         for name, cfg in self.metric_printskip_configs.items():

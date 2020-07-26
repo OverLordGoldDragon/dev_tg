@@ -120,10 +120,10 @@ def checkpoint(self, forced=False, overwrite=None):
                     new_name = stem + f'_v{i}' + ext
                 return os.path.join(_dir, new_name)
 
-            path_exists = Path(path).is_file()
-            if not path_exists or (path_exists and overwrite):
+            file_exists = Path(path).is_file()
+            if not file_exists or (file_exists and overwrite):
                 save_fn(path)
-            elif path_exists and not overwrite:
+            elif file_exists and not overwrite:
                 path = _make_unique_path(path)
                 save_fn(path)
 
@@ -159,6 +159,7 @@ def checkpoint(self, forced=False, overwrite=None):
         paths = sorted(paths, key=os.path.getmtime)
         paths = list(map(str, paths))
 
+        # compare directly against `paths` to avoid over-deletion
         while len(paths) / files_per_checkpoint > max(1, self.max_checkpoints):
             # remove oldest first (by creation time)
             [os.remove(paths.pop(0)) for _ in range(files_per_checkpoint)]

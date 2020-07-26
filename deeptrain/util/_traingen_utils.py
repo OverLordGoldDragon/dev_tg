@@ -18,6 +18,7 @@ class TraingenUtils():
     save_report           = logging.save_report
     generate_report       = logging.generate_report
     get_unique_model_name = logging.get_unique_model_name
+    get_last_log          = logging.get_last_log
 
     _update_temp_history         = training._update_temp_history
     get_sample_weight            = training.get_sample_weight
