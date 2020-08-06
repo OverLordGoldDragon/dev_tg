@@ -3,13 +3,13 @@
    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
-   - timeseries example
    - configurable error / warn levels (e.g. save fail)
    - check if 'adam' -> 'nadam' fails
-   - `is_interrupted` to check if call to `train` / `validate` was interrupted
-     and may resume with unfinished steps
    - See RNN os.environ['TF_KERAS'] default to '1'
-   - `timeseries` example, explain visuals
+   - thorough saving/loading example?
+   - ipynb docs formatting (images too large)
+   - check stateful=True vs callbacks
+   - "model health monitoring" example
 
    # TODO later
    - MetaTrainer
@@ -50,6 +50,7 @@ from .util._traingen_utils import TraingenUtils
 from .util.logging  import _log_init_state
 from .util.misc     import pass_on_error, capture_args, argspec
 from .introspection import print_dead_weights, print_nan_weights
+from .introspection import print_large_weights
 from .callbacks     import TraingenCallback
 from .util._backend import IMPORTS, Unbuffered, NOTE, WARN
 from .backend import model_utils
@@ -950,6 +951,7 @@ class TrainGenerator(TraingenUtils):
 
     ###### MISC METHODS #######################################################
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
+                     large_threshold=2, large_notify_above_frac=1e-3,
                      notify_detected_only=True):
         """Check whether any layer weights have 'zeros' or NaN weights;
         very fast / inexpensive.
@@ -967,6 +969,8 @@ class TrainGenerator(TraingenUtils):
         print_dead_weights(self.model, dead_threshold, dead_notify_above_frac,
                            notify_detected_only)
         print_nan_weights(self.model, notify_detected_only)
+        print_large_weights(self.model, large_threshold, large_notify_above_frac,
+                            notify_detected_only)
 
     def _alias_to_metric_name(self, alias):
         return self.alias_to_metric.get(alias.lower(), alias)

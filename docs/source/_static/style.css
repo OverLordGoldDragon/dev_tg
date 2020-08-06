@@ -1,3 +1,12 @@
 .wy-nav-content {
     max-width: none; !important;
 }
+
+div.gallery {
+    display: inline-block;
+    width: 220px;
+	height: 200px;
+    margin: 14px;
+}
+div.gallery img {width: 100%; height: auto;}
+div.gallery img:hover {border: 1px solid #000;}

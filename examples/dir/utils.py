@@ -33,8 +33,7 @@ def init_session(CONFIGS, model_fn):
 batch_size = 128
 width, height, channels = 28, 28, 1
 datadir = os.path.join(thisdir, 'data', 'image')
-img_labels_paths = [os.path.join(datadir, "train", "labels.h5"),
-                    os.path.join(datadir, "val",   "labels.h5")]
+
 DATAGEN_CFG = dict(
     data_path=os.path.join(datadir, 'train'),
     batch_size=batch_size,
@@ -130,18 +129,28 @@ CL_MODEL_CFG = dict(
     dropout=[.25, .5],
     dense_units=32,
 )
+img_labels_paths = [os.path.join(datadir, "train", "labels.h5"),
+                    os.path.join(datadir, "val",   "labels.h5")]
+
+CL_DATAGEN_CFG = DATAGEN_CFG.copy()
+CL_VAL_DATAGEN_CFG = VAL_DATAGEN_CFG.copy()
+CL_DATAGEN_CFG['labels_path'] = img_labels_paths[0]
+CL_VAL_DATAGEN_CFG['labels_path'] = img_labels_paths[1]
+
 CL_TRAINGEN_CFG = TRAINGEN_CFG.copy()
 CL_TRAINGEN_CFG.update({'model_configs': CL_MODEL_CFG})
 CL_CONFIGS = {'model':       CL_MODEL_CFG,
-              'datagen':     DATAGEN_CFG,
-              'val_datagen': VAL_DATAGEN_CFG,
+              'datagen':     CL_DATAGEN_CFG,
+              'val_datagen': CL_VAL_DATAGEN_CFG,
               'traingen':    CL_TRAINGEN_CFG}
 
 #### Reusable Timeseries Classifier ##########################################
-def make_timeseries_classifier(batch_shape, loss, optimizer, units):
+def make_timeseries_classifier(batch_shape, loss, optimizer, units, activation):
     ipt = Input(batch_shape=batch_shape)
-    x   = LSTM(units, return_sequences=True,  stateful=True)(ipt)
-    x   = LSTM(units, return_sequences=False, stateful=True)(x)
+    x   = LSTM(units, activation=activation, return_sequences=True,
+               stateful=True)(ipt)
+    x   = LSTM(units, activation=activation, return_sequences=False,
+               stateful=True)(x)
     out = Dense(1, activation='sigmoid')(x)
 
     model = Model(ipt, out)
@@ -158,7 +167,8 @@ TS_MODEL_CFG = dict(
     batch_shape=(ts_batch_size, window_size, 1),
     units=24,
     optimizer='adam',
-    loss='binary_crossentropy'
+    loss='binary_crossentropy',
+    activation='tanh',
 )
 TS_DATAGEN_CFG = dict(
     data_path=os.path.join(ts_datadir, 'train', 'data.h5'),

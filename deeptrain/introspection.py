@@ -397,12 +397,10 @@ def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,
 
         cprint("{} dead -- '{}'".format(perc_dead, w_name), 'red')
 
-    weight_names   = [w.name for layer in model.layers for w in layer.weights]
-    weight_tensors = [w for layer in model.layers for w in layer.weights]
-    weight_values  = K.batch_get_value(weight_tensors)
-
+    weight_names, weight_values = _get_weight_names_and_values(model)
     has_dead_worth_notifying = False
     has_dead = False
+
     for w_name, w_value in zip(weight_names, weight_values):
         num_dead = np.sum(np.abs(w_value) < dead_threshold)
         if num_dead > 0:
@@ -425,7 +423,7 @@ def print_dead_weights(model, dead_threshold=1e-7, notify_above_frac=1e-3,
 
 
 def print_nan_weights(model, notify_detected_only=False):
-    """Print names of NaN weights and their proportions. Useful for debugging
+    """Print names of NaN/Inf weights and their proportions. Useful for debugging
     exploding or buggy gradients.
 
     Arguments:
@@ -435,18 +433,15 @@ def print_nan_weights(model, notify_detected_only=False):
             - True:  print text only if dead weights are discovered
             - False: print a "none found" message if no NaNs were found
     """
-    weight_names   = [w.name for layer in model.layers for w in layer.weights]
-    weight_tensors = [w      for layer in model.layers for w in layer.weights]
-    weight_values  = K.batch_get_value(weight_tensors)
-
+    weight_names, weight_values = _get_weight_names_and_values(model)
     has_nan = False
+
     for w_name, w_value in zip(weight_names, weight_values):
         num_nan = np.sum(np.isnan(w_value) + np.isinf(w_value))
-        txt = detect_nans(w_value)
+        txt = detect_nans(w_value, include_inf=True)
         if txt:
-            if not has_nan:
+            if not has_nan:  # does have `if txt`, but `has_nan` not set yet
                 print(flush=True)  # newline
-
             cprint("{} -- '{}'".format(txt, w_name), color='red', flush=True)
         if num_nan > 0:
             has_nan = True
@@ -455,6 +450,63 @@ def print_nan_weights(model, notify_detected_only=False):
         print("L = layer index, W = weight tensor index", end='')
     elif not notify_detected_only:
         print("No NaN weights detected in any trainable layers")
+
+
+def print_large_weights(model, large_threshold=2, notify_above_frac=1e-3,
+                        notify_detected_only=False):
+    """Print names of weights in excess of set absolute value, and their
+    proportions; excludes Inf. Useful for debugging exploding or buggy gradients.
+
+    Arguments:
+        model: models.Model / models.Sequential (keras / tf.keras)
+            The model.
+        large_threshold: float
+            Threshold above which to count the weight's absolute value as "large".
+        notify_above_frac: float
+            Print only if fraction of weights counted "large" exceeds this
+            (e.g. if there are 11 absolute values < `large_threshold`
+             out of 1000).
+        notify_detected_only: bool
+            - True:  print text only if dead weights are discovered
+            - False: print a "none found" message if no NaNs were found
+    """
+    def _get_txt(w_value, num_large):
+        num_total = np.asarray(w_value).size
+        perc = 100 * num_large / num_total
+        txt = ''
+        if perc > 0:
+            if perc < .1:
+                num = int((perc / 100) * num_total)  # show as quantity
+                txt = "{:d}% Large".format(num)
+            else:
+                txt = "{:.1f}% Large".format(perc)  # show as percent
+        return txt
+
+    weight_names, weight_values = _get_weight_names_and_values(model)
+    has_large = False
+
+    for w_name, w_value in zip(weight_names, weight_values):
+        num_nan = np.sum(np.isnan(w_value) + np.isinf(w_value))
+        num_large = np.sum(np.abs(w_value) > large_threshold) - num_nan
+        txt = _get_txt(w_value, num_large)
+        if txt:
+            if not has_large:  # does have `if txt`, but `has_large` not set yet
+                print(flush=True)  # newline
+            cprint("{} -- '{}'".format(txt, w_name), color='red', flush=True)
+        if num_large > 0:
+            has_large = True
+
+    if has_large:
+        print("L = layer index, W = weight tensor index", end='')
+    elif not notify_detected_only:
+        print("No NaN weights detected in any trainable layers")
+
+
+def _get_weight_names_and_values(model):
+    weight_names   = [w.name for layer in model.layers for w in layer.weights]
+    weight_tensors = [w      for layer in model.layers for w in layer.weights]
+    weight_values  = K.batch_get_value(weight_tensors)
+    return weight_names, weight_values
 
 
 def _sample_weight_built(model):

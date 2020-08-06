@@ -31,6 +31,7 @@ release = '0.0.1'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'nbsphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -132,6 +133,11 @@ def skip(app, what, name, obj, would_skip, options):
             '__%s__' % name.strip('__') != name):
         return False
     return would_skip
+
+#### nbsphinx configs###############################################
+nbsphinx_thumbnails = {
+    'examples/misc/timeseries': '_images/ecg.png',
+}
 
 #### Reference by alias configs ###############################################
 from sphinx.addnodes import pending_xref

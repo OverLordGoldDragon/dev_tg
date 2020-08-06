@@ -382,7 +382,7 @@ def get_last_log(self, name, best=False):
                          "'history'.")
 
     _dir = self.best_models_dir if best else self.logdir
-    paths = [p for p in Path(_dir).iterdir()
+    paths = [str(p) for p in Path(_dir).iterdir()
              if (p.is_file() and p.stem.endswith('__' + name))]
     if len(paths) == 0:
         raise Exception(f"no {name} files found in {_dir}")

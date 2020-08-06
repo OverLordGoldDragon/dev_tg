@@ -1,15 +1,42 @@
-.. DeepTrain documentation master file, created by
-   sphinx-quickstart on Wed Jun  3 00:22:36 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
 Welcome to DeepTrain's documentation!
 =====================================
 
+DeepTrain is woot etc
+
+   
+Examples
+========
+
+.. raw:: html
+
+   <div class="gallery">
+     <a href="examples/advanced.html"><img src="_images/mnist.gif"></img></a><br>
+	 <div style="text-align: center"><a href="examples/advanced.html"><i>MNIST AutoEncoder</i></a></div>
+   </div>
+   
+   <div class="gallery">
+     <a href="examples/misc/timeseries.html"><img src="_images/ecg2.png"></img></a><br>
+	 <div style="text-align: center"><a href="examples/misc/timeseries.html"><i>Timeseries Classification</i></a></div>
+   </div>
+   
+   <div class="gallery">
+     <a href="examples/misc/model_health.html"><img src="_images/model_health.png"></img></a><br>
+	 <div style="text-align: center"><a href="examples/misc/model_health.html"><i>Model Health Monitoring</i></a></div>
+   </div>
+
+|
+
 .. toctree::
    :maxdepth: 2
+   :glob:
 
    Why DeepTrain? <why_deeptrain>
+   examples/basic
+   examples/advanced
+   examples/index
+   examples/callbacks/index
+   examples/introspection/index
 
 
 Indices and tables

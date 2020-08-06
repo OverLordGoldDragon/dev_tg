@@ -5,11 +5,9 @@
     - Binary classification visuals
     - Using class weights to handle imbalance
 """
-import os
-os.environ['TF_KERAS'] = '1'
-
 import deeptrain
 deeptrain.append_examples_dir_to_sys_path()
+
 from utils import TS_CONFIGS as C
 from utils import init_session, make_timeseries_classifier
 from see_rnn import features_1D, rnn_histogram, rnn_heatmap
@@ -23,7 +21,7 @@ from see_rnn import features_1D, rnn_histogram, rnn_heatmap
 # Datapoints per sequence: 188
 #%%# Configure TrainGenerator, DataGenerators, & model ########################
 batch_size = 128
-window_size = batch_size / 4.    # use 4 windows
+window_size = 188 / 4.    # use 4 windows
 assert window_size.is_integer()  # ensure it divides batch_size
 window_size = int(window_size)
 

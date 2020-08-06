@@ -233,9 +233,9 @@ class DataGenerator():
               `all_data_exhausted = False`, and `slice_idx` to None if it's
               already None (else to `0`).
         """
-        def _handle_batch_size_mismatch(forced):
+        def _handle_batch_size_mismatch(forced, is_recursive):
             if len(self.batch) < self.batch_size:
-                self.set_name = self._set_names.pop(0)
+                self._update_set_name(is_recursive)
                 self.advance_batch(forced, is_recursive=True)
                 return 'exit'
 
@@ -267,14 +267,13 @@ class DataGenerator():
             self._update_group_batch_state()
 
         if self.batch_size is not None and len(self.batch) != self.batch_size:
-            flag = _handle_batch_size_mismatch(forced)
+            flag = _handle_batch_size_mismatch(forced, is_recursive)
             if flag == 'exit':
                 # exit after completing arbitrary number of recursions, by
                 # which time code below would execute as needed
                 return
 
-        s = self._set_names.pop(0)
-        self.set_name = s if not is_recursive else "%s+%s" % (self.set_name, s)
+        self._update_set_name(is_recursive)
         self.batch = np.asarray(self.batch)
         if len(self.labels) > 0:
             self.labels = np.asarray(self.labels)
@@ -367,6 +366,11 @@ class DataGenerator():
         else:
             self._group_batch_idx += 1
 
+    def _update_set_name(self, is_recursive):
+        s = self._set_names.pop(0)
+        self.set_name = s if not is_recursive else "%s+%s" % (self.set_name, s)
+
+    ###### STATE METHOS #######################################################
     def on_epoch_end(self):
         """Increments `epoch`, calls `preprocessor.on_epoch_end(epoch)`, then
         :meth:`reset_state`, and returns `epoch`.

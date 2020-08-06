@@ -1,12 +1,12 @@
 from types import LambdaType
-from . import TF_KERAS, TF_EAGER, TF_2
+from . import TF_KERAS, tf_eager, TF_2
 
 
 def get_model_metrics(model):
     # TF1, 2, Eager, Graph, keras, and tf.keras store model.compile(metrics)
     # differently
     if TF_2 and TF_KERAS:
-        if TF_EAGER:
+        if tf_eager():
             metrics = model.compiled_metrics._user_metrics
         else:
             metrics = model._compile_metrics
