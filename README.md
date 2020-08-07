@@ -37,14 +37,14 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
 ### Introspection
 
   - **Data**: batches and labels are enumerated by "set nums"; know what's being fit and when
-  - **Model**: gradients, weights, activations visuals; auto descriptive naming
+  - **Model**: auto descriptive naming; gradients, weights, activations visuals
   - **Train state**: single-image log of key attributes & hyperparameters for easy reference
 
 ### Utilities
 
-  - **Preprocessing**: batch-making and format conversion methods
   - **Calibration**: classifier prediction threshold; best batch subset selection (for e.g. ensembling)
   - **Algorithms**: convenience methods for object inspection & manipulation
+  - **Preprocessing**: batch-making and format conversion methods
 
 ## How it works
 
@@ -59,4 +59,4 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
  5. which are then printed, recorded.<br>
  6. The loop repeats, or `validate()` is called.<br>
 
-Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the high-level overview. Callbacks and other behavior can be configured for every stage of training.
+Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the (simlpified) high-level overview. Callbacks and other behavior can be configured for every stage of training.
