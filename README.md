@@ -11,6 +11,52 @@
 ![](https://img.shields.io/badge/keras-tensorflow-blue.svg)
 ![](https://img.shields.io/badge/keras-tf.keras-blue.svg)
 ![](https://img.shields.io/badge/keras-tf.keras/eager-blue.svg)
-![](https://img.shields.io/badge/keras-tf.keras/2.0-blue.svg)
+![](https://img.shields.io/badge/keras-tf.keras/2.x-blue.svg)
 
 Dev-stage repo
+
+
+## Features
+
+DeepTrain is founded on **control** and **introspection**: full knowledge and manipulation of the train state.
+
+### Train Loop
+
+  - **Control**: iteration-, batch-, epoch-level customs
+  - **Resumability**: interrupt-protection, can pause mid-training
+  - **Tracking**: checkpoint model, train state, and hyperparameter info
+  - **Callbacks** at any stage of training or validation
+
+### Data Pipeline
+
+  - **AutoData**: need only path to directory, the rest is inferred (but can customize)
+  - **Faster SSD loading**: load larger batches to maximize read speed utility
+  - **Flexible batch size**: can differ from that of loaded files, will split/combine
+  - **Stateful timeseries**: splits up a batch into windows, and `reset_states()` (RNNs) at end
+  
+### Introspection
+
+  - **Data**: batches and labels are enumerated by "set nums"; know what's being fit and when
+  - **Model**: gradients, weights, activations visuals; auto descriptive naming
+  - **Train state**: single-image log of key attributes & hyperparameters for easy reference
+
+### Utilities
+
+  - **Preprocessing**: batch-making and format conversion methods
+  - **Calibration**: classifier prediction threshold; best batch subset selection (for e.g. ensembling)
+  - **Algorithms**: convenience methods for object inspection & manipulation
+
+## How it works
+
+<p align="center"><img src="https://user-images.githubusercontent.com/16495490/89602536-003e9d00-d878-11ea-8248-29ab1c2b4717.png" width="700"></p>
+
+<img src="https://user-images.githubusercontent.com/16495490/89608043-0a1acd00-d885-11ea-9737-c8f970af3ed3.gif" width="450" align="right">
+
+ 1. User defines `tg = TrainGenerator(**configs)`,
+ 2. calls `tg.train()`.<br>
+ 3. `get_data()` is called, returning data & labels,<br>
+ 4. fed to `model.fit()`, returning `metrics`,<br>
+ 5. which are then printed, recorded,<br>
+ 6. and the loop either repeats, or `validate()` is called.<br>
+
+Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the high-level overview. Callbacks and other behavior can be configured for every stage of training.
