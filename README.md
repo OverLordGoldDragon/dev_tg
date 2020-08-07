@@ -56,7 +56,7 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
  2. calls `tg.train()`.<br>
  3. `get_data()` is called, returning data & labels,<br>
  4. fed to `model.fit()`, returning `metrics`,<br>
- 5. which are then printed, recorded,<br>
- 6. and the loop either repeats, or `validate()` is called.<br>
+ 5. which are then printed, recorded.<br>
+ 6. The loop either repeats, or `validate()` is called.<br>
 
 Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the high-level overview. Callbacks and other behavior can be configured for every stage of training.
