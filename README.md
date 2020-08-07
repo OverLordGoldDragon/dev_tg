@@ -50,13 +50,13 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
 
 <p align="center"><img src="https://user-images.githubusercontent.com/16495490/89602536-003e9d00-d878-11ea-8248-29ab1c2b4717.png" width="700"></p>
 
-<img src="https://user-images.githubusercontent.com/16495490/89608043-0a1acd00-d885-11ea-9737-c8f970af3ed3.gif" width="440" align="right">
+<img src="https://user-images.githubusercontent.com/16495490/89608043-0a1acd00-d885-11ea-9737-c8f970af3ed3.gif" width="450" align="right">
 
  1. User defines `tg = TrainGenerator(**configs)`,
  2. calls `tg.train()`.<br>
  3. `get_data()` is called, returning data & labels,<br>
  4. fed to `model.fit()`, returning `metrics`,<br>
  5. which are then printed, recorded.<br>
- 6. The loop either repeats, or `validate()` is called.<br>
+ 6. The loop repeats, or `validate()` is called.<br>
 
 Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the high-level overview. Callbacks and other behavior can be configured for every stage of training.
