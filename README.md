@@ -50,7 +50,7 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
 
 <p align="center"><img src="https://user-images.githubusercontent.com/16495490/89602536-003e9d00-d878-11ea-8248-29ab1c2b4717.png" width="700"></p>
 
-<img src="https://user-images.githubusercontent.com/16495490/89608043-0a1acd00-d885-11ea-9737-c8f970af3ed3.gif" width="430" align="right">
+<img src="https://user-images.githubusercontent.com/16495490/89608043-0a1acd00-d885-11ea-9737-c8f970af3ed3.gif" width="440" align="right">
 
  1. User defines `tg = TrainGenerator(**configs)`,
  2. calls `tg.train()`.<br>
