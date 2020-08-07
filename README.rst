@@ -2,7 +2,7 @@
 
     <p align="center">
       <img src="https://user-images.githubusercontent.com/16495490/89590797-bf379000-d859-11ea-8414-1e08aee3a95c.png" width="300">
-    </p><br>
+    </p>
 
 DeepTrain
 =========
