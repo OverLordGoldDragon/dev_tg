@@ -60,3 +60,30 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
  6. The loop repeats, or `validate()` is called.<br>
 
 Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the (simlpified) high-level overview. Callbacks and other behavior can be configured for every stage of training.
+
+## Installation
+
+`pip install deeptrain` (without data; see [how to run examples]), or clone repository
+
+## Quickstart
+
+To run, DeepTrain requires (1) a compiled model; (2) data directories (train & val). Below is a minimalistic example.
+
+Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic] and [Advanced] examples.
+
+```python
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.models import Model
+from deeptrain import TrainGenerator, DataGenerator
+
+ipt = Input((16,))
+out = Dense(10, 'softmax')(ipt)
+model = Model(ipt, out)
+model.compile('adam', 'categorical_crossentropy')
+
+dg  = DataGenerator(data_path="data/train", labels_path="data/train/labels.npy")
+vdg = DataGenerator(data_path="data/val",   labels_path="data/val/labels.npy")
+tg  = TrainGenerator(model, dg, vdg, epochs=3, logs_dir="logs/")
+
+tg.train()
+```
