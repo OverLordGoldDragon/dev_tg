@@ -12,6 +12,6 @@
             .gallery img:hover {border: 1px solid #000;}
 
         </style>
-        <img src="../docs/source/_images/mnist.gif"/>
+        <img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif"/>
     </div>
 </foreignObject>
