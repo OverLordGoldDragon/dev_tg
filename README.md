@@ -37,14 +37,14 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
 ### Introspection
 
   - **Data**: batches and labels are enumerated by "set nums"; know what's being fit and when
-  - **Model**: gradients, weights, activations visuals; auto descriptive naming
+  - **Model**: auto descriptive naming; gradients, weights, activations visuals
   - **Train state**: single-image log of key attributes & hyperparameters for easy reference
 
 ### Utilities
 
-  - **Preprocessing**: batch-making and format conversion methods
   - **Calibration**: classifier prediction threshold; best batch subset selection (for e.g. ensembling)
   - **Algorithms**: convenience methods for object inspection & manipulation
+  - **Preprocessing**: batch-making and format conversion methods
 
 ## How it works
 
@@ -56,7 +56,40 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
  2. calls `tg.train()`.<br>
  3. `get_data()` is called, returning data & labels,<br>
  4. fed to `model.fit()`, returning `metrics`,<br>
- 5. which are then printed, recorded,<br>
- 6. and the loop either repeats, or `validate()` is called.<br>
+ 5. which are then printed, recorded.<br>
+ 6. The loop repeats, or `validate()` is called.<br>
 
-Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the high-level overview. Callbacks and other behavior can be configured for every stage of training.
+Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the (simlpified) high-level overview. Callbacks and other behavior can be configured for every stage of training.
+
+## Examples
+
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">MNIST AutoEncoder</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html">Timeseries Classification</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html">Health Monitoring</a>
+:----------------:|:-----------------:|:-----------------:
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220"><a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/ecg2.png" width="220" height="220"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/model_health.png" width="220" height="220"></a>
+
+## Installation
+
+`pip install deeptrain` (without data; see [how to run examples]), or clone repository
+
+## Quickstart
+
+To run, DeepTrain requires (1) a compiled model; (2) data directories (train & val). Below is a minimalistic example.
+
+Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic] and [Advanced] examples.
+
+```python
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.models import Model
+from deeptrain import TrainGenerator, DataGenerator
+
+ipt = Input((16,))
+out = Dense(10, 'softmax')(ipt)
+model = Model(ipt, out)
+model.compile('adam', 'categorical_crossentropy')
+
+dg  = DataGenerator(data_path="data/train", labels_path="data/train/labels.npy")
+vdg = DataGenerator(data_path="data/val",   labels_path="data/val/labels.npy")
+tg  = TrainGenerator(model, dg, vdg, epochs=3, logs_dir="logs/")
+
+tg.train()
+```
