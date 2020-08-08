@@ -3,19 +3,19 @@
         <div xmlns="http://www.w3.org/1999/xhtml">
             <style>
             
-                div.gallery {
+                .gallery {
                     display: inline-block;
                     width: 220px;
                  	height: 200px;
                     margin: 14px;
                 }
-                div.gallery img {width: 100%; height: auto;}
-                div.gallery img:hover {border: 1px solid #000;}
+                .gallery img {width: 100%; height: auto;}
+                .gallery img:hover {border: 1px solid #000;}
                 
             </style>
             <div class="gallery">
                 <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
-                    <img src="docs/source/_images/mnist.gif"/></img>
+                    <img src="docs/source/_images/mnist.gif"/>
                 </a><br/>
                 <div style="text-align: center">
                     <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a>
