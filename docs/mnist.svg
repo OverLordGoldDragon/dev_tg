@@ -14,9 +14,7 @@
                 
             </style>
             <div class="gallery">
-                <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
-                    <img src="docs/source/_images/mnist.gif"/>
-                </a>
+                <img src="docs/source/_images/mnist.gif"/>
             </div>
         </div>
     </foreignObject>
