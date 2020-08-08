@@ -1,9 +1,7 @@
-<div align="center">
-	<br>
-	<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
-		<img src="docs/mnist.svg" width="800" height="400">
-	</a>
-	<br>
+<div>
+    <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
+        <img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220">
+    </a>
 </div>
 
 
