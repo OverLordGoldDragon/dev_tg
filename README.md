@@ -1,10 +1,11 @@
-<div style="width:220px">
+<div>
     <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
         <img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220">
     </a><br>
-    <div align="center"><a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a></div>
+    <div align="center" width="300">
+        <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a>
+    </div>
 </div>
-
 
 
 <hr>
