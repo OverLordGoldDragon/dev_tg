@@ -1,17 +1,3 @@
-<div style="display:inline">
-    <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
-        <img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220">
-    </a><br>
-    <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a>
-</div>
-
-MNIST AutoEncoder | MNIST AutoEncoder
-:----------------:|:-----------------:
-<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220"></a>
-
-
-<hr>
-
 <p align="center"><img src="https://user-images.githubusercontent.com/16495490/89590797-bf379000-d859-11ea-8414-1e08aee3a95c.png" width="300"></p>
 
 # DeepTrain
@@ -74,6 +60,12 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
  6. The loop repeats, or `validate()` is called.<br>
 
 Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the (simlpified) high-level overview. Callbacks and other behavior can be configured for every stage of training.
+
+## Examples
+
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">MNIST AutoEncoder</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html">Timeseries Classification</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html">Health Monitoring</a>
+:----------------:|:-----------------:|:-----------------:
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220"><a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/ecg2.png" width="220" height="220"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/model_health.png" width="220" height="220"></a>
 
 ## Installation
 
