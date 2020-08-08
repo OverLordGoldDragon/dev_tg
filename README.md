@@ -1,4 +1,4 @@
-<div>
+<div width="220">
     <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
         <img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220">
     </a><br>
