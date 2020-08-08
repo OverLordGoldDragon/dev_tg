@@ -5,12 +5,9 @@
     <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a>
 </div>
 
-<div style="display:inline">
-    <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
-        <img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220">
-    </a><br>
-    <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a>
-</div>
+MNIST AutoEncoder | MNIST AutoEncoder
+:----------------:|:-----------------:
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://github.com/OverLordGoldDragon/dev_tg/blob/master/docs/source/_images/mnist.gif" width="220" height="220"></a>
 
 
 <hr>
