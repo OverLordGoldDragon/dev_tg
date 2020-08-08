@@ -15,7 +15,7 @@
             </style>
             <div class="gallery">
                 <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
-                    <img src="docs/source/_images/mnist.gif"/>
+                    <img src="docs/source/_images/mnist.gif"/></img>
                 </a><br/>
                 <div style="text-align: center">
                     <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><i>MNIST AutoEncoder</i></a>
