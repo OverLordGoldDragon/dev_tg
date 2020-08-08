@@ -1,3 +1,10 @@
+<div align="center">
+	<br>
+	<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">
+		<img src="docs/mnist.svg" width="800" height="400">
+	</a>
+	<br>
+</div>
 
 
 
