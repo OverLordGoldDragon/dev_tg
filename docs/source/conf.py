@@ -44,10 +44,8 @@ exclude_patterns = []
 
 ##### HTML output configs ####################################################
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-#
-# html_theme = 'sphinx_rtd_theme'
+html_sidebars = { '**': [
+    'globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -164,15 +162,20 @@ reftarget_aliases = [
     ('train_generator', 'TrainGenerator._print_train_progress'),
     ('train_generator', 'TrainGenerator._print_val_progress'),
     ('train_generator', 'TrainGenerator._print_progress'),
+    ('train_generator', 'TrainGenerator._metric_name_to_alias'),
+    ('train_generator', 'TrainGenerator._alias_to_metric_name'),
     ('train_generator', 'TrainGenerator.reset_validation'),
     ('train_generator', 'TrainGenerator.check_health'),
     ('train_generator', 'TrainGenerator._on_val_end'),
     ('train_generator', 'TrainGenerator.__init__'),
     ('train_generator', 'TrainGenerator.get_data'),
+    ('train_generator', 'TrainGenerator.train'),
+    ('train_generator', 'TrainGenerator.validate'),
     ('train_generator', 'TrainGenerator'),
     ('data_generator',  'DataGenerator'),
     ('data_generator',  'DataGenerator.reset_state'),
     ('data_generator',  'DataGenerator.get'),
+    ('data_generator',  'DataGenerator.advance_batch'),
     ('data_generator',  'DataGenerator.on_epoch_end'),
     ('data_generator',  'DataGenerator._set_preprocessor'),
     ('data_generator',  'DataGenerator._make_group_batch_and_labels'),
@@ -180,13 +183,12 @@ reftarget_aliases = [
     ('data_generator',  'DataGenerator._infer_and_set_info'),
     ('data_generator',  'DataGenerator._get_next_batch'),
     ('data_generator',  'DataGenerator._set_data_loader'),
-    ('util.saving',     'TrainGenerator.save'),
-    ('util.saving',     'TrainGenerator.load'),
     ('util.saving',     'checkpoint'),
     ('util',            'misc._make_plot_configs_from_metrics'),
     ('',                'preprocessing.numpy_to_lz4f'),
     ('*',    'util.data_loaders'),
     ('util', 'data_loader.numpy_loader'),
+    ('util', 'logging.generate_report'),
     ('util.preprocessors',  'Preprocessor'),
     ('util.preprocessors',  'GenericPreprocessor'),
     ('util.preprocessors',  'TimeseriesPreprocessor'),
@@ -220,6 +222,16 @@ for k, v in reftarget_aliases.items():
         ra[k] = ('deeptrain.' + v, k)
     else:
         ra[k] = ('deeptrain.' + v, k + '()')
+
+# special cases not fitting above pattern
+ra.update({
+    'TrainGenerator.save': ('deeptrain.util.saving.save',
+                            'TrainGenerator.save()'),
+    'TrainGenerator.load': ('deeptrain.util.saving.load',
+                            'TrainGenerator.load()'),
+    'TrainGenerator.checkpoint': ('deeptrain.util.saving.checkpoint',
+                                  'TrainGenerator.checkpoint()'),
+})
 reftarget_aliases = ra
 
 

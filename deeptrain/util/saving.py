@@ -72,8 +72,9 @@ def _save_best_model(self, del_previous_best=None):
     print("Best model saved to " + basepath)
 
 def checkpoint(self, forced=False, overwrite=None):
-    """Save `TrainGenerator` state, report, history fig, and model (weights,
-    and if configured to, optimizer state and architecture).
+    """Saves `TrainGenerator` state (including both `DataGenerator`s), report,
+    history fig, and model (weights and if configured to, optimizer state and
+    architecture).
 
     Arguments:
         forced: bool
@@ -87,7 +88,8 @@ def checkpoint(self, forced=False, overwrite=None):
 
     Saves according to `temp_checkpoint_freq` and `unique_checkpoint_freq`.
     See :meth:`._should_do`. See :meth:`save` on how model and
-    `TrainGenerator` state are save.
+    `TrainGenerator` state are save. Additionally, ill update `model_name`
+    if `best_key_metric` was updated.
 
     "Unique" checkpoint will generate save files with latest `best_key_metric`
     and `_times_validated`, and with full `model_name` if
@@ -202,8 +204,9 @@ def _make_model_save_fns(self, basepath):
 
 
 def save(self, savepath=None):
-    """Save `TrainGenerator` state and, if configured to, model weights
-    and optimizer state. Applies callbacks with `stage='save'`.
+    """Save `TrainGenerator` state (including both `DataGenerator`s), and if
+    configured to, model weights and optimizer state. Applies callbacks with
+    `stage='save'`.
 
     Arguments:
         savepath: str / None
@@ -347,10 +350,10 @@ def _get_optimizer_state(self):
 
 
 def load(self, filepath=None, passed_args=None):
-    """Loads `TrainGenerator` state and, if configured to, model optimizer
-    attributes and instantiates optimizer (but not model architecture).
-    Instantiates callbacks, and applies them with `stage='load'`.
-    Preloads data from `datagen` and `val_datagen`.
+    """Loads `TrainGenerator` state (including both `DataGenerator`s), and if
+    configured to, model optimizer attributes and instantiates optimizer
+    (but not model architecture). Instantiates callbacks, and applies them with
+    `stage='load'`. Preloads data from `datagen` and `val_datagen`.
 
     Arguments:
         filepath: str / None

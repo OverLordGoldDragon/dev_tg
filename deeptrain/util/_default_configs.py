@@ -8,7 +8,7 @@ from .fonts import fontsdir
 from .algorithms import builtin_or_npscalar
 
 
-#:
+#: Configures :meth:`~deeptrain.visuals.get_history_fig`.
 _DEFAULT_PLOT_CFG = {
 'fig_kw': {'figsize': (12, 7)},
 '0': {
@@ -41,16 +41,15 @@ _DEFAULT_PLOT_CFG = {
 }
 }
 
-
-#: order-dependent
+# order-dependent
+#: Configures :meth:`~deeptrain.util.logging.get_unique_model_name`.
 _DEFAULT_MODEL_NAME_CFG = dict(
     optimizer       = '',
     lr              = '',
     best_key_metric = None,
 )
 
-
-#:
+#: Configures :meth:`~deeptrain.util.logging.generate_report`.
 _DEFAULT_REPORT_CFG = {
     'model':
         {},
@@ -87,6 +86,7 @@ _DEFAULT_REPORT_CFG = {
 }
 
 # TODO note which items are "mandatory"
+#: Configures :meth:`TrainGenerator.save`.
 _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
     'model',
     'optimizer_state',
@@ -121,24 +121,30 @@ _DEFAULT_TRAINGEN_SAVESKIP_LIST = [
     # TODO include unlisted as comments: 'model:weights',
 ]
 
+#: Configures :meth:`TrainGenerator.load`.
 _DEFAULT_TRAINGEN_LOADSKIP_LIST = ['{auto}', 'model_name', 'model_base_name',
                                    'model_num', 'use_passed_dirs_over_loaded',
                                    'logdir', '_init_callbacks_called']
-
+#: Configures :meth:`TrainGenerator.save`.
 _DEFAULT_DATAGEN_SAVESKIP_LIST = ['batch', 'superbatch', 'labels', 'all_labels',
                                   '_group_batch', '_group_labels']
+#: Configures :meth:`TrainGenerator.load`.
 _DEFAULT_DATAGEN_LOADSKIP_LIST = ['data_path', 'labels_path', 'superbatch_path',
                                   'data_loader', 'set_nums_original',
                                   'set_nums_to_process', 'superbatch_set_nums']
-
+#: Configures :meth:`TrainGenerator.save`.
 _DEFAULT_MODEL_SAVE_KW = {'include_optimizer': True, 'save_format': None}
+#: Configures :meth:`TrainGenerator.save`.
 _DEFAULT_MODEL_SAVE_WEIGHTS_KW = {'save_format': None}
 
+#: Configures :meth:`TrainGenerator._print_train_progress` and
+#: :meth:`TrainGenerator._print_val_progress`.
 _DEFAULT_METRIC_PRINTSKIP_CFG = {
     'train': [],
     'val': [],
 }
 
+#: Configures :meth:`TrainGenerator._metric_name_to_alias`
 _DEFAULT_METRIC_TO_ALIAS = {
     'loss'    : 'Loss',
     'accuracy': 'Acc',
@@ -148,7 +154,7 @@ _DEFAULT_METRIC_TO_ALIAS = {
     'mean_absolute_error': 'MAE',
     'mean_squared_error' : 'MSE',
 }
-
+#: Configures :meth:`TrainGenerator._alias_to_metric_name`
 _DEFAULT_ALIAS_TO_METRIC = {
     'acc':     'accuracy',
     'mae':     'mean_absolute_error',

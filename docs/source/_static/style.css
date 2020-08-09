@@ -1,5 +1,7 @@
+
 .wy-nav-content {
-    max-width: none; !important;
+    max-width: 80%; !important;
+    /* max-width: none; !important; */
 }
 
 div.gallery {
