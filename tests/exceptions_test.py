@@ -350,7 +350,7 @@ def test_util():
         C['traingen']['logs_dir'] = None
         pass_on_error(_util_make_classifier, C)
 
-    def _validate_optimizer_saving_configs(C):  # [util.misc]
+    def _validate_optimizer_save_configs(C):  # [util.misc]
         C['traingen']['optimizer_save_configs'] = {
             'include': 'weights', 'exclude': 'updates'}
         pass_on_error(_util_make_classifier, C)

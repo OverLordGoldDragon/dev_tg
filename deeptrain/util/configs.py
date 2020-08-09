@@ -8,9 +8,9 @@ from .fonts import fontsdir
 from .algorithms import builtin_or_npscalar
 
 
-PLOT_CFG = [
-{'figsize': (12, 7)},
-{
+PLOT_CFG = {
+'fig_kw': {'figsize': (12, 7)},
+'0': {
  'metrics': None,
  'x_ticks': None,
  'vhlines'   :
@@ -24,7 +24,7 @@ PLOT_CFG = [
  'linestyle': ['-', '-'],
  'color'    : None,
 },
-{
+'1': {
  'metrics': None,
  'x_ticks': None,
  'vhlines':
@@ -38,7 +38,7 @@ PLOT_CFG = [
  'linestyle': ['-'],
  'color': None,
 }
-]
+}
 
 
 # order-dependent

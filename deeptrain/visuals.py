@@ -339,14 +339,14 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     `plot_configs` is structured as follows:
 
-    >>> [subplot_kw,
-    ...  {reserved_name: value,
-    ...   plt_kw: value},
-    ...  {reserved_name: value,
-    ...   plt_kw: value},
-    ...  ...]
+    >>> {'fig_kw': fig_kw,
+    ...  '0': {reserved_name: value,
+    ...        plt_kw: value},
+    ...  '1': {reserved_name: value,
+    ...        plt_kw: value},
+    ...  ...}
 
-    - `subplot_kw`: dict, passed to `plt.subplots()`; must be first item in list
+    - `fig_kw`: dict, passed to `plt.subplots(**fig_kw)`
     - `reserved_name`: str, one of `('metrics', 'x_ticks', 'vhlines',
       'mark_best_cfg', 'ylims', 'legend_kw')`. Used to configure supported custom
       plot behavior (see "Builtin plot customs" below).
@@ -371,6 +371,15 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
     - `'ylims'`: y-limits of plot panes.
     - `'legend_kw'`: passed to `plt.legend()`; if None, no legend is drawn.
 
+    **Defaults handling**:
+
+    Keys and subkeys, where absent, will be filled from configs returned by
+    :meth:`misc._make_plot_configs_from_metrics`.
+
+        - If plot pane `'0'` is lacking entirely, it'll be copied from the
+          defaults.
+        - If subkey `'color'` in dict with key `'0'` is missing, will fill
+          from `defaults['0']['color']`.
 
     **Further info**:
 
@@ -469,15 +478,17 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
     if plot_configs is None:
         plot_configs = self.plot_configs
-    if not all(('metrics' in cfg and 'x_ticks' in cfg)
-               for cfg in plot_configs[1:]):
-        raise ValueError("all dicts in `plot_configs[1:]` must include "
-                         "'metrics', 'x_ticks'")
 
-    fig, axes = plt.subplots(len(plot_configs[1:]), 1, **plot_configs[0])
+    subplot_configs = {k: v for k, v in plot_configs.items() if k != 'fig_kw'}
+    if not all(('metrics' in cfg and 'x_ticks' in cfg)
+               for cfg in subplot_configs.values()):
+        raise ValueError("all dicts in `plot_configs` (except w/ 'fig_kw' key) "
+                         "must include 'metrics', 'x_ticks'")
+
+    fig, axes = plt.subplots(len(subplot_configs), 1, **plot_configs['fig_kw'])
     axes = np.atleast_1d(axes)
 
-    for config, axis in zip(plot_configs[1:], axes):
+    for config, axis in zip(subplot_configs.values(), axes):
         _equalize_metric_names(config)
         x_ticks, metrics, mark_best_idx = _unpack_ticks_and_metrics(config)
         x_ticks = _equalize_ticks_range(x_ticks, metrics)
@@ -553,7 +564,7 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
 
     if legend_kw is not None:
         legend_kw = legend_kw.copy()  # ensure external dict unaffected
-        legend_kw.pop('weight', None)  # invalid kwarg
+        legend_kw.pop('weight', None)  # invalid kwarg (but used above)
         ax.legend(**legend_kw)
     if vhlines is not None:
         _plot_vhlines(vhlines, ax)

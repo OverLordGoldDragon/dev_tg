@@ -78,7 +78,7 @@ def test_main(monkeypatch):
         tg._train_loop_done = True
         tg.train()
 
-        tg.plot_configs[1]['vhlines']['v'] = 'invalid_vlines'
+        tg.plot_configs['0']['vhlines']['v'] = 'invalid_vlines'
         pass_on_error(tg.get_history_fig)
         tg.clear_cache(reset_val_flags=True)
         tg._should_do({}, forced=True)

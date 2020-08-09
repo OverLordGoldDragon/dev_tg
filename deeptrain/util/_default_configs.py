@@ -9,9 +9,9 @@ from .algorithms import builtin_or_npscalar
 
 
 #:
-_DEFAULT_PLOT_CFG = [
-    {'figsize': (12, 7)},
-{
+_DEFAULT_PLOT_CFG = {
+'fig_kw': {'figsize': (12, 7)},
+'0': {
  'metrics': None,
  'x_ticks': None,
  'vhlines'   :
@@ -25,7 +25,7 @@ _DEFAULT_PLOT_CFG = [
  'linestyle': ['-', '-'],
  'color'    : None,
 },
-{
+'1': {
  'metrics': None,
  'x_ticks': None,
  'vhlines':
@@ -39,7 +39,7 @@ _DEFAULT_PLOT_CFG = [
  'linestyle': ['-'],
  'color': None,
 }
-]
+}
 
 
 #: order-dependent

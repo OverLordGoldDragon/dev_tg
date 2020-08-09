@@ -170,10 +170,10 @@ def _make_plot_configs_from_metrics(self):
     mark_best_cfg = {'val': self.key_metric,
                      'max_is_best': self.max_is_best}
     _PLOT_CFG = deepcopy(PLOT_CFG)  # ensure module dict remains unchanged
-    CFG = _PLOT_CFG[1]
+    CFG = _PLOT_CFG['0']
 
-    plot_configs = [{'figsize': (12, 7)}]  # plt.subplot() kwargs
-    plot_configs.append({
+    plot_configs = {'fig_kw': {'figsize': (12, 7)}}  # plt.subplots() kwargs
+    plot_configs['0'] = {
         'metrics':
             CFG['metrics'] or {'train': self.train_metrics,
                                'val'  : val_metrics_p1},
@@ -188,15 +188,15 @@ def _make_plot_configs_from_metrics(self):
         'linewidth': _get_extend(CFG['linewidth'], n_total_p1),
         'linestyle': _get_extend(CFG['linestyle'], n_total_p1),
         'color'    : _get_extend(CFG['color'] or colors, n_total_p1),
-    })
+    }
     if len(self.val_metrics) <= self.plot_first_pane_max_vals:
         return plot_configs
 
     #### dedicate separate pane to remainder val_metrics ######################
     n_val_p2 = n_val - n_val_p1
 
-    CFG = _PLOT_CFG[2]
-    plot_configs.append({
+    CFG = _PLOT_CFG['1']
+    plot_configs['1'] = {
         'metrics':
             CFG['metrics'] or {'val': self.val_metrics[n_val_p1:]},
         'x_ticks':
@@ -209,7 +209,7 @@ def _make_plot_configs_from_metrics(self):
         'linewidth': _get_extend(CFG['linewidth'], n_val_p2),
         'linestyle': _get_extend(CFG['linestyle'], n_val_p2),
         'color'    : _get_extend(CFG['color'] or colors, n_total_p1, tail=True),
-    })
+    }
     return plot_configs
 
 
@@ -405,24 +405,25 @@ def _validate_traingen_configs(self):
                              "`dynamic_predict_threshold_min_max`")
 
     def _validate_or_make_plot_configs():
-        default = self._make_plot_configs_from_metrics()
+        defaults = self._make_plot_configs_from_metrics()
         if self.plot_configs is not None:
             configs = self.plot_configs
-            if (not isinstance(configs, list) or
-                not all(isinstance(cfg, dict) for cfg in configs)):
-                raise TypeError("`plot_configs` must be a list of dicts, got:\n"
-                                + configs)
+            if (not isinstance(configs, dict) or
+                not all(isinstance(cfg, dict) for cfg in configs.values())):
+                raise TypeError("`plot_configs` must be a dict of dicts, got:"
+                                "\n%s" % configs)
 
-            # insert defaults where keys are absent
-            for i in range(len(default)):
-                if i >= len(configs):  # add missing container
-                    configs.append({})
-                for name in default[i]:
-                    if name not in configs[i]:
-                        configs[i][name] = default[i][name]
+            # insert defaults where keys/subkeys absent
+            for cfg_name, cfg_default in defaults.items():
+                if cfg_name not in configs:
+                    configs[cfg_name] = cfg_default.copy()
+                else:
+                    for key in cfg_default:
+                        if key not in configs[cfg_name]:
+                            configs[cfg_name][key] = cfg_default[key]
             self.plot_configs = configs
         else:
-            self.plot_configs = default
+            self.plot_configs = defaults
 
     def _validate_metric_printskip_configs():
         for name, cfg in self.metric_printskip_configs.items():

@@ -82,12 +82,12 @@ outputs_heatmap = OutputsHeatmap()
 
 #%%#
 # Plots weights of the second Conv2D layer at end of each epoch.
-# Weights are reshaped such that subplot 'boxes' are output channels,
-# and each box plots flattened spatial dims vertically and input features
-# horizontally.
+# Weights are reshaped such that subplot 'boxes' are output channels, and each
+# box plots flattened spatial dims vertically and input features horizontally.
 class ConvWeightsHeatmap(TraingenCallback):
     def on_val_end(self, stage=None):
-        self.viz()
+        if stage == ('val_end', 'train:epoch'):
+            self.viz()
 
     def viz(self):
         w = self.tg.model.layers[2].get_weights()[0]
@@ -95,6 +95,7 @@ class ConvWeightsHeatmap(TraingenCallback):
         w = w.transpose(2, 0, 1)  # (out_features, spatial dims x in_features)
 
         if not hasattr(self, 'init_norm'):
+            # maintain same norm throughout plots for consistency
             mx = np.max(np.abs(w))
             self.init_norm = (-mx, mx)
 

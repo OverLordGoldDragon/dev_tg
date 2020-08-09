@@ -342,7 +342,7 @@ def test_validate_traingen_configs():
         pass_on_error(_validate_traingen_configs, tg)
 
     def _validate_or_make_plot_configs(tg):
-        tg.plot_configs = {'1': {}}
+        tg.plot_configs = ['1']
         pass_on_error(_validate_traingen_configs, tg)
 
     def _validate_model_save_kw(tg):
