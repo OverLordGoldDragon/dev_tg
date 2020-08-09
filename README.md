@@ -86,7 +86,7 @@ Once `validate()` finishes, training may checkpoint, and `train()` is called aga
 
 To run, DeepTrain requires (1) a compiled model; (2) data directories (train & val). Below is a minimalistic example.
 
-Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic] and [Advanced] examples.
+Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic](https://dev-tg.readthedocs.io/en/latest/examples/basic.html) and [Advanced](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html) examples.
 
 ```python
 from tensorflow.keras.layers import Input, Dense
@@ -104,3 +104,8 @@ tg  = TrainGenerator(model, dg, vdg, epochs=3, logs_dir="logs/")
 
 tg.train()
 ```
+
+## In future releases
+
+ - `MetaTrainer`: direct support for dynamic model recompiling with changing hyperparameters, and optimizing thereof
+ - PyTorch support
