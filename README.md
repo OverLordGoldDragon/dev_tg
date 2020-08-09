@@ -52,7 +52,7 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
 
 <img src="docs/source/_images/train_val.gif" width="450" align="right">
 
- 1. Define `tg = TrainGenerator(**configs)`,
+ 1. We define `tg = TrainGenerator(**configs)`,
  2. call `tg.train()`.<br>
  3. `get_data()` is called, returning data & labels,<br>
  4. fed to `model.fit()`, returning `metrics`,<br>
