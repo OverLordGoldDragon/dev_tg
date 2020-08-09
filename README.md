@@ -46,6 +46,12 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
   - **Algorithms**: convenience methods for object inspection & manipulation
   - **Preprocessing**: batch-making and format conversion methods
 
+## When is DeepTrain suitable (and not)?
+
+Training _few_ models _thoroughly_: closely tracking model and train attributes to debug performance and inform next steps.
+
+DeepTrain is _not_ for models that take under an hour to train, or for training hundreds of models at once.
+
 ## How it works
 
 <p align="center"><img src="docs/source/_images/train_loop.png" width="700"></p>
