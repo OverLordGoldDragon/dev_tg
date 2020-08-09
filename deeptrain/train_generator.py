@@ -9,7 +9,8 @@
    - thorough saving/loading example?
    - ipynb docs formatting (images too large)
    - check stateful=True vs callbacks
-   - "model health monitoring" example
+   - "How does ____ work?"
+   - "How to ____?"
 
    # TODO later
    - MetaTrainer

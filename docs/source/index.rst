@@ -25,6 +25,11 @@ Examples
 	 <div style="text-align: center"><a href="examples/misc/model_health.html"><i>Model Health Monitoring</i></a></div>
    </div>
 
+   <div class="gallery">
+     <a href="examples/callbacks/mnist.html"><img src="_images/gradients.gif"></img></a><br>
+	 <div style="text-align: center"><a href="examples/callbacks/mnist.html"><i>Tracking Weights</i></a></div>
+   </div>
+
 |
 
 .. toctree::
@@ -37,6 +42,8 @@ Examples
    examples/index
    examples/callbacks/index
    examples/introspection/index
+   How to's <how_to>
+   How does X work <how_works>
 
 
 Indices and tables

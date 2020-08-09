@@ -71,7 +71,6 @@ def _save_best_model(self, del_previous_best=None):
             print("Errmsg", e)
     print("Best model saved to " + basepath)
 
-
 def checkpoint(self, forced=False, overwrite=None):
     """Save `TrainGenerator` state, report, history fig, and model (weights,
     and if configured to, optimizer state and architecture).

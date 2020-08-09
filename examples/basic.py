@@ -5,6 +5,7 @@
 This example covers these and a bit more to keep truer to standard use.
 """
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Flatten, Activation
 from tensorflow.keras.models import Model
@@ -89,5 +90,8 @@ datagen     = DataGenerator(**DATAGEN_CFG)
 val_datagen = DataGenerator(**VAL_DATAGEN_CFG)
 traingen    = TrainGenerator(model, datagen, val_datagen, **TRAINGEN_CFG)
 
+traingen.epochs = 1
+traingen.unique_checkpoint_freq = {'epoch': 2}
+traingen.temp_checkpoint_freq = {'epoch': 2}
 #%%# Train ##################################################################
 traingen.train()

@@ -11,8 +11,10 @@ deeptrain.append_examples_dir_to_sys_path()
 logger_savedir = os.path.join(sys.path[0], "outputs", "logger")
 
 from utils import make_classifier, init_session, img_labels_paths
+from utils import Adam
 from utils import CL_CONFIGS as C
 from see_rnn import features_2D
+import numpy as np
 
 from deeptrain.callbacks import TraingenCallback, TraingenLogger
 from deeptrain.callbacks import RandomSeedSetter
@@ -46,12 +48,12 @@ log_configs = {
 tglogger = TraingenLoggerCB(logger_savedir, log_configs)
 
 #%%#
-# Plots model outputs in a heatmap at end of each epoch.
+# Plots model outputs in a heatmap at end of every 2 epochs.
 # Relies on `TraingenLogger` being included in `callbacks`, which stores
 # model outputs so they aren't recomputed for visualization.
 # All callback objects (except funcs in dicts) are required to subclass
 # TraingenCallback (TraingenLogger does so)
-class Viz2D(TraingenCallback):
+class OutputsHeatmap(TraingenCallback):
     def on_val_end(self, stage=None):
         if stage == ('val_end', 'train:epoch') and (self.tg.epoch % 2) == 0:
             # run `viz` within `TrainGenerator._on_val_end`,
@@ -76,9 +78,31 @@ class Viz2D(TraingenCallback):
         sample = outs[0]                  # (width, height, channels)
         return sample.transpose(2, 0, 1)  # (channels, width, height)
 
-viz2d = Viz2D()
+outputs_heatmap = OutputsHeatmap()
 
 #%%#
+# Plots weights of the second Conv2D layer at end of each epoch.
+# Weights are reshaped such that subplot 'boxes' are output channels,
+# and each box plots flattened spatial dims vertically and input features
+# horizontally.
+class ConvWeightsHeatmap(TraingenCallback):
+    def on_val_end(self, stage=None):
+        self.viz()
+
+    def viz(self):
+        w = self.tg.model.layers[2].get_weights()[0]
+        w = w.reshape(-1, *w.shape[2:])  # flatten along spatial dims
+        w = w.transpose(2, 0, 1)  # (out_features, spatial dims x in_features)
+
+        if not hasattr(self, 'init_norm'):
+            mx = np.max(np.abs(w))
+            self.init_norm = (-mx, mx)
+
+        features_2D(w, tight=True, w=.4, h=.4, title=None, show_xy_ticks=0,
+                    norm=self.init_norm)
+
+cwh = ConvWeightsHeatmap()
+#%%
 # Callbacks can also be configured as str-function dict pairs, where str
 # is name of a callback "stage" (see tg._cb_alias after tg.train()).
 grad_hists = {'train:epoch': [make_layer_hists_cb(mode='gradients:outputs'),
@@ -86,17 +110,19 @@ grad_hists = {'train:epoch': [make_layer_hists_cb(mode='gradients:outputs'),
 weight_hists = {('val_end', 'train:epoch'): make_layer_hists_cb(mode='weights')}
 
 configs = {'title': dict(fontsize=13), 'plot': dict(annot_kw=None)}
-outputs_hists = {'val_end': make_layer_hists_cb(mode='outputs', configs=configs)}
+layer_outputs_hists = {'val_end':
+                       make_layer_hists_cb(mode='outputs', configs=configs)}
 #%%#
 # Set new random seeds (`random`, `numpy`, TF-graph, TF-global) every epoch,
 # incrementing by 1 from start value (default 0)
 seed_setter = RandomSeedSetter(freq={'train:epoch': 2})
 #%%###########################################################################
-C['traingen']['callbacks'] = [seed_setter, tglogger, viz2d,
-                              grad_hists, weight_hists, outputs_hists]
-C['traingen']['epochs'] = 4
+C['traingen']['callbacks'] = [seed_setter, tglogger, outputs_heatmap, cwh,
+                              grad_hists, weight_hists, layer_outputs_hists]
+C['traingen']['epochs'] = 16
 C['datagen']['labels_path']     = img_labels_paths[0]
 C['val_datagen']['labels_path'] = img_labels_paths[1]
+C['model']['optimizer'] = Adam(1e-3)
 tg = init_session(C, make_classifier)
 #%%
 tg.train()
