@@ -32,6 +32,16 @@ Examples
 
 |
 
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
+Table of Contents
+=================
+
 .. toctree::
    :maxdepth: 2
    :glob:
@@ -42,13 +52,5 @@ Examples
    examples/index
    examples/callbacks/index
    examples/introspection/index
-   How to's <how_to>
-   How does X work <how_works>
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   How to ...? <how_to>
+   How does ... work? <how_works>

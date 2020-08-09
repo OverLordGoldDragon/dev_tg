@@ -49,3 +49,5 @@ Load train state
         - `DataGenerator` (for each): `loadskip_list`
         - `model`: `optimizer_load_configs`
         - `Preprocessor` (of each `DataGenerator`): `loadskip_list`
+
+Example in :doc:`examples/advanced`.
