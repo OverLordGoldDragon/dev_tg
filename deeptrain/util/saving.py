@@ -206,7 +206,7 @@ def _make_model_save_fns(self, basepath):
 def save(self, savepath=None):
     """Save `TrainGenerator` state (including both `DataGenerator`s), and if
     configured to, model weights and optimizer state. Applies callbacks with
-    `stage='save'`.
+    `stage='save'` *before* saving to file.
 
     Arguments:
         savepath: str / None
@@ -484,7 +484,8 @@ def load(self, filepath=None, passed_args=None):
         loadfile_parsed = pickle.load(loadfile)
         # drop items in loadskip_list (e.g. to avoid overriding passed kwargs)
         loadskip_list = _get_loadskip_list(passed_args)
-        loadskip_list.append('model')  # model is never saved via .save()
+        # `model` as attribute is never saved via .save()
+        loadskip_list.append('model')
         for name in loadskip_list:
             loadfile_parsed.pop(name, None)
 
@@ -498,8 +499,13 @@ def load(self, filepath=None, passed_args=None):
             if getattr(self, 'optimizer_state', None):
                 _load_optimizer_state(self)
             else:
-                print(WARN, "'optimizer_state' not found in loadfile; skipping."
-                      " (optimizer will still instantiate before .train())")
+                # if `optimizer_state` wasn't to be saved, then it not loading
+                # is expected
+                if ('saveskip_list'   not in loadfile_parsed or
+                    'optimizer_state' not in loadfile_parsed['saveskip_list']):
+                    print(WARN, "'optimizer_state' not found in loadfile; "
+                          "skipping. (Optimizer will still instantiate before "
+                          ".train())")
                 _init_optimizer(
                     self.model, self.class_weights,
                     input_as_labels=self.input_as_labels,

@@ -10,6 +10,17 @@ Edit :mod:`deeptrain.util.configs`.
     - Arguments defined in :meth:`TrainGenerator.__init__` will override those specified in
       the configs (the defaults have no overlaps), so no point in specifying them in `configs`.
 
+Run examples
+============
+
+`pip install deeptrain` excludes data by default. To acquire, you can:
+
+    1. Build data by running scripts in `examples/preprocessing`. Or,
+    2. Clone repository and copy-paste `examples/dir/data` into the pip-installed `deeptrain` directory.
+
+With the data you can run the `.ipynb` with Jupyter or equivalent `.py` scripts in IPython. Note for docs notebook examples,
+code isn't exact, and excludes some formatting irrelevant the examples (e.g. many used `os.environ['SCALEFIG'] = '.7'`).
+
 
 Save train state
 ================

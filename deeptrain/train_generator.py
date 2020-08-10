@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """# TODO
-   - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
    - rename `max_is_best`?
    - Handle KeyboardInterrupt - with, finally?
    - configurable error / warn levels (e.g. save fail)
    - check if 'adam' -> 'nadam' fails
-   - See RNN os.environ['TF_KERAS'] default to '1'
-   - thorough saving/loading example?
-   - ipynb docs formatting (images too large)
    - check stateful=True vs callbacks
-   - "How does ____ work?"
-   - "How to ____?"
+   - "Recommended usage" section; configs file w/ `init_session`
+
 
    # TODO later
    - MetaTrainer
@@ -18,6 +14,7 @@
 
    # todo maybe
    - DataGenerator: infer `batch_size`, default=None?
+   - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
 """
 
 """TODO-docs:

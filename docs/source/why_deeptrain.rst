@@ -7,7 +7,7 @@ Train Loop
 
   - **Control**: iteration-, batch-, epoch-level customs
   - **Resumability**: interrupt-protection, can pause mid-training
-  - **Tracking**: checkpoint model, train state, and hyperparameter info
+  - **Tracking & reproducibility**: save & load model, train state, random seeds, and hyperparameter info
   - **Callbacks** at any stage of training or validation
 
 Data Pipeline
