@@ -34,7 +34,7 @@ set_seeds()
 
 def init_session(C, weights_path=None, loadpath=None, model=None):
     return _init_session(C, weights_path=weights_path, loadpath=loadpath,
-                         model=model, model_fn=make_classifier)
+                          model=model, model_fn=make_classifier)
 
 
 def _make_logger_cb(get_data_fn=None, get_labels_fn=None, gather_fns=None):
@@ -102,13 +102,13 @@ def _make_2Dviz_cb():
 
 layer_hists_cbs = [
     {'train:epoch': [make_layer_hists_cb(mode='gradients:outputs'),
-                     make_layer_hists_cb(mode='gradients:weights')]
-     },
+                      make_layer_hists_cb(mode='gradients:weights')]
+      },
     # two dicts can be used to organize code, but will execute same as one
     {('val_end', 'train:epoch'): make_layer_hists_cb(mode='weights'),
-     'val_end': make_layer_hists_cb(mode='outputs',
+      'val_end': make_layer_hists_cb(mode='outputs',
                                     configs={'title': dict(fontsize=13),
-                                             'plot': dict(annot_kw=None)},
+                                              'plot': dict(annot_kw=None)},
     )},
 ]
 
@@ -167,10 +167,15 @@ def test_random_seed_setter():
     pass_on_error(RandomSeedSetter, {'random': 1})
     pass_on_error(RandomSeedSetter, seeds=1.)
 
+    class TG():
+        pass
+    tg = TG()
+
     rss = RandomSeedSetter(freq={
         'train:iter': 1, 'train:batch': 1, 'train:epoch': 1,
         'val:iter': 1,   'val:batch': 1,   'val:epoch': 1,
         'val_end': 1, 'save': 1, 'load': 1})
+    rss.init_with_traingen(tg)
     rss.on_train_iter_end('train:iter')
     rss.on_train_batch_end('train:batch')
     rss.on_train_epoch_end('train:epoch')
@@ -180,7 +185,7 @@ def test_random_seed_setter():
     rss.on_val_end('val_end')
     rss.on_save('save')
     rss.on_load('load')
-    assert all(s == 9 for s in rss.seeds.values())
+    assert all(s == 8 for s in rss.seeds.values()), rss.seeds
 
 
 tests_done.update({name: None for name in _get_test_names(__name__)})

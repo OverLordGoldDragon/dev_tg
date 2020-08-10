@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """This example assumes you've read `callbacks/basic.py`, and covers:
     - Setting and restoring random seeds at arbitrary frequency for restoring
-    from any point in training
+    from (nearly) any point in training
 """
 import deeptrain
 deeptrain.append_examples_dir_to_sys_path()
