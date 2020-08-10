@@ -46,20 +46,26 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
   - **Algorithms**: convenience methods for object inspection & manipulation
   - **Preprocessing**: batch-making and format conversion methods
 
+## When is DeepTrain suitable (and not)?
+
+Training _few_ models _thoroughly_: closely tracking model and train attributes to debug performance and inform next steps.
+
+DeepTrain is _not_ for models that take under an hour to train, or for training hundreds of models at once.
+
 ## How it works
 
 <p align="center"><img src="docs/source/_images/train_loop.png" width="700"></p>
 
 <img src="docs/source/_images/train_val.gif" width="450" align="right">
 
- 1. User defines `tg = TrainGenerator(**configs)`,
- 2. calls `tg.train()`.<br>
+ 1. We define `tg = TrainGenerator(**configs)`,
+ 2. call `tg.train()`.<br>
  3. `get_data()` is called, returning data & labels,<br>
  4. fed to `model.fit()`, returning `metrics`,<br>
  5. which are then printed, recorded.<br>
  6. The loop repeats, or `validate()` is called.<br>
 
-Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the (simlpified) high-level overview. Callbacks and other behavior can be configured for every stage of training.
+Once `validate()` finishes, training may checkpoint, and `train()` is called again. That's the high-level overview. Callbacks and other behavior can be configured for every stage of training.
 
 ## Examples
 
@@ -80,7 +86,7 @@ Once `validate()` finishes, training may checkpoint, and `train()` is called aga
 
 To run, DeepTrain requires (1) a compiled model; (2) data directories (train & val). Below is a minimalistic example.
 
-Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic] and [Advanced] examples.
+Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic](https://dev-tg.readthedocs.io/en/latest/examples/basic.html) and [Advanced](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html) examples.
 
 ```python
 from tensorflow.keras.layers import Input, Dense
@@ -98,3 +104,8 @@ tg  = TrainGenerator(model, dg, vdg, epochs=3, logs_dir="logs/")
 
 tg.train()
 ```
+
+## In future releases
+
+ - `MetaTrainer`: direct support for dynamic model recompiling with changing hyperparameters, and optimizing thereof
+ - PyTorch support
