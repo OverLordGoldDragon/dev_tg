@@ -157,21 +157,28 @@ class RandomSeedSetter(TraingenCallback):
     """
     def __init__(self, seeds=None, freq={'train:epoch': 2}):
         super().__init__()
-        names = ['random', 'numpy', 'tf-graph', 'tf-global']
+        self.seeds = seeds
+        self.freq = freq
+        self._seeds_orig = self.seeds.copy()
 
+    @property
+    def seeds(self):
+        return self._seeds
+
+    @seeds.setter
+    def seeds(self, seeds):
+        names = ['random', 'numpy', 'tf-graph', 'tf-global']
         if seeds is None:
-            self.seeds = {name: 0 for name in names}
+            self._seeds = {name: 0 for name in names}
         elif isinstance(seeds, int):
-            self.seeds = {name: seeds for name in names}
+            self._seeds = {name: seeds for name in names}
         elif isinstance(seeds, dict):
             if not all(n in seeds for n in names):
                 raise ValueError("required keys missing; got %s, need %s" %
                                  (list(seeds), names))
-            self.seeds = seeds
+            self._seeds = seeds
         else:
             raise ValueError("`seeds` must be int or dict, got %s" % seeds)
-        self.freq = freq
-        self._seeds_orig = self.seeds.copy()
 
     def set_seeds(self, increment=0, seeds=None, reset_graph=False, verbose=1):
         """Sets seeds. `increment` will add to each of `self.seeds` and update it.
@@ -179,7 +186,7 @@ class RandomSeedSetter(TraingenCallback):
         """
         if seeds is None:
             seeds = {k: v + increment for k, v in self.seeds.items()}
-            self.seeds = seeds
+        self.seeds = seeds
         self._set_seeds(seeds, reset_graph, verbose)
 
     @classmethod
@@ -259,13 +266,15 @@ class RandomSeedSetter(TraingenCallback):
     @call_on_freq
     def on_save(self, stage=None):
         self.set_seeds(increment=1)
+        self.tg._saved_random_seeds = self.seeds
 
     @call_on_freq
     def on_load(self, stage=None):
-        self.set_seeds(increment=1)
-
-    def init_with_traingen(self, traingen=None):
-        pass  # don't need TrainGenerator
+        if hasattr(self.tg, '_saved_random_seeds'):
+            self.seeds = self.tg._saved_random_seeds
+            self.set_seeds(increment=0)
+        else:
+            self.set_seeds(increment=1)
 
 
 class VizAE2D(TraingenCallback):

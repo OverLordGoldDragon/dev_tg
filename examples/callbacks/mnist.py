@@ -11,7 +11,6 @@ deeptrain.append_examples_dir_to_sys_path()
 logger_savedir = os.path.join(sys.path[0], "outputs", "logger")
 
 from utils import make_classifier, init_session, img_labels_paths
-from utils import Adam
 from utils import CL_CONFIGS as C
 from see_rnn import features_2D
 import numpy as np
@@ -123,7 +122,6 @@ C['traingen']['callbacks'] = [seed_setter, tglogger, outputs_heatmap, cwh,
 C['traingen']['epochs'] = 16
 C['datagen']['labels_path']     = img_labels_paths[0]
 C['val_datagen']['labels_path'] = img_labels_paths[1]
-C['model']['optimizer'] = Adam(1e-3)
 tg = init_session(C, make_classifier)
 #%%
 tg.train()

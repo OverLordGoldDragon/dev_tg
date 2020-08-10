@@ -5,7 +5,8 @@
    - configurable error / warn levels (e.g. save fail)
    - check if 'adam' -> 'nadam' fails
    - check stateful=True vs callbacks
-   - How to: run examples
+   - "Recommended usage" section; configs file w/ `init_session`
+
 
    # TODO later
    - MetaTrainer
