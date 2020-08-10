@@ -30,6 +30,11 @@ Examples
 	 <div style="text-align: center"><a href="examples/callbacks/mnist.html"><i>Tracking Weights</i></a></div>
    </div>
 
+   <div class="gallery">
+     <a href="examples/misc/reproducibility.html"><img src="_images/reproducibility.png"></img></a><br>
+	 <div style="text-align: center"><a href="examples/misc/reproducibility.html"><i>Reproducibility</i></a></div>
+   </div>
+
 |
 
 Indices and tables
