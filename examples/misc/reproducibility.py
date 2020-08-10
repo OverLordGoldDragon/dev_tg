@@ -34,7 +34,6 @@ tg.train()
 # Setting the seed at a point, and then loading the point and setting it again
 # (which is what we'll do), however, works.
 #%%# Clear current session
-tg.save()
 # Retrieve last saved logfile to then load
 loadpath = tg.get_last_log('state')
 tg.destroy(confirm=True)
