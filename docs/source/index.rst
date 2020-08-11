@@ -52,8 +52,9 @@ Table of Contents
    :glob:
 
    Why DeepTrain? <why_deeptrain>
-   examples/basic
-   examples/advanced
+   Quickstart <examples/basic>
+   Advanced Example <examples/advanced>
+   recommended_usage
    examples/index
    examples/callbacks/index
    examples/introspection/index

@@ -510,6 +510,13 @@ def _validate_traingen_configs(self):
             self.model_name_configs['best_key_metric'
                                     ] = ('__max' if self.max_is_best else '__min')
 
+    def _validate_inputs_as_labels():
+        if (not self.input_as_labels and
+            self.datagen.labels_path is None or
+            self.val_datagen.labels_path is None):
+            raise Exception("if `input_as_labels=False`, `datagen` and "
+                            "`val_datagen` must have `labels_path` defined.")
+
     loc_names = list(locals())
     for name in loc_names:
         if name.startswith('_validate_'):

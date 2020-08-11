@@ -80,13 +80,14 @@ Once `validate()` finishes, training may checkpoint, and `train()` is called aga
 
 ## Installation
 
-`pip install deeptrain` (without data; see [how to run examples]), or clone repository
+`pip install deeptrain` (without data; see [how to run examples](https://dev-tg.readthedocs.io/en/latest/how_to.html#run-examples)), or clone repository
 
 ## Quickstart
 
 To run, DeepTrain requires (1) a compiled model; (2) data directories (train & val). Below is a minimalistic example.
 
-Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic](https://dev-tg.readthedocs.io/en/latest/examples/basic.html) and [Advanced](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html) examples.
+Checkpointing, visualizing, callbacks & more can be accomplished via additional arguments; see [Basic](https://dev-tg.readthedocs.io/en/latest/examples/basic.html) and [Advanced](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html) examples. 
+Also see [Recommended Usage](https://dev-tg.readthedocs.io/en/latest/recommended_usage.html).
 
 ```python
 from tensorflow.keras.layers import Input, Dense

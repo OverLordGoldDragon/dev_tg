@@ -188,7 +188,7 @@ class DataGenerator():
         self.labels = []  # initialize empty
 
         self._init_class_vars()
-        print("DataGenerator initiated")
+        print("DataGenerator initiated\n")
 
     ###### MAIN METHODS #######################################################
     def get(self, skip_validation=False):

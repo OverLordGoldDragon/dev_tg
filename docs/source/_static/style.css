@@ -6,8 +6,8 @@
 
 div.gallery {
     display: inline-block;
-    width: 220px;
-	height: 200px;
+    width: 210px;
+	height: 210px;
     margin: 14px;
 }
 div.gallery img {width: 100%; height: auto;}

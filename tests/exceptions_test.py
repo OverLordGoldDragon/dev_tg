@@ -393,6 +393,12 @@ def test_util():
         C['traingen']['callbacks'] = {'.': {'save': 1}}
         pass_on_error(_util_make_autoencoder, C)
 
+    def _validate_input_as_labels(C):  # [util.misc]
+        C['traingen']['input_as_labels'] = False
+        C['datagen']['labels_path'] = None
+        C['val_datagen']['labels_path'] = None
+        pass_on_error(_util_make_classifier, C)
+
     for fn in locals().values():
         if hasattr(fn, '__code__') and misc.argspec(fn)[0] == 'C':
             with tempdir(CONFIGS['traingen']['logs_dir']), \
