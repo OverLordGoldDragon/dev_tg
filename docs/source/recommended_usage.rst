@@ -3,12 +3,8 @@ Recommended Usage
 
 .. raw:: html
 
-    <div align="center">
-        <video width="100%" controls>
-            <source src="_images/recommended_usage.mp4" type="video/mp4">
-            <source src="_images/recommended_usage.ogg" type="video/ogg">
-        Your browser does not support the video tag.
-	    </video>
+    <div align="center">	
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/I_HxnlLXre0" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
 |
