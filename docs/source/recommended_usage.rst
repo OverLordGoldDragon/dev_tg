@@ -5,8 +5,9 @@ Recommended Usage
 
     <div align="center">
         <video width="100%" controls>
-		    <source src="_images/recommended_usage.mp4" type="video/mp4">    
-		Your browser does not support the video tag.
+            <source src="_images/recommended_usage.mp4" type="video/mp4">
+            <source src="_images/recommended_usage.ogg" type="video/ogg">
+        Your browser does not support the video tag.
 	    </video>
     </div>
 
