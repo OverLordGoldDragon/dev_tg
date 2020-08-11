@@ -67,6 +67,9 @@ tg.interrupt_status()
 help(tg.train)
 help(tg.validate)
 #%%# DataGenerator attrs #####################################################
+# `set_nums_to_process` are the set nums remaining until end of epoch, which are
+# then reset to `set_nums_original`. "Set" refers to data file to load.
+
 # We can check which set numbers remain to be processed in epoch or validation:
 print(dg.set_nums_to_process)
 print(vdg.set_nums_to_process)

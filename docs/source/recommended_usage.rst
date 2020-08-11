@@ -10,7 +10,8 @@ Recommended Usage
 	    </video>
     </div>
 
+|
 
     - Keep definitions in a separate file, init train objects and train in the "main" file
-	- In Jupyter, keep definitions in a collapsible cell
-	- The idea is to keep the workspace clean and reserve space for code that changes often or is used after training
+    - In Jupyter, keep definitions in a collapsible cell
+    - The idea is to keep the workspace clean and reserve space for code that changes often or is used after training
