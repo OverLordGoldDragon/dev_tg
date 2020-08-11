@@ -84,6 +84,7 @@ def test_main(monkeypatch):
         tg._should_do({}, forced=True)
         tg.get_last_log('report', best=False)
         tg.get_last_log('report', best=True)
+        tg.val_epoch
 
         monkeypatch.setattr('builtins.input', lambda x: 'y')
         tg.destroy(confirm=False)

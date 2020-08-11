@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
 """# TODO
    - rename `max_is_best`?
-   - Handle KeyboardInterrupt - with, finally?
    - configurable error / warn levels (e.g. save fail)
-   - check if 'adam' -> 'nadam' fails
    - check stateful=True vs callbacks
-   - "Recommended usage" section; configs file w/ `init_session`
-
 
    # TODO later
    - MetaTrainer
    - examples/visuals
 
    # todo maybe
+   - Handle KeyboardInterrupt - with, finally?
    - DataGenerator: infer `batch_size`, default=None?
    - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
 """
@@ -298,10 +295,8 @@ class TrainGenerator(TraingenUtils):
         self.model_configs = model_configs
         self.batch_size=kwargs.pop('batch_size', None) or model.output_shape[0]
 
-        self.fit_fn=fit_fn if not isinstance(fit_fn, str
-                                             ) else getattr(model, fit_fn)
-        self.eval_fn=eval_fn if not isinstance(eval_fn, str
-                                               ) else getattr(model, eval_fn)
+        self.fit_fn=fit_fn    # uses @property.setter
+        self.eval_fn=eval_fn  # uses @property.setter
 
         #### loading, logging, callbacks, kwargs init #########################
         self._passed_args = kwargs.pop('_passed_args', None)
@@ -382,7 +377,7 @@ class TrainGenerator(TraingenUtils):
         """Validation loop.
 
             - Fetches data from `get_data`
-            - Applies function based on `eval_fn_name`
+            - Applies function based on `_eval_fn_name`
             - Processes and caches metrics/predictions in
               `_val_postiter_processing`
             - Applies `'val:iter'`, `'val:batch'`, and `'val:epoch'` callbacks
@@ -622,9 +617,10 @@ class TrainGenerator(TraingenUtils):
 
         def _validate_batch_size():
             batch_size = self.batch_size or self._inferred_batch_size
-            if not isinstance(batch_size, int):
+            if (not isinstance(batch_size, int) and
+                'predict' in self._eval_fn_name):
                 raise ValueError(
-                    "to use `eval_fn_name = 'predict'`, either (1) `batch_size`"
+                    "to use `'predict' in _eval_fn_name`, either (1) `batch_size`"
                     " must be defined, or (2) data fed in `validation()` "
                     "must have same len() / .shape[0] across iterations.")
 
@@ -929,7 +925,7 @@ class TrainGenerator(TraingenUtils):
                         for fn in cb[cb_stage]:
                             fn(self)
             else:
-                raise Exception("unsupported callback type: %s" % type(cb)
+                raise TypeError("unsupported callback type: %s" % type(cb)
                                 + "; must be either dict, or subclass "
                                 "TraingenCallback.")
 

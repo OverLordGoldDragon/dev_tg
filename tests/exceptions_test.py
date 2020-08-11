@@ -399,7 +399,39 @@ def test_util():
         C['val_datagen']['labels_path'] = None
         pass_on_error(_util_make_classifier, C)
 
-    for fn in locals().values():
+    def _traingen_callbacks(C):  # [train_generator]
+        tg = _util_make_autoencoder(C)
+        tg.callbacks = [1]
+        pass_on_error(tg._apply_callbacks)
+
+        from deeptrain.callbacks import TraingenCallback
+        tc = TraingenCallback()
+        def raise_exception():
+            raise NotImplementedError
+        tc.init_with_traingen = raise_exception
+        tg.callbacks = [tc]
+        pass_on_error(tg._init_callbacks)
+
+    def _on_val_end(C):  # [train_generator]
+        tg = _util_make_autoencoder(C)
+        tg.batch_size = 'x'
+        pass_on_error(tg._on_val_end)
+
+        tg.epochs += 1
+        tg._train_loop_done = True
+        pass_on_error(tg.train)
+
+    def _train_postiter_processing(C):  # [train_generator]
+        tg = _util_make_autoencoder(C)
+        tg.datagen.batch_exhausted = True
+        with mock.patch('deeptrain.train_generator.TrainGenerator.'
+                        '_update_train_history') as mock_update:
+            mock_update.side_effect = Exception
+            tg._update_temp_history = lambda x: x
+            pass_on_error(tg._train_postiter_processing, [])
+
+    names, fns = zip(*locals().items())
+    for name, fn in zip(names, fns):
         if hasattr(fn, '__code__') and misc.argspec(fn)[0] == 'C':
             with tempdir(CONFIGS['traingen']['logs_dir']), \
                 tempdir(CONFIGS['traingen']['best_models_dir']):
