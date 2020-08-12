@@ -945,7 +945,7 @@ class TrainGenerator(TraingenUtils):
 
     ###### MISC METHODS #######################################################
     def check_health(self, dead_threshold=1e-7, dead_notify_above_frac=1e-3,
-                     large_threshold=2, large_notify_above_frac=1e-3,
+                     large_threshold=3, large_notify_above_frac=1e-3,
                      notify_detected_only=True):
         """Check whether any layer weights have 'zeros' or NaN weights;
         very fast / inexpensive.

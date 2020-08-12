@@ -452,7 +452,7 @@ def print_nan_weights(model, notify_detected_only=False):
         print("No NaN weights detected in any trainable layers")
 
 
-def print_large_weights(model, large_threshold=2, notify_above_frac=1e-3,
+def print_large_weights(model, large_threshold=3, notify_above_frac=1e-3,
                         notify_detected_only=False):
     """Print names of weights in excess of set absolute value, and their
     proportions; excludes Inf. Useful for debugging exploding or buggy gradients.
