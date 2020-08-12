@@ -49,6 +49,7 @@ class DataGenerator():
                 - :class:`DataLoader` instance: will set `data_loader` directly
                 - Class subclassing :class:`DataLoader` (uninstantiated):
                   will instantiate with attrs from :meth:`_infer_info` & others
+                - str: name of one of loaders in :mod:`util.data_loaders`
                 - None: defaults to one of defined in :mod:`util.data_loaders`,
                   as determined by :meth:`_infer_info`
 
@@ -661,6 +662,7 @@ class DataGenerator():
             - :class:`DataLoader` instance: will set `data_loader` directly
             - Class subclassing :class:`DataLoader` (uninstantiated):
               will instantiate with attrs from :meth:`_infer_info` & others
+            - str: name of one of loaders in :mod:`util.data_loaders`
             - None: defaults to one of defined in :mod:`util.data_loaders`,
               as determined by :meth:`_infer_info`
         """
@@ -678,7 +680,7 @@ class DataGenerator():
                         raise TypeError("`data_loader` class must subclass "
                                         "`DataLoader` (got %s)" % data_loader)
                     self.data_loader = data_loader(loader=None, **kw)
-                else:  # function / None
+                else:  # function / str / None
                     self.data_loader = DataLoader(loader=data_loader, **kw)
 
             if isinstance(labels_loader, DataLoader):

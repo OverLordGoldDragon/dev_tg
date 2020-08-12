@@ -6,7 +6,7 @@
     - Using class weights to handle imbalance
 """
 import deeptrain
-deeptrain.append_examples_dir_to_sys_path()
+deeptrain.util.misc.append_examples_dir_to_sys_path()
 
 from utils import TS_CONFIGS as C
 from utils import init_session, make_timeseries_classifier

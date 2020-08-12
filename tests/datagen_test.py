@@ -15,7 +15,7 @@ import contextlib, io
 from copy import deepcopy
 
 from backend import BASEDIR, tempdir, notify, _get_test_names
-from deeptrain.util.misc import pass_on_error
+from deeptrain.util.misc import pass_on_error, argspec
 from deeptrain.util.algorithms import ordered_shuffle
 from deeptrain.util import TimeseriesPreprocessor
 from deeptrain.util.data_loaders import DataLoader
@@ -88,15 +88,45 @@ def test_data_loader():
         C['data_loader'] = 'invalid_loader'
         pass_on_error(DataGenerator, **C)
 
-    C = deepcopy(DATAGEN_CFG)
-    C['data_path'] = os.path.join(datadir, 'timeseries_split', 'train')
-    C['labels_path'] = os.path.join(datadir, 'timeseries_split', 'train',
-                                    'labels.h5')
-    C['batch_size'] = 128
+    def _test_lz4f_dataset(C):
+        del C['labels_path']
+        C['data_path'] = os.path.join(datadir, 'image_lz4f', 'train',
+                                      '128batch__1.npy')
+        pass_on_error(DataGenerator, **C)
 
-    _test_auto_hdf5(C)
-    _test_hdf5(C)
-    _test_exceptions(C)
+        C['data_loader'] = 'numpy-lz4f'
+        pass_on_error(DataGenerator, **C)
+
+        C['data_batch_shape'] = (128, 28, 28, 1)
+        DataGenerator(**C)
+
+    def _test_unknown(C):
+        C['data_loader'] = lambda x: x
+        C['data_path'] = os.path.join(datadir, 'image_lz4f', 'train',
+                                      '128batch__1.npy')
+        pass_on_error(DataGenerator, **C)
+
+    def _test_validate_args(C):
+        pass_on_error(DataLoader, 1, 1)
+
+        kw = dict(path=C['data_path'], loader=1, filepaths=None)
+        pass_on_error(DataLoader, **kw)
+
+        kw['filepaths'] = ['x']
+        pass_on_error(DataLoader, **kw)
+
+    _C = deepcopy(DATAGEN_CFG)
+    _C['data_path'] = os.path.join(datadir, 'timeseries_split', 'train')
+    _C['labels_path'] = os.path.join(datadir, 'timeseries_split', 'train',
+                                    'labels.h5')
+    _C['batch_size'] = 128
+
+    names, fns = zip(*locals().items())
+    for name, fn in zip(names, fns):
+        if hasattr(fn, '__code__') and argspec(fn)[0] == 'C':
+            C = deepcopy(_C)
+            fn(C)
+            print("Passed", fn.__name__)
 
 
 @notify(tests_done)

@@ -216,7 +216,13 @@ class DataLoader():
                                      ).reshape(*self.batch_shape)
                 return list(map(str, range(len(data))))
             elif name.startswith('numpy'):
-                return list(map(str, range(len(np.load(self.path)))))
+                dataset = np.load(self.path)
+                try:
+                    len(dataset)
+                except:
+                    raise TypeError("unable to `len(dataset)`; the .npy file "
+                                    "may be compressed: %s" % self.path)
+                return list(map(str, range(len(dataset))))
             elif name.startswith('hdf5'):
                 with h5py.File(self.path, 'r') as f:
                     return [num for num in list(f.keys())
@@ -225,15 +231,22 @@ class DataLoader():
             elif name.startswith('csv'):
                 return list(pd.read_csv(self.path).keys())
             else:
-                raise Exception("unknown load_fn: %s" % self.load_fn)
+                raise Exception("unsupported load_fn name: %s" %
+                                self.load_fn.__name__ + "; must begin with "
+                                "one of: numpy, numpy_lz4f, hdf5, csv. "
+                                "Alternatively, provide `set_nums` to "
+                                "`DataGenerator` at `__init__`")
 
         if self._is_dataset:
             return _from_dataset()
         return _from_directory()
 
     def _validate_args(self, path, filepaths):
-        if not (path is None or os.path.isfile(path) or os.path.isdir(path)):
-            raise ValueError("`path` must be a file, a directory, or None")
+        if (not isinstance(path, (str, type(None))) or
+            (isinstance(path, str) and not
+             (os.path.isfile(path) or os.path.isdir(path)))):
+            raise TypeError("`path` must None, or string path to file / "
+                            "directory; got %s" % path)
         if filepaths is None:
             if not os.path.isfile(path):
                 raise Exception("if `filepaths` is not passed in, `path` must be "

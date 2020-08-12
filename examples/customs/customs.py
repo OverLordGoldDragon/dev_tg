@@ -4,7 +4,7 @@
    - Setting custom data loader and preprocessor
 """
 import deeptrain
-deeptrain.append_examples_dir_to_sys_path()
+deeptrain.util.misc.append_examples_dir_to_sys_path()
 from utils import make_autoencoder, init_session
 from utils import AE_CONFIGS as C
 

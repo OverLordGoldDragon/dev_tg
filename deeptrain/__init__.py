@@ -48,20 +48,3 @@ def set_seeds(seeds=None, reset_graph=False, verbose=1):
 
 
 __version__ = '0.01'
-
-##############################################################################
-def append_examples_dir_to_sys_path():
-    """Enables utils.py to be imported for examples."""
-    import inspect
-    from pathlib import Path
-    pkgdir = Path(inspect.stack()[0][1]).parents[1]
-    exdir = Path(pkgdir, "examples")
-    if not exdir.is_dir():
-        raise Exception("`examples` directory isn't on same level as deeptrain "
-                        "(%s)" % exdir)
-
-    utilsdir = str(Path(str(exdir), "dir"))
-    import sys
-    sys.path.insert(0, utilsdir)
-    while utilsdir in sys.path[1:]:
-        sys.path.pop(sys.path.index(utilsdir))  # avoid duplication

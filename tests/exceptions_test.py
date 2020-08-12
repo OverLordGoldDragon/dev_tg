@@ -387,16 +387,31 @@ def test_util():
         pass_on_error(_util_make_autoencoder, C)
 
     def _validate_callbacks(C):  # [util.misc]
-        C['traingen']['callbacks'] = {'.': {'invalid_stage': 1}}
+        C['traingen']['callbacks'] = {'invalid_stage': 1}
         pass_on_error(_util_make_autoencoder, C)
 
-        C['traingen']['callbacks'] = {'.': {'save': 1}}
+        C['traingen']['callbacks'] = {'save': 1}
+        pass_on_error(_util_make_autoencoder, C)
+
+        C['traingen']['callbacks'] = 1
         pass_on_error(_util_make_autoencoder, C)
 
     def _validate_input_as_labels(C):  # [util.misc]
         C['traingen']['input_as_labels'] = False
         C['datagen']['labels_path'] = None
         C['val_datagen']['labels_path'] = None
+        pass_on_error(_util_make_classifier, C)
+
+    def _validate_model_save_kw(C):  # [util.misc]
+        C['traingen']['model_save_kw'] = None
+        C['traingen']['model_save_weights_kw'] = None
+        _util_make_classifier(C)
+
+    def _validate_freq_configs(C):  # [util.misc]
+        C['traingen']['val_freq'] = 1
+        pass_on_error(_util_make_classifier, C)
+
+        C['traingen']['val_freq'] = {'epoch': 1, 'batch': 2}
         pass_on_error(_util_make_classifier, C)
 
     def _traingen_callbacks(C):  # [train_generator]
@@ -406,7 +421,7 @@ def test_util():
 
         from deeptrain.callbacks import TraingenCallback
         tc = TraingenCallback()
-        def raise_exception():
+        def raise_exception(self):
             raise NotImplementedError
         tc.init_with_traingen = raise_exception
         tg.callbacks = [tc]
@@ -419,7 +434,20 @@ def test_util():
 
         tg.epochs += 1
         tg._train_loop_done = True
+
+        def validate(self):
+            self._train_loop_done = False
+        tg.validate = validate.__get__(tg)
         pass_on_error(tg.train)
+
+        tg._train_loop_done = False
+        tg._fit_fn_name = 'x'
+        tg.epochs += 1
+        pass_on_error(tg.train)
+
+        tg.batch_size = 'a'
+        tg._eval_fn_name = 'predict'
+        pass_on_error(tg._on_val_end, 0, 0, 0)
 
     def _train_postiter_processing(C):  # [train_generator]
         tg = _util_make_autoencoder(C)
@@ -429,6 +457,19 @@ def test_util():
             mock_update.side_effect = Exception
             tg._update_temp_history = lambda x: x
             pass_on_error(tg._train_postiter_processing, [])
+
+    def _traingen_properties(C):  # [train_generator]
+        tg = _util_make_autoencoder(C)
+        pass_on_error(setattr ,tg, 'eval_fn', 1)
+
+        pass_on_error(setattr, tg, 'eval_fn', tg.model.summary)
+
+    def append_examples_dir_to_sys_path(C):  # [util.misc]
+        util.misc.append_examples_dir_to_sys_path()
+
+        with mock.patch('pathlib.Path.is_dir') as mock_dir:
+            mock_dir.side_effect = lambda: False
+            pass_on_error(util.misc.append_examples_dir_to_sys_path)
 
     names, fns = zip(*locals().items())
     for name, fn in zip(names, fns):

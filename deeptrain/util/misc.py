@@ -501,7 +501,7 @@ def _validate_traingen_configs(self):
             attr = getattr(self, name)
             if not isinstance(attr, (dict, type(None))):
                 raise TypeError(f"{name} must be dict or None (got: {attr})")
-            if isinstance(attr, dict) and len(attr) > 1:
+            elif isinstance(attr, dict) and len(attr) > 1:
                 raise ValueError(f"{name} supports up to one key-value pair "
                                  f"(got: {attr})")
 
@@ -521,3 +521,20 @@ def _validate_traingen_configs(self):
     for name in loc_names:
         if name.startswith('_validate_'):
             locals()[name]()
+
+
+def append_examples_dir_to_sys_path():
+    """Enables utils.py to be imported for examples."""
+    import inspect
+    from pathlib import Path
+    pkgdir = Path(inspect.stack()[0][1]).parents[2]
+    exdir = Path(pkgdir, "examples")
+    if not exdir.is_dir():
+        raise Exception("`examples` directory isn't on same level as deeptrain "
+                        "(%s)" % exdir)
+
+    utilsdir = str(Path(str(exdir), "dir"))
+    import sys
+    sys.path.insert(0, utilsdir)
+    while utilsdir in sys.path[1:]:
+        sys.path.pop(sys.path.index(utilsdir))  # avoid duplication

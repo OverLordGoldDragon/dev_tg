@@ -7,7 +7,7 @@
 import os
 import sys
 import deeptrain
-deeptrain.append_examples_dir_to_sys_path()
+deeptrain.util.misc.append_examples_dir_to_sys_path()
 logger_savedir = os.path.join(sys.path[0], "outputs", "logger")
 
 from utils import make_classifier, init_session, img_labels_paths

@@ -3,7 +3,7 @@
     - Creating custom callbacks
 """
 import deeptrain
-deeptrain.append_examples_dir_to_sys_path()
+deeptrain.util.misc.append_examples_dir_to_sys_path()
 from utils import make_classifier, init_session, img_labels_paths
 from utils import CL_CONFIGS as C
 from deeptrain.callbacks import TraingenCallback

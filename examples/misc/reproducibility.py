@@ -4,7 +4,7 @@
     from (nearly) any point in training
 """
 import deeptrain
-deeptrain.append_examples_dir_to_sys_path()
+deeptrain.util.misc.append_examples_dir_to_sys_path()
 
 from utils import make_classifier, init_session
 from utils import CL_CONFIGS as C
