@@ -2,7 +2,10 @@
 """# TODO
    - rename `max_is_best`?
    - configurable error / warn levels (e.g. save fail)
-   - check stateful=True vs callbacks
+   - check callbacks w/:
+       - stateful=True
+       - record_progress=False
+   - examples/preprocessor  (take from tests)
 
    # TODO later
    - MetaTrainer

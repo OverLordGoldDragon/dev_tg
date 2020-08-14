@@ -13,3 +13,4 @@ Examples
    misc/timeseries
    misc/model_health
    misc/reproducibility
+   misc/preprocessor

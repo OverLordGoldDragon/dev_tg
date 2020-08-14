@@ -7,14 +7,6 @@ import deeptrain
 deeptrain.util.misc.append_examples_dir_to_sys_path()
 from utils import make_autoencoder, init_session
 from utils import AE_CONFIGS as C
-#%%#
-def show_attributes(obj):
-    _ = [print(a) for a in vars(obj)]
-
-def show_methods(obj):  # not foolproof, may include non-methods
-    _ = [print(a) for a in dir(obj)
-         if (a not in vars(obj)  # `vars` subsets `dir` and has no methods
-             and "__%s__" % a.strip('__') != a)]  # exclude magic methods
 #%%# Configure training #######################################################
 C['traingen']['epochs'] = 1  # don't need more
 tg = init_session(C, make_autoencoder)
@@ -24,16 +16,18 @@ vdg = tg.val_datagen
 tg.train()
 
 #%%# We can see which arguments were passed to TrainGnerator
-print(tg._passed_args)
+from pprint import pprint
+pprint(tg._passed_args)
 # some objects stored as string to allow pickling
-#%%# View an object's attributes and methods with `vars` and `dir`
-show_attributes(tg)
-#%%
-show_methods(tg)
-#%%
-show_attributes(dg)
-#%%
-show_methods(dg)
+#%%# TrainGenerator attributes at end of __init__, are logged to
+# logdir/misc/init_state.json
+import json
+with open(tg.get_last_log('init_state'), 'r') as f:
+    j = json.load(f)
+    pprint(j)
+# The source code used to run training (__main__) is also logged at
+# logs/misc/init_source.txt, assuming ran as a .py file (not IPython excerpt
+# or Jupyter notebook)
 #%%# Save directories ########################################################
 print("Best model directory:", tg.best_models_dir)
 print("Checkpoint directory:", tg.logdir)

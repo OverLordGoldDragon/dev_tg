@@ -3,7 +3,7 @@ import os
 import sys
 import numpy as np
 import textwrap
-import pickle
+import json
 
 from inspect import getsource
 from pathlib import Path
@@ -375,13 +375,17 @@ def get_last_log(self, name, best=False):
     """Returns latest savefile path from `logdir` (`best=False`) or
     `best_models_dir` (`best=True`).
 
-    `name` is one of: `'report', 'state', 'weights', 'history'`.
+    `name` is one of: `'report', 'state', 'weights', 'history', 'init_state'`.
+    `'init_state'` ignores `best` (uses `=False`).
     """
-    if name not in {'report', 'state', 'weights', 'history'}:
+    if name not in {'report', 'state', 'weights', 'history', 'init_state'}:
         raise ValueError("input must be one of 'report', 'state', 'weights', "
                          "'history'.")
+    if name == 'init_state':
+        return os.path.join(self.logdir, 'misc', 'init_state.json')
 
     _dir = self.best_models_dir if best else self.logdir
+
     paths = [str(p) for p in Path(_dir).iterdir()
              if (p.is_file() and p.stem.endswith('__' + name))]
     if len(paths) == 0:
@@ -414,9 +418,10 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
             Print save messages if successful.
     """
     def _save_logs(state, source, savedir, verbose):
-        path = os.path.join(savedir, "init_state.h5")
-        with open(path, 'wb') as f:
-            pickle.dump(state, f)
+        path = os.path.join(savedir, "init_state.json")
+        j = json.dumps(state, indent=4)
+        with open(path, 'w') as f:
+            print(j, file=f)
         if verbose:
             print(str(self), "initial state saved to", path)
 
@@ -482,7 +487,6 @@ def _log_init_state(self, kwargs={}, source_lognames='__main__', savedir=None,
                 except Exception as e:
                     print("Failed to log:", k, v, "-- skipping. "
                           "Errmsg: %s" % e)
-
             return source
 
         def _to_text(source):
