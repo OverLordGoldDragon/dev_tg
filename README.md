@@ -73,9 +73,9 @@ Once `validate()` finishes, training may checkpoint, and `train()` is called aga
 :----------------:|:-----------------:|:-----------------:
 <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="docs/source/_images/mnist.gif" width="210" height="210"><a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html"><img src="docs/source/_images/ecg2.png" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html"><img src="docs/source/_images/model_health.png" width="210" height="210"></a>
   
-<a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html">Tracking Weights</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html">Reproducibility</a> |
-:----------------:|:----------------:|
-<a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html"><img src="docs/source/_images/gradients.gif" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html"><img src="docs/source/_images/reproducibility.png" width="210" height="210"></a>
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html">Tracking Weights</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html">Reproducibility</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/flexible_batch_size.html">Flexible batch_size</a>
+:----------------:|:----------------:|:----------------:|
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html"><img src="docs/source/_images/gradients.gif" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html"><img src="docs/source/_images/reproducibility.png" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/flexible_batch_size.html"><img src="docs/source/_images/flexible_batch_size.png" width="210" height="210"></a>
 
 
 ## Installation

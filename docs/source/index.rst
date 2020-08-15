@@ -34,6 +34,11 @@ Examples
      <a href="examples/misc/reproducibility.html"><img src="_images/reproducibility.png"></img></a><br>
 	 <div style="text-align: center"><a href="examples/misc/reproducibility.html"><i>Reproducibility</i></a></div>
    </div>
+   
+   <div class="gallery">
+     <a href="examples/misc/flexible_batch_size.html"><img src="_images/flexible_batch_size.png"></img></a><br>
+	 <div style="text-align: center"><a href="examples/misc/flexible_batch_size.html"><i>Flexible batch_size</i></a></div>
+   </div>
 
 |
 

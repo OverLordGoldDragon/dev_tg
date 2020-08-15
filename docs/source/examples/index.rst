@@ -14,3 +14,4 @@ Examples
    misc/model_health
    misc/reproducibility
    misc/preprocessor
+   misc/flexible_batch_size
