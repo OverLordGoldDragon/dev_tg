@@ -50,8 +50,8 @@ VAL_DATAGEN_CFG = dict(
 )
 TRAINGEN_CFG = dict(
     epochs=6,
-    logs_dir=os.path.join(thisdir, 'outputs', 'logs'),
-    best_models_dir=os.path.join(thisdir, 'outputs', 'models'),
+    logs_dir=os.path.join(thisdir, 'logs'),
+    best_models_dir=os.path.join(thisdir, 'models'),
     eval_fn='predict',
 )
 #### Reusable AutoEncoder #####################################################
@@ -195,8 +195,8 @@ TS_VAL_DATAGEN_CFG = dict(
 TS_TRAINGEN_CFG = dict(
     epochs=4,
     reset_statefuls=True,
-    logs_dir=os.path.join(thisdir, 'outputs', 'logs'),
-    best_models_dir=os.path.join(thisdir, 'outputs', 'models'),
+    logs_dir=os.path.join(thisdir, 'logs'),
+    best_models_dir=os.path.join(thisdir, 'models'),
     model_configs=TS_MODEL_CFG,
     callbacks={'val_end': [infer_train_hist_cb,
                            binary_preds_per_iteration_cb,
