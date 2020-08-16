@@ -62,3 +62,10 @@ Load train state
         - `Preprocessor` (of each `DataGenerator`): `loadskip_list`
 
 Example in :doc:`examples/advanced`.
+
+		
+Use custom train / evaluation function
+======================================
+
+Override `fit_fn` / `eval_fn`; see docs in :class:`TrainGenerator`.
+

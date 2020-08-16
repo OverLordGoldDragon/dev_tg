@@ -9,6 +9,7 @@ if os.environ.get('TF_KERAS', '1') == '1':
     from tensorflow.keras.layers import LSTM
     from tensorflow.keras.optimizers import Adam
     from tensorflow.keras.models import Model
+    from tensorflow.keras import backend as K
 else:
     from keras.layers import Input, Conv2D, UpSampling2D, Dropout
     from keras.layers import BatchNormalization, Activation
@@ -16,6 +17,7 @@ else:
     from keras.layers import LSTM
     from keras.optimizers import Adam
     from keras.models import Model
+    from keras import backend as K
 from deeptrain import TrainGenerator, DataGenerator
 from deeptrain.callbacks import infer_train_hist_cb
 from deeptrain.callbacks import binary_preds_per_iteration_cb
@@ -55,7 +57,7 @@ TRAINGEN_CFG = dict(
 #### Reusable AutoEncoder #####################################################
 def make_autoencoder(batch_shape, optimizer, loss, metrics,
                      filters, kernel_size, strides, activation, up_sampling_2d,
-                     input_dropout, preout_dropout):
+                     input_dropout, preout_dropout, lr=None):
     ipt = Input(batch_shape=batch_shape)
     x   = Dropout(input_dropout)(ipt)
 
@@ -72,6 +74,8 @@ def make_autoencoder(batch_shape, optimizer, loss, metrics,
 
     model = Model(ipt, out)
     model.compile(optimizer, loss, metrics=metrics)
+    if lr:
+        K.set_value(model.optimizer.learning_rate, lr)
     return model
 
 AE_MODEL_CFG = dict(

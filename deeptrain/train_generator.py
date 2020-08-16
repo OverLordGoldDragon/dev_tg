@@ -4,8 +4,6 @@
    - configurable error / warn levels (e.g. save fail)
    - check callbacks w/:
        - stateful=True
-       - record_progress=False
-   - examples/preprocessor  (take from tests)
 
    # TODO later
    - MetaTrainer
@@ -46,7 +44,7 @@ from .util._default_configs import _DEFAULT_TRAINGEN_CFG
 from .util.configs  import _TRAINGEN_CFG
 from .util._traingen_utils import TraingenUtils
 from .util.logging  import _log_init_state
-from .util.misc     import pass_on_error, capture_args, argspec
+from .util.misc     import pass_on_error, capture_args
 from .introspection import print_dead_weights, print_nan_weights
 from .introspection import print_large_weights
 from .callbacks     import TraingenCallback
@@ -92,9 +90,18 @@ class TrainGenerator(TraingenUtils):
         fit_fn: str / function
             Function, or name of model method to feed data to during training;
             if str, will define `fit_fn = getattr(model, 'fit')` (example).
+            If function, its name must include `'fit'` or `'train'` (substring);
+            currently both function identically.
         eval_fn: str / function
             Function, or name of model method to feed data to during validation;
             if str, will define `eval_fn = getattr(model, 'evaluate')` (example).
+            If function, its name must include `'evaluate'` or `'predict'`
+            (substring):
+
+                - `'evaluate'`: `eval_fn` uses data & labels to return metrics.
+                - `'predict'`:  `eval_fn` uses data to return predictions, which
+                  are used internally to compute metrics.
+
         key_metric: str
             Name of metric to track for saving best model; will store in
             `key_metric_history`.
@@ -111,6 +118,7 @@ class TrainGenerator(TraingenUtils):
                 - If `'*'` is included, will insert model metrics at its
                   position and pop `'*'`. Ex: `[*, 'f1_score']` ->
                   `['loss', 'accuracy', 'f1_score']`.
+
         custom_metrics: dict[str: function]
             Name-function pairs of custom functions to use for gathering metrics.
             Functions must obey `(y_true, y_pred)` input signature for first two
@@ -316,8 +324,8 @@ class TrainGenerator(TraingenUtils):
         if self.logdir or self.logs_dir:
             self._init_logger()
         else:
-            print(NOTE, "logging OFF")
             self.logdir = None
+            print(NOTE, "logging OFF")
 
         if self.logdir:
             savedir = os.path.join(self.logdir, "misc")
@@ -348,13 +356,6 @@ class TrainGenerator(TraingenUtils):
               recording progress.
             - Best bet is during :meth:`validate`, as `get_data` may be too brief.
         """
-        def _get_inputs(x, y, sw):
-            if 'train' in self._fit_fn_name:
-                return {'x': x, 'y': y, 'sample_weight': sw}
-            else:
-                return {'x': x, 'y': y, 'sample_weight': sw,
-                        'batch_size': len(x), 'verbose': 0}
-
         while self.epoch < self.epochs:
             if not self._train_loop_done:
                 if self._train_postiter_processed:
@@ -362,8 +363,8 @@ class TrainGenerator(TraingenUtils):
                     sw = sample_weight if self.class_weights else None
                     if self.iter_verbosity:
                         self._print_iter_progress()
-                    ins = _get_inputs(x, y, sw)
-                    self._metrics_cached = self.fit_fn(**ins)
+
+                    self._metrics_cached = self.fit_fn(x, y, sw)
                     # `_metrics_cached` in case of interrupt
 
                 self._train_postiter_processed = False
@@ -415,13 +416,6 @@ class TrainGenerator(TraingenUtils):
             - *In practice*: prefer interrupting immediately after
               `_print_iter_progress` executes.
         """
-        def _get_inputs(x, y, sw):
-            if 'evaluate' in self._eval_fn_name:
-                return {'x': x, 'y': y, 'sample_weight': sw,
-                        'batch_size': len(x), 'verbose': 0}
-            else:
-                return {'x': x, 'batch_size': len(x)}
-
         if restart:
             self.reset_validation()
         print("\n\nValidating..." if not self._val_loop_done else
@@ -435,8 +429,7 @@ class TrainGenerator(TraingenUtils):
                 if self.iter_verbosity:
                     self._print_iter_progress(val=True)
 
-                ins = _get_inputs(x, self._y_true, sw)
-                data['metrics'] = self.eval_fn(**ins)
+                data['metrics'] = self.eval_fn(x, self._y_true, sw)
                 data['batch_size'] = len(x)
 
             self._val_postiter_processed = False
@@ -448,8 +441,7 @@ class TrainGenerator(TraingenUtils):
 
     ###### MAIN METHOD HELPERS ################################################
     def _train_postiter_processing(self, metrics):
-        """Procedures done after every train iteration. Unless marked
-        "always", are conditional and may skip. Similar to
+        """Procedures done after every train iteration. Similar to
         :meth:`_val_postiter_processing`, except operating on train rather than
         val variables, and calling :meth:`validate` when appropriate.
         """
@@ -710,12 +702,15 @@ class TrainGenerator(TraingenUtils):
 
     def reset_validation(self):
         """Used to restart validation (e.g. in case interrupted); calls
-        :meth:`clear_cache` and :meth:`DataGenerator.reset_state`.
+        :meth:`clear_cache` and :meth:`DataGenerator.reset_state`
+        (and, if `reset_statefuls`, `model.reset_states()`).
 
         Does not reset validation counters (e.g. `_val_iters`).
         """
         self.clear_cache(reset_val_flags=True)
         self.val_datagen.reset_state(shuffle=False)
+        if self.reset_statefuls:
+            self.model.reset_states()
 
     def _should_do(self, freq_config, forced=False):
         """Checks whether a counter meets a frequency as specified in
@@ -1026,13 +1021,30 @@ class TrainGenerator(TraingenUtils):
                              supported_fn_names=('evaluate', 'predict'))
 
     def _attr_fn_setter(self, fn, attr_name, supported_fn_names):
+        def _make_tf_keras_fn(model, name):
+            _fn = getattr(model, name)
+            if name == 'train_on_batch':
+                def fn(x, y, sw):
+                    return _fn(x, y, sample_weight=sw)
+            elif name == 'predict_on_batch':
+                def fn(x, y, sw):
+                    return _fn(x)
+            elif name == 'predict':
+                def fn(x, y, sw):
+                    return _fn(x, batch_size=len(x))
+            elif name in {'evaluate', 'fit'}:
+                def fn(x, y, sw):
+                    return _fn(x, y, sample_weight=sw, batch_size=len(x),
+                               verbose=0)
+            return fn
+
         if not isinstance(fn, (LambdaType, MethodType, str)):
             raise TypeError(f"'{attr_name}' must be a function, method, or name "
                             f"(str) of to fetch from `model` (got: {fn})")
 
         if isinstance(fn, str):
             name = fn
-            fn = getattr(self.model, name)
+            fn = _make_tf_keras_fn(self.model, name)
         else:
             name = getattr(fn, '__qualname__', '') or fn.__name__
             name = name.split('.')[-1]  # drop packages / modules / classes
@@ -1042,11 +1054,6 @@ class TrainGenerator(TraingenUtils):
 
         setattr(self, f'_{attr_name}', fn)
         setattr(self, f'_{attr_name}_name', name)
-
-        # omit args not used internally for speedup in `_get_inputs`
-        usable = ['x', 'y', 'sample_weight', 'batch_size', 'verbose']
-        setattr(self, f'_{attr_name}_args',
-                [a for a in argspec(getattr(self, attr_name)) if a in usable])
 
     @property
     def epoch(self):

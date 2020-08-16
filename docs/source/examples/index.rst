@@ -15,3 +15,4 @@ Examples
    misc/reproducibility
    misc/preprocessor
    misc/flexible_batch_size
+   misc/model_auto_naming

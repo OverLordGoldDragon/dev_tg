@@ -357,15 +357,14 @@ def get_unique_model_name(self, set_model_num=True):
     if self.model_name_configs:
         attrs = self.__dict__.copy()  # top-level shallow copy
         if self.model_configs:
-            attrs.update(self.model_configs.copy())
+            attrs.update(self.model_configs.copy())  # precedence to model_configs
 
         for key, alias in self.model_name_configs.items():
             if '.' in key:
                 obj_name, attr = key.split('.')
                 obj_attrs = vars(attrs[obj_name])
                 if key[1] in obj_attrs:
-                    model_name += self.name_process_key_fn(attr, alias,
-                                                           obj_attrs)
+                    model_name += self.name_process_key_fn(attr, alias, obj_attrs)
             elif key in attrs:
                 model_name += self.name_process_key_fn(key, alias, attrs)
     return model_name
