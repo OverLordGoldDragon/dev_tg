@@ -67,5 +67,5 @@ Example in :doc:`examples/advanced`.
 Use custom train / evaluation function
 ======================================
 
-Override `fit_fn` / `eval_fn`; see docs in :class:`TrainGenerator`.
+Set `fit_fn` / `eval_fn`; see docs in :class:`TrainGenerator`.
 

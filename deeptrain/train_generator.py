@@ -87,16 +87,16 @@ class TrainGenerator(TraingenUtils):
             Functions to apply at various stages, including training, validation,
             saving, loading, and `__init__`.
             See :class:`~deeptrain.callbacks.TraingenCallback`.
-        fit_fn: str / function
+        fit_fn: str / `function(x, y, sample_weight)`
             Function, or name of model method to feed data to during training;
             if str, will define `fit_fn = getattr(model, 'fit')` (example).
-            If function, its name must include `'fit'` or `'train'` (substring);
-            currently both function identically.
-        eval_fn: str / function
+            If function, its name (substring) must include `'fit'` or `'train'`
+            (currently both function identically).
+        eval_fn: str / `function(x, y, sample_weight)`
             Function, or name of model method to feed data to during validation;
             if str, will define `eval_fn = getattr(model, 'evaluate')` (example).
-            If function, its name must include `'evaluate'` or `'predict'`
-            (substring):
+            If function, its name (substring) must include `'evaluate'` or
+            `'predict'`:
 
                 - `'evaluate'`: `eval_fn` uses data & labels to return metrics.
                 - `'predict'`:  `eval_fn` uses data to return predictions, which

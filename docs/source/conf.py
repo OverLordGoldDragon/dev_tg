@@ -57,6 +57,8 @@ html_css_files = [
     'style.css',
 ]
 
+html_favicon = '_images/favicon.png'
+
 # Make "footnote [1]_" appear as "footnote[1]_"
 trim_footnote_reference_space = True
 
