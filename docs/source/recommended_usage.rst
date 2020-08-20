@@ -4,7 +4,7 @@ Recommended Usage
 .. raw:: html
 
     <div align="center">	
-        <iframe width="840" height="473" src="https://www.youtube.com/embed/I_HxnlLXre0" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <iframe width="840" height="473" src="https://www.youtube.com/embed/c_dvbKc-CbA" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
 |
