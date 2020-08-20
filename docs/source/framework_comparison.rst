@@ -108,5 +108,7 @@ DeepTrain vs Pytorch Lightning
 		    <div class="lin">I am one, they are many. Bug reports, feature requests, etc. will be handled slower. Collaborators welcome.</div>
 		</div>
     </div>
+	
+	<br><b><i>Disclaimer</i></b>: The author isn't a Pytorch Lightning user, and above is based on inspecting code and documentation; some 'facts' may be inaccurate.
 | 
 
