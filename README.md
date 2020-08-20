@@ -13,7 +13,7 @@
 ![](https://img.shields.io/badge/keras-tf.keras/eager-blue.svg)
 ![](https://img.shields.io/badge/keras-tf.keras/2.x-blue.svg)
 
-Dev-stage repo
+Full knowledge and control of the train state.
 
 
 ## Features

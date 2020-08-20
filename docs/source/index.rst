@@ -1,12 +1,17 @@
 
-Welcome to DeepTrain's documentation!
-=====================================
+DeepTrain Documentation
+=======================
 
-DeepTrain is woot etc
+Full knowledge and control of the train state.
+
+Installation
+------------
+
+``pip install deeptrain`` (without data; see `how to run examples <https://dev-tg.readthedocs.io/en/latest/how_to.html#run-examples>`_ ), or clone repository
 
    
 Examples
-========
+--------
 
 .. raw:: html
 
@@ -42,15 +47,15 @@ Examples
 
 |
 
-Indices and tables
-==================
+API Reference
+-------------
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 Table of Contents
-=================
+-----------------
 
 .. toctree::
    :maxdepth: 2
@@ -65,3 +70,4 @@ Table of Contents
    examples/introspection/index
    How to ...? <how_to>
    How does ... work? <how_works>
+   Framework Comparison <framework_comparison>
