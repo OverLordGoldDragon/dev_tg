@@ -1,11 +1,6 @@
-.. raw:: html
+.. |br| raw:: html
 
-    <style>
-	break {line-height: 0; padding: 0; margin; 0}
-	</style>
-
-.. role:: raw-html(raw)
-    :format: html
+  <div style="line-height: 0; padding: 0; margin: 0"></div>
 
 
 How does ... work?
@@ -18,13 +13,13 @@ TrainGenerator
     :align: center
     :width: 700
 
-:raw-html:`<div class="break">`
+|br|
 
 .. image:: _images/train_val.gif
     :align: right
     :width: 450
 
-:raw-html:`<div class="break">`
+|br|
 
     1. User defines `tg = TrainGenerator(**configs)`,
     2. calls `tg.train()`.
@@ -44,7 +39,7 @@ DataGenerator
     :align: center
     :width: 500
 
-:raw-html:`<div class="break">`
+|br|
 
     1. User defines `dg = DataGenerator(**configs)`.
     2. If not specified, `dg` infers the number of batches, file extension, data loader,
@@ -71,7 +66,7 @@ DataLoader
     :align: center
     :width: 650
 
-:raw-html:`<div class="break">`
+|br|
 
     - :class:`DataGenerator` is a "middle-man" between :class:`TrainGenerator` and the data, orchestrating *which* data is fetched at a point in training. 
     - The actual loading is handled by :class:`DataLoader`, with the customizable :meth:`~DataLoader.load_fn`.
