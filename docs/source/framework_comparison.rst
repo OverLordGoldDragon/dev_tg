@@ -10,7 +10,6 @@ DeepTrain vs Pytorch Lightning
     <style>
 	    h3{margin-bottom: 0; padding-bottom: 0}
 	    ul{margin: 0; padding: 0;}
-	    li{margin: 0; padding: 3px 0;}
         p{ margin: 0; padding: 0;}
         dl{margin: 0 !important; padding: 0 !important;}
         dd{margin: 0 10px !important; padding: 0 10px !important;}
