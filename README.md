@@ -67,7 +67,7 @@ DeepTrain is _not_ for models that take under an hour to train, or for training 
 
 Once `validate()` finishes, training may checkpoint, and `train()` is called again. Internally, data loads with `DataGenerator.load_data()` (using e.g. `np.load`).
 
-That's the high-level overview; more detail [here](https://dev-tg.readthedocs.io/en/latest/how_works.html). Callbacks and other behavior can be configured for every stage of training.
+That's the high-level overview; details [here](https://dev-tg.readthedocs.io/en/latest/how_works.html). Callbacks & other behavior can be configured for every stage of training.
 
 ## Examples
 
