@@ -37,11 +37,20 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
   - **Train state**: image log of key attributes for easy reference ([ex](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html#Inspect-generated-logs)); batches marked w/ "set nums" - know what's being fit and when
   - **Algorithms, preprocesing, calibration**: tools for inspecting & manipulating data and models
 
+[Complete list](https://dev-tg.readthedocs.io/en/latest/why_deeptrain.html)
+
 ## When is DeepTrain suitable (and not)?
 
 Training _few_ models _thoroughly_: closely tracking model and train attributes to debug performance and inform next steps.
 
 DeepTrain is _not_ for models that take under an hour to train, or for training hundreds of models at once.
+
+## What does DeepTrain do?
+
+Abstract away boilerplate train loop and data loading code, *without* making it into a black box. Code is written intuitively and fully documented.
+Everything about the train state can be seen via *dedicated attributes*; which batch is being fit and when, how long until an epoch ends, intermediate metrics, etc.
+
+DeepTrain is *not* a "wrapper" around TF; while currently only supporting TF, fitting and data logic is framework-agnostic.
 
 ## How it works
 
