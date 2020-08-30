@@ -62,7 +62,7 @@ Table of Contents
    :glob:
 
    Why DeepTrain? <why_deeptrain>
-   Quickstart <examples/basic>
+   Basic Example <examples/basic>
    Advanced Example <examples/advanced>
    recommended_usage
    examples/index
@@ -71,3 +71,5 @@ Table of Contents
    How to ...? <how_to>
    How does ... work? <how_works>
    Framework Comparison <framework_comparison>
+   API Reference <api_reference>
+   
