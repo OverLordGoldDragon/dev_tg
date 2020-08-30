@@ -22,35 +22,35 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
 
 ### Train Loop
 
-  - **Control**: iteration-, batch-, epoch-level customs
   - **Resumability**: interrupt-protection, can pause mid-training
   - **Tracking & reproducibility**: save & load model, train state, random seeds, and hyperparameter info
-  - **Callbacks** at any stage of training or validation
 
 ### Data Pipeline
 
-  - **AutoData**: need only path to directory, the rest is inferred (but can customize)
+  - **Flexible batch_size**: can differ from that of loaded files, will split/combine ([ex](https://dev-tg.readthedocs.io/en/latest/examples/misc/flexible_batch_size.html))
   - **Faster SSD loading**: load larger batches to maximize read speed utility
-  - **Flexible batch size**: can differ from that of loaded files, will split/combine
-  - **Stateful timeseries**: splits up a batch into windows, and `reset_states()` (RNNs) at end
+  - **Stateful timeseries**: splits up a batch into windows, and `reset_states()` (RNNs) at end ([ex](https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html))
   
-### Introspection
+### Introspection & Utilities
 
-  - **Data**: batches and labels are enumerated by "set nums"; know what's being fit and when
-  - **Model**: auto descriptive naming; gradients, weights, activations visuals
-  - **Train state**: single-image log of key attributes & hyperparameters for easy reference
+  - **Model**: auto descriptive naming ([ex](https://dev-tg.readthedocs.io/en/latest/examples/misc/model_auto_naming.html)); gradients, weights, activations visuals ([ex](https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html#Init-&-train))
+  - **Train state**: image log of key attributes for easy reference ([ex](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html#Inspect-generated-logs)); batches marked w/ "set nums" - know what's being fit and when
+  - **Algorithms, preprocesing, calibration**: tools for inspecting & manipulating data and models
 
-### Utilities
-
-  - **Calibration**: classifier prediction threshold; best batch subset selection (for e.g. ensembling)
-  - **Algorithms**: convenience methods for object inspection & manipulation
-  - **Preprocessing**: batch-making and format conversion methods
+[Complete list](https://dev-tg.readthedocs.io/en/latest/why_deeptrain.html)
 
 ## When is DeepTrain suitable (and not)?
 
 Training _few_ models _thoroughly_: closely tracking model and train attributes to debug performance and inform next steps.
 
 DeepTrain is _not_ for models that take under an hour to train, or for training hundreds of models at once.
+
+## What does DeepTrain do?
+
+Abstract away boilerplate train loop and data loading code, *without* making it into a black box. Code is written intuitively and fully documented.
+Everything about the train state can be seen via *dedicated attributes*; which batch is being fit and when, how long until an epoch ends, intermediate metrics, etc.
+
+DeepTrain is *not* a "wrapper" around TF; while currently only supporting TF, fitting and data logic is framework-agnostic.
 
 ## How it works
 
