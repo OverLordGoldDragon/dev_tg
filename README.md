@@ -33,7 +33,7 @@ DeepTrain is founded on **control** and **introspection**: full knowledge and ma
   
 ### Introspection & Utilities
 
-  - **Model**: auto descriptive naming ([ex](https://dev-tg.readthedocs.io/en/latest/examples/misc/model_auto_naming.html)); gradients, weights, activations visuals
+  - **Model**: auto descriptive naming ([ex](https://dev-tg.readthedocs.io/en/latest/examples/misc/model_auto_naming.html)); gradients, weights, activations visuals ([ex](https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html#Init-&-train))
   - **Train state**: image log of key attributes for easy reference ([ex](https://dev-tg.readthedocs.io/en/latest/examples/advanced.html#Inspect-generated-logs)); batches marked w/ "set nums" - know what's being fit and when
   - **Algorithms, preprocesing, calibration**: tools for inspecting & manipulating data and models
 
