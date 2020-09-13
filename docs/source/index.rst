@@ -64,6 +64,5 @@ Table of Contents
    examples/introspection/index
    How to ...? <how_to>
    How does ... work? <how_works>
-   Framework Comparison <framework_comparison>
    API Reference <api_reference>
    
