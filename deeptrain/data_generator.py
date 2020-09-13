@@ -89,7 +89,7 @@ class DataGenerator():
           autoencoder), which doesn't require labels files; just pass
           `TrainGenerator(input_as_labels=True)`
 
-    **Dynamic batching**:  # TODO "dynamic" implies changing, use another word
+    **Flexible batch_size**:
 
     Loaded file's batch size may differ from `batch_size`, so long as former
     is an integer or integer fraction multiple of latter. Ex:

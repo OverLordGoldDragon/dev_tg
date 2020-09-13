@@ -30,9 +30,9 @@ def _update_temp_history(self, metrics, val=False):
     def _get_temp_history(val):
         def _validate_temp_history(temp_history):
             for name, value in temp_history.items():
-                if not isinstance(temp_history[name], list):
+                if not isinstance(value, list):
                     print(NOTE, "`temp_history` is non-list; attempting casting")
-                    temp_history[name] = list(temp_history[name])
+                    temp_history[name] = list(value)
             return temp_history
 
         temp_history = self.val_temp_history if val else self.temp_history

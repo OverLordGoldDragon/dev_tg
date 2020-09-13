@@ -282,8 +282,7 @@ def viz_roc_auc(y_true, y_pred):
         # order preds descending
         i_xs = list(sorted(i_x, key=lambda x: x[1], reverse=True))
         idxs = [d[0] for d in i_xs]
-        # get preds & labels at positions of descending predictions
-        xs = y_pred[idxs]
+        # get labels at positions of descending predictions
         ys = y_true[idxs]
 
         p_inc = 1 / ys.sum()              # 1-class increment
@@ -292,7 +291,7 @@ def viz_roc_auc(y_true, y_pred):
         pts = np.zeros((len(ys) + 1, 2))
 
         # fill (x_i, y_i) for i = 0, ..., num_points - 1
-        for i, (x, y) in enumerate(zip(xs, ys)):
+        for i, y in enumerate(ys):
             if y == 1:
                 # x_i = x_{i-1}
                 # y_i = y_{i-1} + p_inc
@@ -515,7 +514,7 @@ def get_history_fig(self, plot_configs=None, w=1, h=1):
 
 
 def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
-                  max_is_best=True, axis=None, vhlines={'v': None, 'h': None},
+                  max_is_best=True, axis=None, vhlines=None,
                   ylims=(0, 2), legend_kw=None, key_metric='loss',
                   metric_name_to_alias_fn=None):
     """Plots metrics according to inputs passed by :meth:`get_history_fig`."""
@@ -559,6 +558,7 @@ def _plot_metrics(x_ticks, metrics, plot_kw, mark_best_idx=None,
                 kws['label'] = _make_legend_label(name, bold)
             ax.plot(ticks, metrics[name], **kws)
 
+    vhlines = vhlines or {'v': None, 'h': None}
     ax = axis if axis else plt.subplots()[1]
     _plot_main(x_ticks, metrics, plot_kw, legend_kw, ax)
 

@@ -49,7 +49,7 @@ def deepcopy_v2(obj, item_fn=None, skip_flag=42069, debug_verbose=False):
 
         def _update_copied_key(key, copied_key, on_skip=False):
             ck = []
-            for i, (k, k_decrement) in enumerate(zip(key, key_decrements)):
+            for k, k_decrement in zip(key, key_decrements):
                 ck.append(k - k_decrement)
             copied_key[:] = ck
 
@@ -123,8 +123,7 @@ def deepcopy_v2(obj, item_fn=None, skip_flag=42069, debug_verbose=False):
         return item
 
     def _revert_tuples(copied, obj, revert_tuple_keys):
-        revert_tuple_keys = list(reversed(sorted(revert_tuple_keys,
-                                                 key=lambda x: len(x))))
+        revert_tuple_keys = list(reversed(sorted(revert_tuple_keys, key=len)))
         for key in revert_tuple_keys:
             supercontainer = deepget(copied, key, 1)
             container      = deepget(copied, key, 0)
