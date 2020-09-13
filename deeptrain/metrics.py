@@ -301,14 +301,13 @@ def roc_auc_score(y_true, y_pred):
     i_x = [(i, x) for (i, x) in enumerate(y_pred)]
     i_xs = list(sorted(i_x, key=lambda x: x[1], reverse=True))
     idxs = [d[0] for d in i_xs]
-    xs = y_pred[idxs]
     ys = y_true[idxs]
 
     p_inv = 1 / ys.sum()
     n_inv = 1 / (len(ys) - ys.sum())
     pts = np.zeros((len(ys) + 1, 2))
 
-    for i, (x, y) in enumerate(zip(xs, ys)):
+    for i, y in enumerate(ys):
         inc = p_inv if y == 1 else n_inv
         if y == 1:
             pts[i + 1] = [pts[i][0], pts[i][1] + inc]
