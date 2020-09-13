@@ -1,36 +1,4 @@
 # -*- coding: utf-8 -*-
-"""# TODO
-   - rename `max_is_best`?
-   - configurable error / warn levels (e.g. save fail)
-   - check callbacks w/:
-       - stateful=True
-
-   # TODO later
-   - MetaTrainer
-   - examples/visuals
-
-   # todo maybe
-   - Handle KeyboardInterrupt - with, finally?
-   - DataGenerator: infer `batch_size`, default=None?
-   - deeptrain.colortext() toggle / setting to set whether NOTE/WARN use color
-"""
-
-"""TODO-docs:
-    - How's it different from other training frameworks?
-       - AutoData
-         - trackable
-         - batch size flexibility
-         - load speed optimizations
-         - stateful option
-       - preprocessing
-         - batch making
-         - class imbalance handling
-         - advanced signal timeseries preprocessing
-       - advanced train pipeline
-         - dynamic hyperparameters; change between epochs, auto-restart session
-         - reproducibility; seed tracking & restoring
-"""
-
 import os
 import sys
 import gc

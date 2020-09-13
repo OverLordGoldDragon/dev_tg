@@ -31,7 +31,7 @@ DeepTrain vs Pytorch Lightning
 			<div class="lin">&#x2022; <code>KeyboardInterrupt</code> any time, inspect model & train state as needeed, and resume.</div>
 		</div>
 	    <div class="li"><span class="pl">+</span> <b>Tracking state</b>
-            <div class="lin">Much finer-grained tracking (and control) of internal train & data states</div>
+            <div class="lin">Much finer-grained tracking and control of internal train & data states</div>
         </div>
 		<div class="li"><span class="pl">+</span> <b>Flexible batch_size</b>
 		    <div class="lin">Set <code>batch_size</code> as integer/fraction multiple of that on file</div>

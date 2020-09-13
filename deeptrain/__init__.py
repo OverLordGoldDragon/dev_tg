@@ -47,4 +47,11 @@ def set_seeds(seeds=None, reset_graph=False, verbose=1):
     callbacks.RandomSeedSetter._set_seeds(seeds, reset_graph, verbose)
 
 
-__version__ = '0.01'
+__version__ = '0.6.0'
+__author__ = 'OverLordGoldDragon'
+__license__ = 'MIT'
+__copyright__ = 'Copyright (c) 2020, %s.' % __author__
+__homepage__ = 'https://github.com/OverLordGoldDragon/deeptrain'
+__docs__ = (
+    "DeepTrain: Full knowledge and control of the train state."
+)

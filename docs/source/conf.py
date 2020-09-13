@@ -15,14 +15,16 @@ sys.path.insert(0, str(confdir.parents[0]))  # docs dir
 sys.path.insert(0, str(confdir.parents[1]))  # package rootdir
 
 #### Project info  ###########################################################
-from datetime import datetime
+import deeptrain
 
 project = 'DeepTrain'
-copyright = "%s, OverLordGoldDragon" % datetime.now().year
-author = 'OverLordGoldDragon'
+author = deeptrain.__author__
+copyright = deeptrain.__copyright__
 
+# The short X.Y version
+version = deeptrain.__version__
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = deeptrain.__version__
 
 #### General configs #########################################################
 

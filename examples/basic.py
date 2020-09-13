@@ -80,8 +80,8 @@ VAL_DATAGEN_CFG = dict(
 #   model_configs: model configurations dict to save & write to report
 TRAINGEN_CFG = dict(
     epochs=3,
-    logs_dir=os.path.join('dir', 'outputs', 'logs'),
-    best_models_dir=os.path.join('dir', 'outputs', 'models'),
+    logs_dir=os.path.join('dir', 'logs'),
+    best_models_dir=os.path.join('dir', 'models'),
     model_configs=MODEL_CFG,
 )
 #%%# Create training objects ################################################

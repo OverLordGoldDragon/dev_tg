@@ -28,7 +28,7 @@ setup(
     name="deeptrain",
     version=find_version('deeptrain', '__init__.py'),
     packages=find_packages(exclude=['tests', 'examples']),
-    url="https://github.com/OverLordGoldDragon/dev_tg",
+    url="https://github.com/OverLordGoldDragon/deeptrain",
     license="MIT",
     author="OverLordGoldDragon",
     author_email="16495490+OverLordGoldDragon@users.noreply.github.com",
@@ -36,7 +36,7 @@ setup(
     long_description=read_file('README.md'),
     long_description_content_type="text/markdown",
     keywords=(
-        "tensorflow keras deep-learning"
+        "tensorflow keras python deep-learning ai train-loop"
     ),
     install_requires=get_requirements('requirements.txt'),
     extras_require={
