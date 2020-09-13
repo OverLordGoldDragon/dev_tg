@@ -10,8 +10,6 @@
 
 ![](https://img.shields.io/badge/keras-tensorflow-blue.svg)
 ![](https://img.shields.io/badge/keras-tf.keras-blue.svg)
-![](https://img.shields.io/badge/keras-tf.keras/eager-blue.svg)
-![](https://img.shields.io/badge/keras-tf.keras/2.x-blue.svg)
 
 Full knowledge and control of the train state.
 
