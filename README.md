@@ -52,9 +52,9 @@ DeepTrain is *not* a "wrapper" around TF; while currently only supporting TF, fi
 
 ## How it works
 
-<p align="center"><img src="docs/source/_images/train_loop.png" width="700"></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/16495490/93137281-41836180-f6ee-11ea-97f2-d593e9916a73.png" width="700"></p>
 
-<img src="docs/source/_images/train_val.gif" width="450" align="right">
+<img src="https://imgur.com/trdceea" width="450" align="right">
 
  1. We define `tg = TrainGenerator(**configs)`,
  2. call `tg.train()`.<br>
