@@ -2,3 +2,4 @@ include README.md
 include LICENSE
 include requirements.txt
 include deeptrain/util/fonts/consola
+include deeptrain/util/fonts
