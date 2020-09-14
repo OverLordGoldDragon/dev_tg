@@ -52,9 +52,9 @@ DeepTrain is *not* a "wrapper" around TF; while currently only supporting TF, fi
 
 ## How it works
 
-<p align="center"><img src="docs/source/_images/train_loop.png" width="700"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/train_loop.png" width="700"></p>
 
-<img src="docs/source/_images/train_val.gif" width="450" align="right">
+<img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/train_val.gif" width="450" align="right">
 
  1. We define `tg = TrainGenerator(**configs)`,
  2. call `tg.train()`.<br>
@@ -71,11 +71,11 @@ That's the high-level overview; details [here](https://dev-tg.readthedocs.io/en/
 
 <a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html">MNIST AutoEncoder</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html">Timeseries Classification</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html">Health Monitoring</a>
 :----------------:|:-----------------:|:-----------------:
-<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="docs/source/_images/mnist.gif" width="210" height="210"><a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html"><img src="docs/source/_images/ecg2.png" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html"><img src="docs/source/_images/model_health.png" width="210" height="210"></a>
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/advanced.html"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/mnist.gif" width="210" height="210"><a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/timeseries.html"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/ecg2.png" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/model_health.html"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/model_health.png" width="210" height="210"></a>
   
 <a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html">Tracking Weights</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html">Reproducibility</a> | <a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/flexible_batch_size.html">Flexible batch_size</a>
 :----------------:|:----------------:|:----------------:|
-<a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html"><img src="docs/source/_images/gradients.gif" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html"><img src="docs/source/_images/reproducibility.png" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/flexible_batch_size.html"><img src="docs/source/_images/flexible_batch_size.png" width="210" height="210"></a>
+<a href="https://dev-tg.readthedocs.io/en/latest/examples/callbacks/mnist.html"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/gradients.gif" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/reproducibility.html"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/reproducibility.png" width="210" height="210"></a>|<a href="https://dev-tg.readthedocs.io/en/latest/examples/misc/flexible_batch_size.html"><img src="https://raw.githubusercontent.com/OverLordGoldDragon/dev_tg/master/docs/source/_images/flexible_batch_size.png" width="210" height="210"></a>
 
 
 ## Installation
