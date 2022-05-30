@@ -8,11 +8,12 @@
 # -----------------------------------------------------------------------------
 import pytest
 import torch
-from wavespin import Scattering1D
 import math
 import os
 import io
 import numpy as np
+from wavespin.torch import Scattering1D
+from wavespin.numpy import Scattering1D as Scattering1DNumPy
 from utils import TEST_DATA_DIR
 
 # set True to execute all test functions without pytest
@@ -45,8 +46,7 @@ def test_simple_scatterings(device, backend, random_state=42):
     J = 6
     Q = 8
     T = 2**9
-    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch'
-                              ).to(device)
+    scattering = Scattering1D(J, T, Q, backend=backend).to(device)
     return
 
     # zero signal
@@ -105,8 +105,7 @@ def test_sample_scattering(device, backend):
 
     N = x.shape[-1]
 
-    sc = Scattering1D(J, N, Q, backend=backend, frontend='torch',
-                      max_pad_factor=1).to(device)
+    sc = Scattering1D(J, N, Q, backend=backend, max_pad_factor=1).to(device)
 
     Sx = sc(x)
     assert torch.allclose(Sx, Sx0), "MAE={:.3e}".format(float((Sx - Sx0).mean()))
@@ -128,8 +127,8 @@ def test_computation_Ux(device, backend, random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(J, T, Q, average=False, out_type="list",
-                              max_order=1, frontend='torch',
-                              max_pad_factor=1, backend=backend).to(device)
+                              max_order=1, max_pad_factor=1,
+                              backend=backend).to(device)
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float().to(device)
 
@@ -187,8 +186,8 @@ def test_scattering_GPU_CPU(backend, random_state=42):
         T = 2**12
 
         # build the scattering
-        scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch',
-                                  max_pad_factor=1).cpu()
+        scattering = Scattering1D(J, T, Q, backend=backend, max_pad_factor=1
+                                  ).cpu()
 
         x = torch.randn(2, T)
         s_cpu = scattering(x)
@@ -221,7 +220,7 @@ def test_coordinates(device, backend, random_state=42):
     N = 2**12
 
     scattering = Scattering1D(J, N, Q, max_order=2, backend=backend,
-                              max_pad_factor=1, frontend='torch')
+                              max_pad_factor=1)
 
     x = torch.randn(2, N)
 
@@ -268,8 +267,8 @@ def test_differentiability_scattering(device, backend, random_state=42):
     Q = 8
     T = 2**12
 
-    scattering = Scattering1D(J, T, Q, frontend='torch', backend=backend,
-                              max_pad_factor=1).to(device)
+    scattering = Scattering1D(J, T, Q, backend=backend, max_pad_factor=1
+                              ).to(device)
 
     x = torch.randn(2, T, requires_grad=True, device=device)
 
@@ -291,15 +290,13 @@ def test_scattering_shape_input(backend):
     J, Q = 6, 8
     with pytest.raises(ValueError) as ve:
         shape = 5, 6
-        _ = Scattering1D(J, shape, Q, backend=backend, frontend='torch',
-                         max_pad_factor=1)
+        _ = Scattering1D(J, shape, Q, backend=backend, max_pad_factor=1)
     assert "exactly one element" in ve.value.args[0]
 
 
     with pytest.raises(ValueError) as ve:
         shape = 1.5
-        _ = Scattering1D(J, shape, Q, backend=backend, frontend='torch',
-                         max_pad_factor=1)
+        _ = Scattering1D(J, shape, Q, backend=backend, max_pad_factor=1)
         # should invoke the else branch
     assert "1-tuple" in ve.value.args[0]
     assert "integer" in ve.value.args[0]
@@ -320,7 +317,7 @@ def test_batch_shape_agnostic(device, backend):
 
     length_ds = length / 2**J
 
-    S = Scattering1D(J, shape, Q, backend=backend, frontend='torch').to(device)
+    S = Scattering1D(J, shape, Q, backend=backend).to(device)
 
     with pytest.raises(ValueError) as ve:
         S(torch.zeros(()).to(device))
@@ -369,8 +366,8 @@ def test_vs_numpy(backend):
         kw = dict(J=J, Q=Q, shape=N, average=average, max_pad_factor=1,
                   out_type='array' if average else 'list')
 
-        ts_torch = Scattering1D(**kw, frontend='torch')
-        ts_numpy = Scattering1D(**kw, frontend='numpy')
+        ts_torch = Scattering1D(**kw)
+        ts_numpy = Scattering1DNumPy(**kw)
 
         x = np.random.randn(N).astype('float32')
         xt = torch.from_numpy(x)

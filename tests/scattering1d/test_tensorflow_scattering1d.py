@@ -10,7 +10,6 @@ import os
 import numpy as np
 import io
 
-from wavespin import Scattering1D
 from utils import cant_import, TEST_DATA_DIR
 
 # skip this test if no TF installed
@@ -18,6 +17,10 @@ got_tf = bool(not cant_import('tensorflow'))
 
 # set True to execute all test functions without pytest
 run_without_pytest = 0
+
+
+if got_tf:
+    from wavespin.tensorflow import Scattering1D
 
 
 def test_Scattering1D_tensorflow():
