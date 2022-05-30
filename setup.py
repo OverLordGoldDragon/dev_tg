@@ -1,4 +1,24 @@
-import os 
+# -*- coding: utf-8 -*-
+# -----------------------------------------------------------------------------
+# Copyright (c) 2022- John Muradeli
+#
+# Distributed under the terms of the MIT License
+# (see wavespin/__init__.py for details)
+# -----------------------------------------------------------------------------
+
+"""
+WaveSpin
+========
+
+Joint Time-Frequency Scattering, Wavelet Scattering: features for audio,
+biomedical, and other applications, in Python
+
+WaveSpin features scattering transform implementations that maximize accuracy,
+flexibility, and speed. Included are visualizations and convenience utilities
+for transform and coefficient introspection and debugging.
+"""
+
+import os
 import re
 from setuptools import setup, find_packages
 
@@ -25,40 +45,40 @@ def find_version(*file_paths):
 
 
 setup(
-    name="deeptrain",
-    version=find_version('deeptrain', '__init__.py'),
+    name="WaveSpin",
+    version=find_version('wavespin', '__init__.py'),
     packages=find_packages(exclude=['tests', 'examples']),
-    url="https://github.com/OverLordGoldDragon/deeptrain",
+    url="https://github.com/OverLordGoldDragon/wavespin",
     license="MIT",
-    author="OverLordGoldDragon",
-    author_email="16495490+OverLordGoldDragon@users.noreply.github.com",
-    description=("dev-stage repo"),
+    author="John Muradeli",
+    author_email="john.muradeli@gmail.com",
+    description=("Joint Time-Frequency Scattering, Wavelet Scattering: features "
+                 "for audio, biomedical, and other applications, in Python"),
     long_description=read_file('README.md'),
     long_description_content_type="text/markdown",
     keywords=(
-        "tensorflow keras python deep-learning ai train-loop"
+        "scattering-transform wavelets signal-processing visualization "
+        "pytorch tensorflow python"
     ),
     install_requires=get_requirements('requirements.txt'),
-    extras_require={
-        "docs": get_requirements('requirements-dev.txt'),
-        "travis": get_requirements('requirements-dev.txt'),
-        },
     tests_require=["pytest>=4.0", "pytest-cov"],
     include_package_data=True,
     zip_safe=True,
     classifiers=[
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
-        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Operating System :: OS Independent",
         "Intended Audience :: Developers",
-        "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
         "Topic :: Utilities",
+        "Topic :: Multimedia :: Sound/Audio :: Analysis",
         "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Scientific/Engineering :: Information Analysis",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Visualization",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],

@@ -1,9 +1,7 @@
 [run]
+source = wavespin
 parallel = True
-omit =
-    deeptrain/util/experimental.py
 
 [report]
-omit =
-    deeptrain/util/experimental.py
+show_missing = True
 precision = 3

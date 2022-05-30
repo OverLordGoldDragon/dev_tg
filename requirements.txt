@@ -1,5 +1,2 @@
 numpy
-matplotlib
-tensorflow
-h5py
-see_rnn
+scipy

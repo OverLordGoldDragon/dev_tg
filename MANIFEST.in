@@ -1,5 +1,0 @@
-include README.md
-include LICENSE
-include requirements.txt
-include deeptrain/util/fonts/consola.ttf
-include deeptrain/util/fonts
