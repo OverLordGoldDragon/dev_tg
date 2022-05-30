@@ -30,7 +30,7 @@ from utils import cant_import, SKIPS, TEST_DATA_DIR
 # NOTE: non-'numpy' skips `test_meta()` and `test_lp_sum()`
 default_backend = ('numpy', 'torch', 'tensorflow')[0]
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 # set True to print assertion errors rather than raising them in `test_output()`
 output_test_print_mode = 1
 # set True to print assertion values of certain tests

@@ -43,8 +43,8 @@ def tempdir(dirpath=None):
 
 # tests to skip
 SKIPS = {
-  'jtfs': 1,
-  'visuals': 1,
+  'jtfs': 0,
+  'visuals': 0,
 }
 # used to load saved coefficient outputs
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
