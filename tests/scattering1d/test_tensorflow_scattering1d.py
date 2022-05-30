@@ -48,7 +48,7 @@ def test_Scattering1D_tensorflow():
     Q = data['Q']
     N = x.shape[-1]
 
-    scattering = Scattering1D(J, N, Q, frontend='tensorflow')
+    scattering = Scattering1D(J, N, Q)
 
     Sx = scattering(x)
     adiff = tf.math.abs(Sx - Sx0)
