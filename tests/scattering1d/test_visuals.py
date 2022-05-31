@@ -108,8 +108,8 @@ def test_viz_jtfs_2d(G):
     out_jtfss = G['out_jtfss']
 
     # without save
-    # _ = v.viz_jtfs_2d(jtfss[1], Scx=out_jtfss[1], show=0,
-    #                   plot_cfg={'filter_label': True, 'phi_t_loc': 'both'})
+    _ = v.viz_jtfs_2d(jtfss[1], Scx=out_jtfss[1], show=0,
+                      plot_cfg={'filter_label': True, 'phi_t_loc': 'both'})
 
     # with save
     base = 'viz_jtfs2d'
