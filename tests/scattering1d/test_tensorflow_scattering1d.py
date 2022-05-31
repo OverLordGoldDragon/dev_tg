@@ -48,13 +48,17 @@ def test_Scattering1D_tensorflow():
     Q = data['Q']
     N = x.shape[-1]
 
-    scattering = Scattering1D(J, N, Q)
+    sc = Scattering1D(J, N, Q)
 
-    Sx = scattering(x)
+    Sx = sc(x)
     adiff = tf.math.abs(Sx - Sx0)
     # TF is quite imprecise
     assert np.allclose(Sx, Sx0, atol=8e-6, rtol=1e-7), (
         tf.reduce_mean(adiff).numpy(), tf.reduce_max(adiff).numpy())
+
+    # for coverage
+    sc.out_type = 'list'
+    _ = sc(x)
 
 
 if __name__ == '__main__':

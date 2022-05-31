@@ -44,6 +44,10 @@ def test_Scattering1D_numpy():
 
     assert np.allclose(Sx, Sx0)
 
+    # for coverage
+    sc.out_type = 'list'
+    _ = sc(x)
+
 
 if __name__ == '__main__':
     if run_without_pytest:

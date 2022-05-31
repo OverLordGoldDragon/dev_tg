@@ -18,8 +18,7 @@ from wavespin.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
                               fdts, echirp, coeff_energy_ratios, energy,
                               est_energy_conservation, rel_l2, rel_ae,
                               validate_filterbank_tm, validate_filterbank_fr,
-                              pack_coeffs_jtfs, tensor_padded, normalize,
-                              compute_lp_sum, Decimate)
+                              pack_coeffs_jtfs, compute_lp_sum, Decimate)
 from wavespin.visuals import (coeff_distance_jtfs, compare_distances_jtfs,
                               energy_profile_jtfs, plot, plotscat)
 from wavespin.scattering1d.filter_bank import compute_temporal_width, gauss_1d
@@ -39,6 +38,8 @@ metric_verbose = 1
 viz = 1
 # set True to skip this file entirely
 skip_all = SKIPS['jtfs']
+# set True to skip longest tests (should be False before merging with main)
+skip_long = SKIPS['long_in_jtfs']
 
 # former default, used for testing with sufficient padding.
 # if they're typed manually, it means the test requires frequential padding None
@@ -705,9 +706,20 @@ def test_max_pad_factor_fr():
     N = 1024
     x = echirp(N)
 
-    for aligned in (True, False):
-        for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
-          for max_pad_factor_fr in (0, 1, [2, 1, 0], None):
+    # configure params based on `skip_long` flag
+    C = dict(
+        aligned=(True, False),
+        sampling_filters_fr=('resample', 'exclude', 'recalibrate'),
+        max_pad_factor_fr=([2, 1, 0], 0, 1, None),
+    )
+    if skip_long:
+        for k, v in C.items():
+            C[k] = v[:1]  # keep only 1
+
+    # test
+    for aligned in C['aligned']:
+        for sampling_filters_fr in C['sampling_filters_fr']:
+          for max_pad_factor_fr in C['max_pad_factor_fr']:
             # 127 to stay large but avoid F='global' per 'recalibrate'.
             # 32 since otherwise None takes too long, and we just want to test
             # log2_F > J_fr.
@@ -742,6 +754,10 @@ def test_max_pad_factor_fr():
                 except Exception as e:
                     print("Failed on %s with" % test_params_str)
                     raise e
+
+    if skip_long:
+        warnings.warn("Skipped most of `test_max_pad_factor_fr()` per "
+                      "SKIPS['long_in_jtfs']")
 
 
 def test_out_exclude():
@@ -1192,15 +1208,29 @@ def test_lp_sum():
     # hard to account for all edge cases with incomplete filterbanks
     max_k = 5
 
-    for Q in (1, 8, 16):
-      for r_psi in (np.sqrt(.5), .85):
-        for max_pad_factor in (None, 1):
-          for max_pad_factor_fr in (None, 1):
-            for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
+    # configure params based on `skip_long` flag
+    C = dict(
+        Q=(1, 8, 16),
+        r_psi=(np.sqrt(.5), .85),
+        max_pad_factor=(None, 1),
+        max_pad_factor_fr=(None, 1),
+        sampling_filters_fr=('resample', 'exclude', 'recalirate'),
+        analytic=(True, False)
+    )
+    if skip_long:
+        for k, v in C.items():
+            C[k] = v[:1]  # keep only 1
+
+    # test
+    for Q in C['Q']:
+      for r_psi in C['r_psi']:
+        for max_pad_factor in C['max_pad_factor']:
+          for max_pad_factor_fr in C['max_pad_factor_fr']:
+            for sampling_filters_fr in C['sampling_filters_fr']:
               # others are duplicate in time; used to skip some tests
               tm_not_duplicate = bool(
                   sampling_filters_fr == 'resample' and max_pad_factor_fr is None)
-              for analytic in (True, False):
+              for analytic in C['analytic']:
                 if not analytic and not tm_not_duplicate:
                     continue
                 aligned = bool(sampling_filters_fr != 'recalibrate')
@@ -1327,6 +1357,9 @@ def test_lp_sum():
                     check_lp_sum_sum(psi_fs, test_params_str, Q=jtfs.Q_fr,
                                      analytic=analytic, psi_id=psi_id)
 
+    if skip_long:
+        warnings.warn("Skipped most of `test_lp_sum()` per SKIPS['long_in_jtfs']")
+
 
 def test_compute_temporal_width():
     """Tests that `compute_temporal_width` works as intended."""
@@ -1400,31 +1433,6 @@ def test_compute_temporal_width():
         p_f = gauss_1d(N, sigma=sigma0 / T)
         w = compute_temporal_width(p_f, sigma0=sigma0, fast=False)
         assert w == T, (w, T)
-
-
-def test_tensor_padded():
-    """Test `tensor_padded` works as intended."""
-    if skip_all:
-        return None if run_without_pytest else pytest.skip()
-    ls = [[[1, 2, 3, 4],
-           [1, 2, 3],],
-          [[1, 2, 3],
-           [1, 2],
-           [1],],
-         ]
-    target = np.array([[[1, 2, 3, 4],
-                        [1, 2, 3, 0],
-                        [0, 0, 0, 0]],
-                       [[1, 2, 3, 0],
-                        [1, 2, 0, 0],
-                        [1, 0, 0, 0]]])
-    out = tensor_padded(ls)
-    assert np.all(target == out), out
-
-    # with `pad_value`
-    target[target == 0] = -2
-    out = tensor_padded(ls, pad_value=-2)
-    assert np.all(target == out), out
 
 
 def test_pack_coeffs_jtfs():
@@ -1783,6 +1791,10 @@ def test_est_energy_conservation():
             tol = .03  # random with torch cuda default
             assert 0 < v < 1 + tol, (k, v)
 
+    # coverage
+    kw.pop('backend')
+    _ = est_energy_conservation(x, **kw, verbose=0)
+
 
 def test_implementation():
     """Test that every `implementation` kwarg works."""
@@ -1816,56 +1828,6 @@ def test_pad_mode_fr():
     out0 = jtfs0(x)
     out1 = jtfs1(x)
     assert np.allclose(out0, out1)
-
-
-def test_normalize():
-    """Ensure error thrown upon invalid input, but otherwise method
-    doesn't error.
-    """
-    if skip_all:
-        return None if run_without_pytest else pytest.skip()
-    if cant_import(default_backend):
-        return
-    elif default_backend == 'torch':
-        import torch
-    elif default_backend == 'tensorflow':
-        import tensorflow as tf
-
-    for mean_axis in (0, (1, 2), -1):
-      for std_axis in (0, (1, 2), -1):
-        for C in (None, 2):
-          for mu in (None, 2):
-            for dim0 in (1, 64):
-              for dim1 in (1, 65):
-                for dim2 in (1, 66):
-                    if dim0 == dim1 == dim2 == 1:
-                        # invalid combo
-                        continue
-                    if default_backend == 'numpy':
-                        x = np.abs(np.random.randn(dim0, dim1, dim2))
-                    elif default_backend == 'torch':
-                        x = torch.abs(torch.randn(dim0, dim1, dim2))
-                    elif default_backend == 'tensorflow':
-                        x = tf.math.abs(tf.random.normal((dim0, dim1, dim2)))
-
-                    test_params = dict(
-                        mean_axis=mean_axis, std_axis=std_axis, C=C, mu=mu,
-                        dim0=dim0, dim1=dim1, dim2=dim2)
-                    test_params_str = '\n'.join(f'{k}={v}' for k, v in
-                                                test_params.items())
-                    try:
-                        kw = {k: v for k, v in test_params.items()
-                              if k not in ('dim0', 'dim1', 'dim2')}
-                        _ = normalize(x, **kw)
-                    except ValueError as e:
-                        if "input dims cannot be" in str(e):
-                            continue
-                        else:
-                            print(test_params_str)
-                            raise e
-                    except Exception as e:
-                        print(test_params_str)
-                        raise e
 
 
 def test_no_second_order_filters():
@@ -2435,7 +2397,35 @@ def test_meta():
         warnings.warn("`test_meta()` skipped per non-'numpy' `default_backend`")
         return None if run_without_pytest else pytest.skip()
 
+
+    # minimal global averaging testing #######################################
+    N = 512
+    out_type = 'dict:list'
+    x = np.random.randn(N)
+    params = dict(shape=N, J=9, Q=9, J_fr=5, Q_fr=1, F=2**7, out_type=out_type,
+                  **pad_mode_kw)
+
+    # ensure global averaging is attained
+    def assert_fn(jtfs):
+        assert jtfs.average_global_phi, (jtfs.shape, jtfs.T)
+        assert jtfs.scf.average_fr_global_phi, (jtfs.N_frs_max, jtfs.F)
+
+        if jtfs.average:
+            assert jtfs.average_global, (jtfs.shape, jtfs.T)
+        if jtfs.average_fr:
+            assert jtfs.average_fr_global, (jtfs.N_frs_max, jtfs.F)
+
+    # run tests
+    for average_fr in (True, False):
+        for average in (True, False):
+            test_params = dict(average_fr=average_fr, average=average,
+                               sampling_filters_fr='resample', out_3D=False)
+            run_test(params, test_params, assert_fn)
+
     # main tests #############################################################
+    if skip_long:
+        warnings.warn("Skipped most of `test_meta()` per SKIPS['long_in_jtfs']")
+        return
     N = 512
     x = np.random.randn(N)
 
@@ -2446,7 +2436,6 @@ def test_meta():
     J_fr = 5
     Q_fr = 2
     F = 4
-    out_type = 'dict:list'
     params = dict(shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, F=F, out_type=out_type,
                   **pad_mode_kw)
 
@@ -2493,29 +2482,6 @@ def test_meta():
                   paths_exclude=paths_exclude)
               run_test(params, test_params)
 
-    # minimal global averaging testing #######################################
-    N = 512
-    x = np.random.randn(N)
-    params = dict(shape=N, J=9, Q=9, J_fr=5, Q_fr=1, F=2**7, out_type=out_type,
-                  **pad_mode_kw)
-
-    # ensure global averaging is attained
-    def assert_fn(jtfs):
-        assert jtfs.average_global_phi, (jtfs.shape, jtfs.T)
-        assert jtfs.scf.average_fr_global_phi, (jtfs.N_frs_max, jtfs.F)
-
-        if jtfs.average:
-            assert jtfs.average_global, (jtfs.shape, jtfs.T)
-        if jtfs.average_fr:
-            assert jtfs.average_fr_global, (jtfs.N_frs_max, jtfs.F)
-
-    # run tests
-    for average_fr in (True, False):
-        for average in (True, False):
-            test_params = dict(average_fr=average_fr, average=average,
-                               sampling_filters_fr='resample', out_3D=False)
-            run_test(params, test_params, assert_fn)
-
 
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
@@ -2546,7 +2512,7 @@ def test_output():
                     for p in Path(TEST_DATA_DIR).iterdir())
 
     for test_num in range(num_tests):
-        # if test_num not in (0,):
+        # if test_num == 4:
         #     continue
         (x, out_stored, out_stored_keys, params, params_str, _
          ) = load_data(test_num)
@@ -2736,13 +2702,11 @@ if __name__ == '__main__':
         test_global_averaging()
         test_lp_sum()
         test_compute_temporal_width()
-        test_tensor_padded()
         test_pack_coeffs_jtfs()
         test_energy_conservation()
         test_est_energy_conservation()
         test_implementation()
         test_pad_mode_fr()
-        test_normalize()
         test_backends()
         test_differentiability_torch()
         test_reconstruction_torch()

@@ -45,6 +45,8 @@ def tempdir(dirpath=None):
 SKIPS = {
   'jtfs': 0,
   'visuals': 0,
+  'toolkit': 0,
+  'long_in_jtfs': 0,
 }
 # used to load saved coefficient outputs
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')

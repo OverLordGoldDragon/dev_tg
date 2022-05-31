@@ -110,6 +110,10 @@ def test_sample_scattering(device, backend):
     Sx = sc(x)
     assert torch.allclose(Sx, Sx0), "MAE={:.3e}".format(float((Sx - Sx0).mean()))
 
+    # for coverage
+    sc.out_type = 'list'
+    _ = sc(x)
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)

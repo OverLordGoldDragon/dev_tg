@@ -71,6 +71,8 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # TODO remove `Tx`
         # TODO sigma0=.13
+        # TODO dflt anal true
+        # TODO important implementation and documentation flaws
 
     def build(self):
         """Mainly handles input arguments. For a description of the complete

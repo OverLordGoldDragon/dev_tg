@@ -168,6 +168,10 @@ def normalize(X, mean_axis=(1, 2), std_axis=(1, 2), C=None, mu=1, C_mult=None):
                          "got %s" % str(X.shape))
     B = ExtendedUnifiedBackend(X)
 
+    if B.backend_name == 'tensorflow' and mu is None:
+        raise ValueError("mu=None with TensorFlow backend isn't supported, as "
+                         "TF's `median` doesn't support axis args")
+
     # check input values
     if B.min(X) < 0:
         warnings.warn("`X` must be non-negative; will take modulus.")
@@ -212,9 +216,9 @@ def normalize(X, mean_axis=(1, 2), std_axis=(1, 2), C=None, mu=1, C_mult=None):
 
     def sparse_mean(x, div=100, iters=4):
         """Mean of non-negligible points"""
-        m = x.mean()
+        m = B.mean(x)
         for _ in range(iters - 1):
-            m = x[x > m / div].mean()
+            m = B.mean(x[x > m / div])
         return m
 
     # rescale
