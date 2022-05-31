@@ -1992,6 +1992,8 @@ def viz_spin_2d(pair_waves=None, pairs=None, preset=None, axis_labels=None,
 
     pairs : None / tuple[str['up', 'dn', 'phi_t', 'phi_f', 'phi', 'phi_t_dn']]
         Pairs to visualize. Number of specified pairs must be 1, 2, or 6.
+        Will ignore pairs in `pair_waves` if they aren't in `pairs`;
+        `pairs` defaults to either what's in `preset` or what's in `pair_waves`.
 
     preset : None / int[0, 1, 2]
         Animation preset to use:
@@ -2045,6 +2047,7 @@ def viz_spin_2d(pair_waves=None, pairs=None, preset=None, axis_labels=None,
         pair_waves = {pair: make_jtfs_pair(N, pair, xi0, sigma0)
                       for pair in pairs}
     else:
+        pair_waves = pair_waves.copy()  # don't affect external keys
         for pair in pairs:
             if pair == 'phi_t_dn':
                 if not ('dn' in pair_waves and 'phi_t' in pair_waves):
@@ -2054,6 +2057,11 @@ def viz_spin_2d(pair_waves=None, pairs=None, preset=None, axis_labels=None,
                                           pair_waves['phi_t'][None])
             elif pair not in pair_waves:
                 raise ValueError("missing pair from pair_waves: %s" % pair)
+
+        passed_pairs = list(pair_waves)
+        for pair in passed_pairs:
+            if pair not in pairs:
+                del pair_waves[pair]
 
         # convert to time, center
         for pair in pair_waves:

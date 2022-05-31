@@ -40,7 +40,7 @@ def test_subsample_fourier():
 
     with pytest.raises(TypeError) as te:
         x_bad = x.real
-        backend.subsample_fourier(x_bad, 1)
+        backend.subsample_fourier(x_bad, 2)
     assert "should be complex" in te.value.args[0]
 
 

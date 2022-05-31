@@ -212,6 +212,12 @@ def test_misc(G):
         return None if run_without_pytest else pytest.skip()
     _ = v.plot([1, 2], xticks=[0, 1], yticks=[0, 1], show=0)
     _ = v._colorize_complex(np.array([[1 + 1j]]))
+    _ = v.hist(np.random.randn(24), stats=1, show=1)
+    _ = v.plotscat([1, 2])
+
+    xc = np.array([1 + 2j, 1 + 3j])
+    _ = v.scat(xc, complex=1, ticks=0)
+    _ = v.plot(y=xc, complex=1)
 
 
 def test_viz_spin_1d(G):
@@ -227,8 +233,16 @@ def test_viz_spin_2d(G):
     if skip_all:
         return None if run_without_pytest else pytest.skip()
     savename = 'spin_2d.mp4'
+    # preset
     fn = lambda savedir: v.viz_spin_2d(savepath=os.path.join(savedir, savename),
                                        preset=2, verbose=0)
+    _run_with_cleanup_handle_exception(fn, savename)
+
+    # no preset
+    pair_waves = {'dn': np.arange(32), 'phi_t': np.arange(32)}
+    fn = lambda savedir: v.viz_spin_2d(pair_waves,
+                                       savepath=os.path.join(savedir, savename),
+                                       verbose=1, pairs='phi_t_dn')
     _run_with_cleanup_handle_exception(fn, savename)
 
 
