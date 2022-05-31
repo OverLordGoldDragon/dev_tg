@@ -11,7 +11,7 @@ import numpy as np
 from copy import deepcopy
 
 from wavespin import Scattering1D, TimeFrequencyScattering1D
-from wavespin.toolkit import echirp, pack_coeffs_jtfs
+from wavespin.toolkit import echirp, pack_coeffs_jtfs, validate_filterbank
 from wavespin import visuals as v
 from utils import tempdir, SKIPS
 
@@ -217,7 +217,18 @@ def test_misc(G):
 
     xc = np.array([1 + 2j, 1 + 3j])
     _ = v.scat(xc, complex=1, ticks=0)
-    _ = v.plot(y=xc, complex=1)
+    _ = v.plot(x=None, y=xc, complex=1)
+
+    # throw this one in for coverage
+    p0 = np.hstack([np.ones(28), np.zeros(100)]) + 0.
+    p1 = p0.copy()[::-1]
+    p2 = p0.copy()[18:] + 1j
+    psi_fs = [p0, p1, p2] * 2
+    _ = validate_filterbank(psi_fs, is_time_domain=0)
+
+    psi_fs = [p1 + p0] * 6
+    _ = validate_filterbank(psi_fs, is_time_domain=0)
+    _ = validate_filterbank(psi_fs, is_time_domain=1)
 
 
 def test_viz_spin_1d(G):
@@ -296,8 +307,7 @@ else:
                 make_reusables())
             mr[0] = True
         return dict(sc_tms=sc_tms, jtfss=jtfss, sc_all=sc_all, metas=metas,
-                    xs=xs, out_tms=out_tms, out_jtfss=out_jtfss,
-                    out_all=out_all)
+                    xs=xs, out_tms=out_tms, out_jtfss=out_jtfss, out_all=out_all)
 
 
 # run tests ##################################################################
