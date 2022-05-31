@@ -1214,7 +1214,7 @@ def test_lp_sum():
         r_psi=(np.sqrt(.5), .85),
         max_pad_factor=(None, 1),
         max_pad_factor_fr=(None, 1),
-        sampling_filters_fr=('resample', 'exclude', 'recalirate'),
+        sampling_filters_fr=('resample', 'exclude', 'recalibrate'),
         analytic=(True, False)
     )
     if skip_long:
@@ -1780,11 +1780,11 @@ def test_est_energy_conservation():
     N = 256
     x = np.random.randn(N)
 
-    kw = dict(verbose=1, analytic=1, backend=default_backend)
+    kw = dict(analytic=1, backend=default_backend)
     print()
-    ESr0 = est_energy_conservation(x, jtfs=0, **kw)
+    ESr0 = est_energy_conservation(x, jtfs=0, **kw, verbose=1)
     print()
-    ESr1 = est_energy_conservation(x, jtfs=1, aligned=1, **kw)
+    ESr1 = est_energy_conservation(x, jtfs=1, aligned=1, **kw, verbose=1)
 
     for ESr in (ESr0, ESr1):
         for k, v in ESr.items():
