@@ -1795,6 +1795,8 @@ def test_implementation():
         jtfs = TimeFrequencyScattering1D(shape=N, J=4, Q=2,
                                          implementation=implementation,
                                          frontend=default_backend)
+        assert jtfs.implementation == implementation, (
+            jtfs.implementation, implementation)
         _ = jtfs(x)
 
 

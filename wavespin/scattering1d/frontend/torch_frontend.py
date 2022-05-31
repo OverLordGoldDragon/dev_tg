@@ -159,7 +159,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
 
         # Frequential scattering object
         TimeFrequencyScatteringBase1D.__init__(
-            self, J_fr, Q_fr, F, average_fr, out_type, **kwargs)
+            self, J_fr, Q_fr, F, average_fr, out_type, implementation, **kwargs)
         TimeFrequencyScatteringBase1D.build(self)
 
         self.register_filters()

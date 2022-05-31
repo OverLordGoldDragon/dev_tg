@@ -41,7 +41,7 @@ class NumpyBackend1D(NumpyBackend):
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
-        if k == 0:
+        if k == 1:
             return x
         cls.complex_check(x)
 

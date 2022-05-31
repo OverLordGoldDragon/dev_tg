@@ -1386,7 +1386,7 @@ def viz_jtfs_2d(jtfs, Scx=None, viz_filterbank=True, viz_coeffs=None,
         (see `plot_cfg_defaults` in source code). Will not warn if an argument
         is unused (e.g. per `viz_coeffs=False`). Supported key-values:
 
-            'phi_t_blank' : bool:
+            'phi_t_blank' : bool
               If True, draws `phi_t * psi_f` pairs only once (since up == down).
               Can't be `True` with `phi_t_loc='both'`.
 
@@ -1498,7 +1498,7 @@ def viz_jtfs_2d(jtfs, Scx=None, viz_filterbank=True, viz_coeffs=None,
 
     # `plot_cfg`, defaults
     plot_cfg_defaults = {
-        'phi_t_blank': True,
+        'phi_t_blank': None,
         'phi_t_loc': 'bottom',
 
         'filter_part': 'real',
@@ -1530,6 +1530,8 @@ def viz_jtfs_2d(jtfs, Scx=None, viz_filterbank=True, viz_coeffs=None,
         if C['phi_t_blank']:
             warnings.warn("`phi_t_blank` does nothing if `phi_t_loc='both'`")
             C['phi_t_blank'] = 0
+    elif C['phi_t_blank'] is None:
+        C['phi_t_blank'] = 1
 
     # fs
     if fs is not None:

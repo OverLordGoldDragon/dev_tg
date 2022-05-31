@@ -7,6 +7,9 @@
 # -----------------------------------------------------------------------------
 """Test that wavespin/visuals.py methods run without error."""
 import pytest, os, warnings
+import numpy as np
+from copy import deepcopy
+
 from wavespin import Scattering1D, TimeFrequencyScattering1D
 from wavespin.toolkit import echirp, pack_coeffs_jtfs
 from wavespin import visuals as v
@@ -42,7 +45,7 @@ def make_reusables():
     if skip_all:
         return None if run_without_pytest else pytest.skip()
     N = 512
-    kw0 = dict(shape=N, J=9, Q=8, frontend=default_backend)
+    kw0 = dict(shape=N, T=2**8, J=9, Q=8, frontend=default_backend)
     sc_tms.extend([Scattering1D(**kw0, out_type='array')])
 
     sfs = [('resample', 'resample'), ('exclude', 'resample'),
@@ -103,7 +106,18 @@ def test_viz_jtfs_2d(G):
         return None if run_without_pytest else pytest.skip()
     jtfss = G['jtfss']
     out_jtfss = G['out_jtfss']
-    v.viz_jtfs_2d(jtfss[1], Scx=out_jtfss[1])
+
+    # without save
+    # _ = v.viz_jtfs_2d(jtfss[1], Scx=out_jtfss[1], show=0,
+    #                   plot_cfg={'filter_label': True, 'phi_t_loc': 'both'})
+
+    # with save
+    base = 'viz_jtfs2d'
+    fn = lambda savedir: v.viz_jtfs_2d(
+        jtfss[1], Scx=out_jtfss[1], show=1, savename=os.path.join(savedir, base),
+        plot_cfg={'filter_part': 'imag', 'filterbank_zoom': -1})
+    # name changes internally
+    _run_with_cleanup(fn, [base + '0.png', base + '1.png'])
 
 
 def test_gif_jtfs_2d(G):
@@ -125,13 +139,17 @@ def test_gif_jtfs_3d(G):
         warnings.warn("Skipped `test_gif_jtfs_3d` since `plotly` not installed.")
         return
 
-    out_jtfss, metas = G['out_jtfss'], G['metas']
+    jtfss, out_jtfss, metas = G['jtfss'], G['out_jtfss'], G['metas']
     packed = pack_coeffs_jtfs(out_jtfss[1], metas[2], structure=2,
                               sampling_psi_fr='exclude')
 
     savename = 'jtfs3d.gif'
-    fn = lambda savedir: v.gif_jtfs_3d(packed, savedir=savedir, base_name=savename,
-                                       images_ext='.png', verbose=False)
+    kw = dict(base_name=savename, images_ext='.png', verbose=0)
+
+    fn = lambda savedir: v.gif_jtfs_3d(packed, savedir=savedir, **kw)
+    _run_with_cleanup_handle_exception(fn, savename)
+    fn = lambda savedir: v.gif_jtfs_3d(out_jtfss[1], jtfss[1], angles='rotate',
+                                       savedir=savedir, **kw)
     _run_with_cleanup_handle_exception(fn, savename)
 
 
@@ -167,6 +185,35 @@ def test_coeff_distance_jtfs(G):
               raise e
 
 
+def test_compare_distances_jtfs(G):
+    if skip_all:
+        return None if run_without_pytest else pytest.skip()
+    out_jtfss = G['out_jtfss']
+    Scx0, Scx1 = out_jtfss[0], deepcopy(out_jtfss[0])
+    for pair in Scx1:
+        Scx1[pair] += 1
+
+    dists0 = v.coeff_distance_jtfs(Scx0, Scx1, metas[1])[1]
+    dists1 = v.coeff_distance_jtfs(Scx1, Scx0, metas[1], plots=1)[1]
+    _ = v.compare_distances_jtfs(dists0, dists1, plots=1)
+
+
+def test_scalogram(G):
+    if skip_all:
+        return None if run_without_pytest else pytest.skip()
+    sc_tm = G['sc_tms'][0]
+    sc_tm.average = False
+    sc_tm.out_type = 'list'
+    _ = v.scalogram(np.random.randn(sc_tm.shape), sc_tm, show_x=1, fs=1)
+
+
+def test_misc(G):
+    if skip_all:
+        return None if run_without_pytest else pytest.skip()
+    _ = v.plot([1, 2], xticks=[0, 1], yticks=[0, 1], show=0)
+    _ = v._colorize_complex(np.array([[1 + 1j]]))
+
+
 def test_viz_spin_1d(G):
     if skip_all:
         return None if run_without_pytest else pytest.skip()
@@ -188,19 +235,24 @@ def test_viz_spin_2d(G):
 def _run_with_cleanup(fn, savename):
     if skip_all:
         return None if run_without_pytest else pytest.skip()
+    if not isinstance(savename, list):
+        savename = [savename]
+
     with tempdir() as savedir:
         try:
             fn(savedir)
-            path = os.path.join(savedir, savename)
             # assert file was created
-            assert os.path.isfile(path), path
-            os.unlink(path)
+            for nm in savename:
+                path = os.path.join(savedir, nm)
+                assert os.path.isfile(path), path
+                os.unlink(path)
         finally:
             # clean up images, if any were made
-            paths = [os.path.join(savedir, n) for n in os.listdir(savedir)
-                     if (n.startswith(savename) and n.endswith('.png'))]
-            for p in paths:
-                os.unlink(p)
+            for nm in savename:
+                paths = [os.path.join(savedir, n) for n in os.listdir(savedir)
+                         if (n.startswith(nm) and n.endswith('.png'))]
+                for p in paths:
+                    os.unlink(p)
 
 
 def _run_with_cleanup_handle_exception(fn, savename):
@@ -210,6 +262,7 @@ def _run_with_cleanup_handle_exception(fn, savename):
         if 'ffmpeg' not in str(e):
             # automated testing has some issues with this
             raise e
+        warnings.warn("Ignored error:\n%s" % str(e))
 
 
 # create testing objects #####################################################
@@ -244,6 +297,9 @@ if __name__ == '__main__':
         test_gif_jtfs_3d(G)
         test_energy_profile_jtfs(G)
         test_coeff_distance_jtfs(G)
+        test_compare_distances_jtfs(G)
+        test_scalogram(G)
+        test_misc(G)
         test_viz_spin_1d(G)
         test_viz_spin_2d(G)
     else:
